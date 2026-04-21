@@ -1,4 +1,4 @@
-﻿# Campus Management System (MERN) - Docker Setup
+# Campus Management System (MERN) - Docker Setup
 
 This is my **Campus Management System** project (MERN stack). I am using **Docker + Docker Compose** so anyone can run the whole app (frontend + backend + database) without installing MongoDB locally.
 
