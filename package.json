@@ -1,0 +1,10 @@
+{
+  "name": "cms-root",
+  "private": true,
+  "scripts": {
+    "start-all": "concurrently -n backend,frontend -c green,blue \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}

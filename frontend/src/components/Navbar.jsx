@@ -1,0 +1,77 @@
+import { useContext, useMemo } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
+import { LayoutDashboard, Users, BookOpen, Clock, FileSpreadsheet, LogOut, BotMessageSquare, GraduationCap, FileEdit, CalendarDays, FolderSearch, ShieldCheck } from 'lucide-react';
+import './Navbar.css';
+
+const NAV_LINKS = [
+    { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'Timetable', path: '/time-table', icon: <CalendarDays size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'Courses', path: '/courses', icon: <BookOpen size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'Attendance', path: '/attendance', icon: <Clock size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'Teachers', path: '/teachers', icon: <GraduationCap size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'Students', path: '/students', icon: <Users size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'Files', path: '/files', icon: <FolderSearch size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'Exams', path: '/exams', icon: <FileEdit size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'Grades', path: '/grades', icon: <FileSpreadsheet size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'AI Assistant', path: '/ai-assistant', icon: <BotMessageSquare size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'AI Config', path: '/admin/ai-settings', icon: <FileEdit size={20} />, roles: ['Admin'] },
+    { name: 'Accounts', path: '/admin/accounts', icon: <ShieldCheck size={20} />, roles: ['Admin'] },
+];
+
+const Navbar = () => {
+    const { user, logout } = useContext(AuthContext);
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
+
+    const visibleLinks = useMemo(
+        () => NAV_LINKS.filter((link) => link.roles.includes(user?.role)),
+        [user?.role]
+    );
+
+    const getUserInitial = (name) => (name?.trim()?.charAt(0) || '?').toUpperCase();
+    const isActiveRoute = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
+
+    return (
+        <nav className="sidebar glass-panel">
+            <div className="sidebar-header">
+                <h2 className="logo-text">TU Hmawbi CMS</h2>
+            </div>
+
+            <div className="user-info-pill">
+                <div className="user-avatar-small">{getUserInitial(user?.name)}</div>
+                <div className="user-text-details">
+                    <span className="user-name">{user?.name || 'Guest User'}</span>
+                    <span className="user-role">{user?.role || 'No role'}</span>
+                </div>
+            </div>
+
+            <div className="nav-links">
+                {visibleLinks.map((link) => (
+                    <Link
+                        key={link.path}
+                        to={link.path}
+                        className={`nav-item ${isActiveRoute(link.path) ? 'active' : ''}`}
+                    >
+                        <span className="nav-icon">{link.icon}</span>
+                        <span className="nav-label">{link.name}</span>
+                    </Link>
+                ))}
+            </div>
+
+            <div className="sidebar-footer">
+                <button type="button" className="nav-item logout-btn" onClick={handleLogout} aria-label="Logout">
+                    <span className="nav-icon"><LogOut size={20} /></span>
+                    <span className="nav-label">Logout</span>
+                </button>
+            </div>
+        </nav>
+    );
+};
+
+export default Navbar;

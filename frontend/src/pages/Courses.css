@@ -1,0 +1,244 @@
+.courses-page {
+  padding: 1rem 0;
+}
+
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.course-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+}
+
+.course-color-strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+}
+
+.course-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-left: 0.5rem;
+}
+
+.header-left {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.course-code {
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.year-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--primary-color);
+    background: rgba(99, 102, 241, 0.1);
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+/* Year Filter Bar */
+.year-filter-bar {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+    scrollbar-width: none; /* Hide scrollbar Firefox */
+}
+
+.year-filter-bar::-webkit-scrollbar {
+    display: none; /* Hide scrollbar Chrome/Safari */
+}
+
+.year-tag {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--surface-border);
+    padding: 0.5rem 1.25rem;
+    border-radius: 2rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+}
+
+.year-tag:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    transform: translateY(-2px);
+}
+
+.year-tag.active {
+    background: var(--primary-gradient);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+}
+
+.course-card-body {
+  flex: 1;
+  padding-left: 0.5rem;
+}
+
+.course-card-body h3 {
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.course-instructor {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+.course-meta {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.meta-item {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  border: 1px solid var(--surface-border);
+}
+
+.enrollment-section {
+  margin-bottom: 1.5rem;
+}
+
+.enrollment-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.enrollment-label {
+  color: var(--text-muted);
+}
+
+.enrollment-stats {
+  font-weight: 600;
+}
+
+.progress-bar-container {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease-in-out;
+}
+
+.course-card-footer {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-left: 0.5rem;
+}
+
+.course-modal {
+  width: min(520px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 1000;
+  padding: 0.5rem 1rem;
+  overflow-y: auto;
+}
+
+.modal-content {
+  width: 100%;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  border-radius: 16px;
+}
+
+.modal-header,
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--surface-border);
+}
+
+.course-modal .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.course-modal .form-input {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.75rem;
+}
+
+.alert {
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.75rem;
+}
+
+.alert-warning {
+  background: rgba(250, 204, 21, 0.15);
+  color: #d97706;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+}

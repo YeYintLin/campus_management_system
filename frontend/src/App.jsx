@@ -1,0 +1,92 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useContext, useEffect, Suspense, lazy } from 'react';
+import { AuthContext } from './context/AuthContext';
+
+// Lazy load components for better performance
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'));
+const Students = lazy(() => import('./pages/Students'));
+const Courses = lazy(() => import('./pages/Courses'));
+const Attendance = lazy(() => import('./pages/Attendance'));
+const Grades = lazy(() => import('./pages/Grades'));
+const AIAssistant = lazy(() => import('./pages/AIAssistant'));
+const Teachers = lazy(() => import('./pages/Teachers'));
+const Exams = lazy(() => import('./pages/Exams'));
+const TimeTable = lazy(() => import('./pages/TimeTable'));
+const Files = lazy(() => import('./pages/Files'));
+const AIPromptSettings = lazy(() => import('./pages/AIPromptSettings'));
+const AccountManagement = lazy(() => import('./pages/AccountManagement'));
+
+const restrictedRoles = new Set(['Student', 'Teacher']);
+
+function App() {
+  const { user, loading } = useContext(AuthContext);
+  const inspectionRestricted = user && restrictedRoles.has(user.role);
+
+  useEffect(() => {
+    if (!inspectionRestricted) return undefined;
+
+    const preventAction = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    const handleKeyDown = (event) => {
+      if (!inspectionRestricted) return;
+      const key = event.key.toUpperCase();
+      const ctrlOrMeta = event.ctrlKey || event.metaKey;
+      const isDevShortcut =
+        key === 'F12' ||
+        (ctrlOrMeta && event.shiftKey && ['I', 'J', 'C', 'K', 'S'].includes(key)) ||
+        (ctrlOrMeta && key === 'U');
+
+      if (isDevShortcut) {
+        preventAction(event);
+      }
+    };
+
+    window.addEventListener('contextmenu', preventAction, true);
+    window.addEventListener('keydown', handleKeyDown, true);
+
+    return () => {
+      window.removeEventListener('contextmenu', preventAction, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [inspectionRestricted]);
+
+  if (loading) {
+    return <div className="app-container"><div style={{ margin: 'auto' }}>Loading...</div></div>;
+  }
+
+  return (
+    <div className="app-container">
+      <Suspense fallback={<div style={{ display: 'flex', minHeight: '100vh', justifyContent: 'center', alignItems: 'center' }}>Loading...</div>}>
+        <Routes>
+          <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
+          <Route path="/register" element={!user ? <Register /> : <Navigate to="/dashboard" />} />
+
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/students" element={<Students />} />
+            <Route path="/courses" element={<Courses />} />
+            <Route path="/attendance" element={<Attendance />} />
+            <Route path="/grades" element={<Grades />} />
+            <Route path="/ai-assistant" element={<AIAssistant />} />
+            <Route path="/teachers" element={<Teachers />} />
+            <Route path="/exams" element={<Exams />} />
+            <Route path="/time-table" element={<TimeTable />} />
+            <Route path="/files" element={<Files />} />
+            <Route path="/admin/ai-settings" element={<AIPromptSettings />} />
+            <Route path="/admin/accounts" element={<AccountManagement />} />
+          </Route>
+
+          <Route path="/" element={<Navigate to="/login" />} />
+        </Routes>
+      </Suspense>
+    </div>
+  );
+}
+
+export default App;

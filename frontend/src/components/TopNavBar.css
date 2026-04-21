@@ -1,0 +1,161 @@
+.content-topbar {
+  position: sticky;
+  top: 0.8rem;
+  z-index: 40;
+  min-height: 72px;
+  margin: 0 0 1rem;
+  padding: 0.8rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 16px;
+  background: var(--panel-strong-bg);
+}
+
+.topbar-left {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar-brand {
+  color: var(--primary-light);
+  font-size: 0.67rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.topbar-left h2 {
+  margin: 0.2rem 0 0;
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.topbar-search-form {
+  width: min(440px, 100%);
+  position: relative;
+}
+
+.topbar-search-form .input {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.75);
+  color: var(--text-primary);
+  padding: 0.62rem 0.95rem;
+  font-size: 0.88rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.topbar-search-form .input::placeholder {
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.topbar-search-form .input:focus {
+  outline: none;
+  border-color: rgba(var(--primary-rgb), 0.7);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.16);
+}
+
+.topbar-search-form .input-border {
+  display: none;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  min-width: 80px;
+}
+
+.topbar-theme-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: var(--control-bg);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+
+.topbar-theme-toggle:hover {
+  color: var(--text-primary);
+  border-color: rgba(var(--primary-rgb), 0.62);
+  background: var(--control-bg-hover);
+}
+
+.topbar-notif-area {
+  position: relative;
+}
+
+.topbar-notif-loader {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: var(--control-bg);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+
+.topbar-notif-loader:hover {
+  color: var(--text-primary);
+  border-color: rgba(var(--primary-rgb), 0.62);
+  background: var(--control-bg-hover);
+}
+
+.topbar-notif-loader svg {
+  transform: scale(1.07);
+}
+
+.topbar-notif-point {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  background: #34d399;
+  border-radius: 999px;
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.2);
+}
+
+.topbar-notif-area .notifications-tray {
+  top: calc(100% + 0.55rem);
+  right: 0;
+}
+
+@media (max-width: 768px) {
+  .content-topbar {
+    top: 0.45rem;
+    min-height: 64px;
+    padding: 0.7rem 0.72rem;
+  }
+
+  .topbar-center {
+    display: none;
+  }
+
+  .topbar-left h2 {
+    font-size: 0.98rem;
+  }
+}
