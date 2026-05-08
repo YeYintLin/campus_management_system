@@ -1,5 +1,5 @@
 .ai-settings-page {
-    padding: 2rem;
+    padding: var(--page-pad-top) 2rem 2rem;
     max-width: 1400px;
     margin: 0 auto;
 }
@@ -100,6 +100,41 @@
     display: flex;
     flex-direction: column;
     height: 600px;
+    overflow: hidden;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.35rem 1.6rem;
+    border-bottom: 1px solid var(--surface-border);
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.title-with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.panel-header h2 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.status-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    white-space: nowrap;
 }
 
 .editor-container {
@@ -152,14 +187,17 @@
 
 /* Advanced Tuning Panel */
 .advanced-tuning-panel {
-    padding: 1.5rem;
+    /* Match the System Prompt card: header spans full width and is clipped to rounded corners */
+    padding: 0;
+    overflow: hidden;
 }
 
 .tuning-controls {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 2rem;
-    margin-top: 1.5rem;
+    margin-top: 0;
+    padding: 1.5rem;
 }
 
 .control-item {
@@ -230,11 +268,18 @@
     gap: 1.5rem;
 }
 
+.preview-panel {
+    /* Keep the header and content feeling like one card */
+    overflow: hidden;
+    padding-bottom: 1.5rem;
+}
+
 .preview-chat-demo {
     padding: 1.5rem;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 12px;
-    margin: 1rem 0;
+    /* Give the demo some breathing room inside the glass panel */
+    margin: 1.25rem 1.5rem 1.25rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -244,6 +289,7 @@
     display: flex;
     gap: 0.8rem;
     max-width: 90%;
+    align-items: flex-start;
 }
 
 .demo-message.user {
@@ -254,6 +300,9 @@
 .bot-avatar {
     width: 28px;
     height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    flex: 0 0 28px;
     background: var(--primary-gradient);
     border-radius: 8px;
     display: flex;
@@ -307,6 +356,10 @@
     color: var(--text-secondary);
 }
 
+.persona-traits {
+    padding: 0 1.5rem;
+}
+
 .traits-list {
     display: flex;
     flex-wrap: wrap;
@@ -326,6 +379,18 @@
     list-style: none;
     padding: 0;
     margin-top: 1rem;
+}
+
+.documentation-panel {
+    padding: 1.4rem 1.6rem;
+}
+
+.documentation-panel h3 {
+    margin: 0;
+}
+
+.documentation-panel .guide-list {
+    margin-top: 0.85rem;
 }
 
 .guide-list li {

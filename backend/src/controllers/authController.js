@@ -1,20 +1,29 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET is not set');
+    }
+    return secret;
+};
+
 const generateToken = (id, role) => {
-    return jwt.sign({ id, role }, process.env.JWT_SECRET || 'supersecretkey', {
+    return jwt.sign({ id, role }, getJwtSecret(), {
         expiresIn: '30d',
     });
 };
 
 const normalizeEmail = (email) => (typeof email === 'string' ? email.trim().toLowerCase() : '');
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public (Can be restricted to Admin in a real scenario for Teachers/Students)
 const registerUser = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password } = req.body;
         const normalizedEmail = normalizeEmail(email);
 
         if (!name || !normalizedEmail || !password) {
@@ -31,7 +40,8 @@ const registerUser = async (req, res) => {
             name,
             email: normalizedEmail,
             password,
-            role: role || 'Student',
+            // Security: public registration must never allow creating privileged roles.
+            role: 'Student',
         });
 
         if (user) {
@@ -55,6 +65,7 @@ const registerUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
     try {
+        const isProduction = (process.env.NODE_ENV || 'development') === 'production';
         const { email, username, password } = req.body;
         const identifierRaw = typeof email === 'string' && email.trim() ? email : username;
         const identifier = typeof identifierRaw === 'string' ? identifierRaw.trim() : '';
@@ -63,13 +74,34 @@ const loginUser = async (req, res) => {
             return res.status(400).json({ message: 'Email/username and password are required' });
         }
 
-        const loginQuery = identifier.includes('@')
-            ? { email: normalizeEmail(identifier) }
-            : { name: new RegExp(`^${identifier}$`, 'i') };
+        let user = null;
+        if (identifier.includes('@')) {
+            user = await User.findOne({ email: normalizeEmail(identifier) });
+        } else {
+            // Allow "username" as exact name match (case-insensitive).
+            user = await User.findOne({ name: new RegExp(`^${escapeRegex(identifier)}$`, 'i') });
+            // Also allow email local-part (e.g. `admin` for `admin@gmail.com`) for convenience.
+            if (!user) {
+                user = await User.findOne({ email: new RegExp(`^${escapeRegex(identifier)}@`, 'i') });
+            }
+        }
 
-        const user = await User.findOne(loginQuery);
+        if (!user) {
+            return res.status(401).json({
+                code: 'AUTH_USER_NOT_FOUND',
+                message: isProduction ? 'Invalid email or password' : 'User not found',
+            });
+        }
 
-        if (user && (await user.comparePassword(password))) {
+        const passwordMatches = await user.comparePassword(password);
+        if (!passwordMatches) {
+            return res.status(401).json({
+                code: 'AUTH_INVALID_PASSWORD',
+                message: isProduction ? 'Invalid email or password' : 'Invalid password',
+            });
+        }
+
+        if (user) {
             res.json({
                 _id: user._id,
                 name: user.name,
@@ -77,8 +109,6 @@ const loginUser = async (req, res) => {
                 role: user.role,
                 token: generateToken(user._id, user.role),
             });
-        } else {
-            res.status(401).json({ message: 'Invalid email or password' });
         }
     } catch (error) {
         res.status(500).json({ message: error.message });

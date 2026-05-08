@@ -1,6 +1,14 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET is not set');
+    }
+    return secret;
+};
+
 const protect = async (req, res, next) => {
     let token;
 
@@ -13,7 +21,7 @@ const protect = async (req, res, next) => {
 
             const decoded = jwt.verify(
                 token,
-                process.env.JWT_SECRET || 'supersecretkey'
+                getJwtSecret()
             );
 
             req.user = await User.findById(decoded.id).select('-password');

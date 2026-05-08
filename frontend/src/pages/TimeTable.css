@@ -1,5 +1,5 @@
 .timetable-page {
-  padding: 0;
+  padding: var(--page-pad-top) 0 var(--page-pad-bottom);
 }
 
 /* Edit Mode Toast */
@@ -43,6 +43,11 @@
   letter-spacing: 1.5px;
   color: var(--text-muted);
   border-bottom: 1px solid var(--surface-border);
+  border-right: 1px solid var(--surface-border);
+}
+
+.timetable-grid th:last-child {
+  border-right: none;
 }
 
 .sticky-col {
@@ -68,6 +73,7 @@
   font-size: 0.85rem;
   text-align: center;
   white-space: nowrap;
+  border-bottom: 1px solid var(--surface-border);
 }
 
 .schedule-td {
@@ -75,9 +81,17 @@
   vertical-align: top;
   min-width: 180px;
   height: 120px;
-  border-right: 1px solid rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-right: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--surface-border);
   position: relative;
+}
+
+.timetable-grid tr > .schedule-td:last-child {
+  border-right: none;
+}
+
+.timetable-grid tbody tr:last-child > td {
+  border-bottom: none;
 }
 
 .active-zone {

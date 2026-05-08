@@ -10,8 +10,8 @@ COPY . .
 RUN mkdir -p /app/uploads
 
 ENV NODE_ENV=production
-ENV PORT=5000
+ENV PORT=5001
 
-EXPOSE 5000
+EXPOSE 5001
 
 CMD ["npm", "start"]

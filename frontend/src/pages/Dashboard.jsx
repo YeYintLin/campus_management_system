@@ -42,7 +42,7 @@ const Dashboard = () => {
     const studentId = user?._id || 'STU001';
 
     // Memoize expensive calculations
-    const { grades, gpa, stats, upcomingExams, recommendedFiles } = useMemo(() => {
+    const { stats, upcomingExams, recommendedFiles } = useMemo(() => {
         const calculateLetterGrade = (score) => {
             if (score >= 81) return 4.0;
             if (score >= 61) return 3.0;
@@ -68,7 +68,7 @@ const Dashboard = () => {
             ? initialFiles.filter(f => f.year === studentYear).slice(0, 3)
             : [];
 
-        return { grades, gpa, stats, upcomingExams, recommendedFiles };
+        return { stats, upcomingExams, recommendedFiles };
     }, [isStudent, studentId]);
 
     return (

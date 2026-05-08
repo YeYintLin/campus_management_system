@@ -1,6 +1,7 @@
 import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import AuthLoader from '../components/AuthLoader';
 import './Auth.css';
 
 const Login = () => {
@@ -76,6 +77,12 @@ const Login = () => {
                         <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>
                             {loading ? 'Signing in...' : 'Sign In'}
                         </button>
+
+                        {loading && (
+                            <div className="auth-inline-loader" aria-live="polite">
+                                <AuthLoader />
+                            </div>
+                        )}
                     </form>
 
                     <div className="auth-footer">

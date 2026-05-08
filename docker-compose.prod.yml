@@ -2,7 +2,7 @@ services:
   mongo:
     image: mongo:7
     restart: unless-stopped
-    # Internal-only DB: no host port published. Other services can still reach it at `mongo:27017`.
+    # Internal-only DB: no host port published. Other services reach it at `mongo:27017`.
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -24,8 +24,9 @@ services:
       OLLAMA_API_URL: ${OLLAMA_API_URL:-http://host.docker.internal:11434}
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    ports:
-      - "5001:5001"
+    # In production, backend should be internal-only and reached via the frontend reverse proxy (/api).
+    expose:
+      - "5001"
     volumes:
       - ./backend/uploads:/app/uploads
     healthcheck:
@@ -38,35 +39,6 @@ services:
       mongo:
         condition: service_healthy
 
-  seed-users:
-    build:
-      context: ./backend
-    profiles: ["seed"]
-    restart: "no"
-    env_file:
-      - ./backend/.env
-    environment:
-      NODE_ENV: development
-      PORT: 5001
-      MONGODB_URI: mongodb://mongo:27017/cms
-      SEED_OVERWRITE_PASSWORDS: ${SEED_OVERWRITE_PASSWORDS:-false}
-    depends_on:
-      mongo:
-        condition: service_healthy
-    command: ["npm", "run", "seed:users"]
-
-  seed-users-atlas:
-    build:
-      context: ./backend
-    profiles: ["atlas-seed"]
-    restart: "no"
-    env_file:
-      - ./backend/.env
-    environment:
-      NODE_ENV: development
-      SEED_OVERWRITE_PASSWORDS: ${SEED_OVERWRITE_PASSWORDS:-false}
-    command: ["npm", "run", "seed:users"]
-
   frontend:
     build:
       context: ./frontend
@@ -75,7 +47,8 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     restart: unless-stopped
     ports:
-      - "5111:80"
+      # Requested prod port is 8050. You can override with FRONTEND_PORT=<port> if needed.
+      - "${FRONTEND_PORT:-8050}:80"
     depends_on:
       backend:
         condition: service_healthy

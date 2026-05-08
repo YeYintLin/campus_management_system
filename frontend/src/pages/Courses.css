@@ -1,5 +1,5 @@
 .courses-page {
-  padding: 1rem 0;
+  padding: var(--page-pad-top) 0 var(--page-pad-bottom);
 }
 
 .courses-grid {

@@ -1,5 +1,5 @@
 .dashboard-container {
-  padding: 0.8rem 0 1rem;
+  padding: 0.2rem 0 1rem;
 }
 
 .dashboard-header {
@@ -15,6 +15,12 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+:root[data-theme='light'] .dashboard-header h1 {
+  background: none;
+  -webkit-text-fill-color: #000;
+  color: #000;
 }
 
 .subtitle {

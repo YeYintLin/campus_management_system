@@ -31,6 +31,8 @@ function checkFileType(file, cb) {
 
 const upload = multer({
     storage,
+    // Basic DoS protection: prevent very large uploads from filling disk/memory.
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
     fileFilter: function (req, file, cb) {
         checkFileType(file, cb);
     },

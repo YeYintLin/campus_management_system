@@ -7,6 +7,12 @@ dotenv.config();
 
 const app = express();
 
+// Fail fast if JWT secret is missing. This prevents accidentally running with an insecure default.
+if (!process.env.JWT_SECRET) {
+    console.error('FATAL: JWT_SECRET is not set. Set it in backend/.env');
+    process.exit(1);
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -35,13 +41,26 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/users', userRoutes);
 
+// Healthcheck endpoint (used by Docker/Kubernetes probes)
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+    });
+});
+
 app.get('/', (req, res) => {
     res.send('CMS API Default Endpoint');
 });
 
 // Database Connection
-const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/cms';
+const PORT = process.env.PORT || 5001;
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+    console.error('FATAL: MONGODB_URI is not set. Set it in backend/.env');
+    process.exit(1);
+}
 
 mongoose
     .connect(MONGODB_URI)

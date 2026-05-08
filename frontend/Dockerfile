@@ -2,7 +2,7 @@ FROM node:20-bookworm-slim AS build
 
 WORKDIR /app
 
-ARG VITE_API_BASE_URL=http://localhost:5000/api
+ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
 COPY package*.json ./

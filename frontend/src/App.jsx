@@ -22,7 +22,7 @@ const AccountManagement = lazy(() => import('./pages/AccountManagement'));
 const restrictedRoles = new Set(['Student', 'Teacher']);
 
 function App() {
-  const { user, loading } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   const inspectionRestricted = user && restrictedRoles.has(user.role);
 
   useEffect(() => {
@@ -55,10 +55,6 @@ function App() {
       window.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [inspectionRestricted]);
-
-  if (loading) {
-    return <div className="app-container"><div style={{ margin: 'auto' }}>Loading...</div></div>;
-  }
 
   return (
     <div className="app-container">

@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { Save, RefreshCw, Bot, MessageSquare, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Save, RefreshCw, Bot, MessageSquare, ShieldCheck, AlertCircle, SlidersHorizontal } from 'lucide-react';
 import './AIPromptSettings.css';
 
 const AIPromptSettings = () => {
@@ -139,8 +139,14 @@ Provide clear, concise information about school regulations and deadlines.`
 
                     <div className="advanced-tuning-panel glass-panel mt-6">
                         <div className="panel-header">
-                            <h2>Precision Tuning</h2>
-                            <p className="hint-text">Fine-tune response quality</p>
+                            <div className="title-with-icon">
+                                <SlidersHorizontal size={20} className="text-primary" />
+                                <h2>Precision Tuning</h2>
+                            </div>
+                            <span className="status-label">
+                                <MessageSquare size={14} />
+                                Fine-tune response quality
+                            </span>
                         </div>
                         <div className="tuning-controls">
                             <div className="control-item">
