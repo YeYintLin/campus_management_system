@@ -1,24 +1,18 @@
-import React, { useState, useContext } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
+import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { X, Shield, UserCircle, Settings, Mail, Lock, User, BookOpen, AlertTriangle, UserCheck, UserPlus } from 'lucide-react';
+import { X, Shield, UserCircle, Settings, UserCheck, UserPlus } from 'lucide-react';
+import { defaultTeachers } from '../data/teachers';
 import './Teachers.css';
 
-const dummyTeachers = [
-    { id: 'T001', name: 'Dr. Alan Turing', email: 'alan.t@example.com', department: 'Computer Science', role: 'Professor', status: 'Active', year: '1st Year', avatar: 'https://i.pravatar.cc/150?u=alanturing' },
-    { id: 'T002', name: 'Prof. Isaac Newton', email: 'isaac.n@example.com', department: 'Mathematics', role: 'Head of Dept', status: 'Active', year: '4th Year', avatar: 'https://i.pravatar.cc/150?u=isaacnewton' },
-    { id: 'T003', name: 'Dr. Richard Feynman', email: 'richard.f@example.com', department: 'Physics', role: 'Professor', status: 'On Leave', year: '2nd Year', avatar: 'https://i.pravatar.cc/150?u=feynman' },
-    { id: 'T004', name: 'Prof. Jane Austen', email: 'jane.a@example.com', department: 'Literature', role: 'Associate Prof', status: 'Active', year: '1st Year', avatar: 'https://i.pravatar.cc/150?u=janeausten' },
-    { id: 'T005', name: 'Dr. Marie Curie', email: 'marie.c@example.com', department: 'Chemistry', role: 'Professor', status: 'Active', year: '3rd Year', avatar: 'https://i.pravatar.cc/150?u=curie' },
-    { id: 'T006', name: 'Prof. Nikola Tesla', email: 'nikola.t@example.com', department: 'Engineering', role: 'Professor', status: 'Active', year: '5th Year', avatar: 'https://i.pravatar.cc/150?u=tesla' },
-    { id: 'T007', name: 'Dr. Ada Lovelace', email: 'ada.l@example.com', department: 'Computer Science', role: 'Associate Prof', status: 'Active', year: '6th Year', avatar: 'https://i.pravatar.cc/150?u=lovelace' },
-];
+const getTeacherId = (teacher) => teacher._id || teacher.id;
 
 const Teachers = () => {
     const { user } = useContext(AuthContext);
     const isAdmin = user?.role === 'Admin';
 
-    const [teachers, setTeachers] = useState(dummyTeachers);
+    const [teachers, setTeachers] = useState(defaultTeachers);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedYear, setSelectedYear] = useState('All');
     const [manageTeacher, setManageTeacher] = useState(null);
@@ -29,6 +23,43 @@ const Teachers = () => {
     const [addSuccess, setAddSuccess] = useState('');
 
     const years = ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+
+    useEffect(() => {
+        if (!isAdmin) return undefined;
+
+        const abortController = new AbortController();
+
+        const fetchTeachers = async () => {
+            try {
+                const { data } = await apiClient.get('/users?role=Teacher', { signal: abortController.signal });
+                const fetchedTeachers = Array.isArray(data)
+                    ? data.map(teacher => ({
+                        id: teacher._id,
+                        _id: teacher._id,
+                        name: teacher.name,
+                        email: teacher.email,
+                        department: teacher.department || 'Unassigned',
+                        role: teacher.title || 'Teacher',
+                        status: teacher.status || 'Active',
+                        year: teacher.year || 'All Years',
+                        office: teacher.office || '',
+                        consultationHours: teacher.consultationHours || '',
+                        specialization: teacher.specialization || '',
+                        avatar: `https://i.pravatar.cc/150?u=${teacher._id}`,
+                    }))
+                    : [];
+
+                setTeachers(fetchedTeachers.length > 0 ? fetchedTeachers : defaultTeachers);
+            } catch (err) {
+                if (err?.code !== 'ERR_CANCELED') {
+                    setTeachers(defaultTeachers);
+                }
+            }
+        };
+
+        fetchTeachers();
+        return () => abortController.abort();
+    }, [isAdmin]);
 
     const filteredTeachers = teachers.filter(teacher => {
         const matchesSearch = teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -109,7 +140,7 @@ const Teachers = () => {
 
             <div className="teachers-grid">
                 {filteredTeachers.map(teacher => (
-                    <div key={teacher.id} className="glass-card teacher-card">
+                    <div key={getTeacherId(teacher)} className="glass-card teacher-card">
                         <div className="teacher-header">
                             <img src={teacher.avatar} alt={teacher.name} className="teacher-avatar" />
                             <div className="teacher-info">
@@ -136,7 +167,13 @@ const Teachers = () => {
                         </div>
 
                         <div className="teacher-footer">
-                            <a href={`mailto:${teacher.email}`} className="btn btn-secondary btn-sm">Contact</a>
+                            <Link
+                                to={`/teachers/${getTeacherId(teacher)}`}
+                                state={{ teacher }}
+                                className="btn btn-secondary btn-sm"
+                            >
+                                Profile
+                            </Link>
                             {isAdmin && (
                                 <button className="btn btn-primary btn-sm" onClick={() => setManageTeacher(teacher)}>
                                     <Settings size={14} />

@@ -25,7 +25,7 @@ const Notifications = ({ notifications, onMarkAsRead, onClose }) => {
                     </div>
                 ) : (
                     notifications.map(notif => (
-                        <div key={notif.id} className={`notif-item ${notif.read ? 'read' : 'unread'}`}>
+                        <div key={notif._id} className={`notif-item ${notif.read ? 'read' : 'unread'}`}>
                             <div className="notif-icon-wrapper">
                                 {getIcon(notif.type)}
                             </div>
@@ -37,7 +37,7 @@ const Notifications = ({ notifications, onMarkAsRead, onClose }) => {
                                 <button
                                     type="button"
                                     className="mark-read-btn"
-                                    onClick={() => onMarkAsRead(notif.id)}
+                                    onClick={() => onMarkAsRead(notif._id)}
                                     title="Mark as read"
                                 >
                                     <Check size={14} />

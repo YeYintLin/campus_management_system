@@ -273,6 +273,10 @@
     scrollbar-width: none;
 }
 
+.semester-filter-bar {
+    margin-top: -1.25rem;
+}
+
 .year-filter-bar::-webkit-scrollbar {
     display: none;
 }

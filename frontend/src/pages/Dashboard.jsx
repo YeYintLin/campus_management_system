@@ -1,75 +1,132 @@
-import { useContext, useMemo } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { ArrowRight, Award, Calendar, FileText, TrendingUp, Clock, BookOpen } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { AlertTriangle, ArrowRight, Award, CheckCircle2, FileText, UserRoundCheck, Users } from 'lucide-react';
+import apiClient from '../api/apiClient';
 import './Dashboard.css';
 
-// Move static data outside component to prevent recreation on every render
-const initialExams = [
-    { id: 'EX001', course: 'CS101', title: 'Midterm Exam', date: '2026-03-15', time: '09:00', duration: '2 Hours', room: 'Hall A', status: 'Upcoming', year: '1st Year' },
-    { id: 'EX002', course: 'MTH202', title: 'Final Exam', date: '2026-04-10', time: '14:00', duration: '3 Hours', room: 'Lab 3', status: 'Scheduled', year: '2nd Year' },
-    { id: 'EX003', course: 'PHY301', title: 'Quiz 1', date: '2026-03-08', time: '10:00', duration: '45 Mins', room: 'Room 201', status: 'Upcoming', year: '3rd Year' },
-];
-
-const initialFiles = [
-    { id: 1, name: 'React_Basics_Tutorial.pdf', type: 'PDF', size: '2.4 MB', category: 'Tutorial', year: '1st Year' },
-    { id: 2, name: 'Final_Exam_2024.pdf', type: 'PDF', size: '1.5 MB', category: 'Old Question', year: '4th Year' },
-    { id: 3, name: 'CS_Algorithms_Textbook.pdf', type: 'PDF', size: '12.2 MB', category: 'Reference Books', year: '3rd Year' },
-];
-
-const initialGradesData = {
-    'STU001': [
-        { course: 'CS101', credits: 3, score: 92 },
-        { course: 'MTH202', credits: 4, score: 78 },
-        { course: 'PHY301', credits: 4, score: 88 },
-    ],
+const studentStatusColors = {
+    Active: '#22c55e',
+    Probation: '#f59e0b',
+    Suspended: '#f43f5e',
 };
-
-const attendanceData = [
-    { day: 'Mon', attendance: 85 },
-    { day: 'Tue', attendance: 92 },
-    { day: 'Wed', attendance: 88 },
-    { day: 'Thu', attendance: 95 },
-    { day: 'Fri', attendance: 82 },
-    { day: 'Sat', attendance: 75 },
-    { day: 'Sun', attendance: 60 },
-];
 
 const Dashboard = () => {
     const { user } = useContext(AuthContext);
     const isStudent = user?.role === 'Student';
-    const studentId = user?._id || 'STU001';
+    const isStaff = user?.role === 'Teacher' || user?.role === 'Admin';
+    const studentId = user?._id;
 
-    // Memoize expensive calculations
-    const { stats, upcomingExams, recommendedFiles } = useMemo(() => {
-        const calculateLetterGrade = (score) => {
-            if (score >= 81) return 4.0;
-            if (score >= 61) return 3.0;
-            if (score >= 41) return 2.0;
-            if (score >= 21) return 1.0;
-            return 0.0;
+    const [staffStudents, setStaffStudents] = useState([]);
+    const [staffStudentsLoading, setStaffStudentsLoading] = useState(false);
+    const [staffStudentsError, setStaffStudentsError] = useState('');
+
+    const [exams, setExams] = useState([]);
+    const [grades, setGrades] = useState([]);
+    const [attendance, setAttendance] = useState([]);
+    const [notifications, setNotifications] = useState([]);
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                if (isStaff) {
+                    setStaffStudentsLoading(true);
+                    const [studentsRes, notifRes] = await Promise.all([
+                        apiClient.get('/students'),
+                        apiClient.get('/notifications')
+                    ]);
+                    setStaffStudents(Array.isArray(studentsRes.data) ? studentsRes.data : []);
+                    setNotifications(notifRes.data.slice(0, 5)); // Get top 5 notifications for recent activity
+                    setStaffStudentsLoading(false);
+                }
+
+                if (isStudent && studentId) {
+                    const [examsRes, gradesRes, attendanceRes] = await Promise.all([
+                        apiClient.get('/exams'),
+                        apiClient.get('/grades', { params: { student: studentId } }),
+                        apiClient.get('/attendance', { params: { student: studentId } })
+                    ]);
+                    setExams(examsRes.data);
+                    setGrades(gradesRes.data);
+                    setAttendance(attendanceRes.data);
+                }
+            } catch (err) {
+                console.error('Failed to fetch dashboard data:', err);
+                if (isStaff) setStaffStudentsError('Failed to load insights.');
+            }
         };
 
-        const grades = initialGradesData[studentId] || [];
-        const totalPoints = grades.reduce((acc, g) => acc + (calculateLetterGrade(g.score) * g.credits), 0);
-        const totalCredits = grades.reduce((acc, g) => acc + g.credits, 0);
+        fetchDashboardData();
+    }, [isStaff, isStudent, studentId]);
+
+    const { stats, upcomingExams, attendanceTrend, staffInsights } = useMemo(() => {
+        // Calculate GPA
+        const totalPoints = grades.reduce((acc, g) => acc + ((g.marks || 0) / 25 * g.credits), 0);
+        const totalCredits = grades.reduce((acc, g) => acc + (g.credits || 3), 0);
         const gpa = totalCredits > 0 ? (totalPoints / totalCredits).toFixed(2) : '0.00';
 
+        // Staff Insights
+        const statusCounts = staffStudents.reduce((acc, student) => {
+            const status = student.status || 'Active';
+            acc[status] = (acc[status] || 0) + 1;
+            return acc;
+        }, {});
+        const statusData = ['Active', 'Probation', 'Suspended'].map(status => ({
+            name: status,
+            value: statusCounts[status] || 0,
+        }));
+        const attentionStudents = staffStudents
+            .filter(student => student.status === 'Probation' || student.status === 'Suspended')
+            .slice(0, 4);
+        const departmentSummary = Object.entries(
+            staffStudents.reduce((acc, student) => {
+                const department = student.department || 'Unassigned';
+                acc[department] = (acc[department] || 0) + 1;
+                return acc;
+            }, {})
+        )
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 3);
+
         const stats = isStudent
-            ? { courses: 6, pendingAssignments: 2, gpa }
-            : { courses: 4, students: 120, pendingAssignments: 3, gpa: 'N/A' };
+            ? { courses: grades.length || 6, pendingAssignments: 2, gpa }
+            : { courses: 4, students: staffStudents.length, pendingAssignments: 3, gpa: 'N/A' };
 
-        const studentYear = '3rd Year';
-        const upcomingExams = isStudent
-            ? initialExams.filter(ex => ex.year === studentYear && ex.status === 'Upcoming')
-            : [];
-        const recommendedFiles = isStudent
-            ? initialFiles.filter(f => f.year === studentYear).slice(0, 3)
+        const upcoming = isStudent
+            ? exams.filter(ex => new Date(ex.date) >= new Date() && ex.status === 'Upcoming').slice(0, 3)
             : [];
 
-        return { stats, upcomingExams, recommendedFiles };
-    }, [isStudent, studentId]);
+        // Build a fake 7-day trend from real attendance if possible, or fallback to a default shape
+        let trend = [];
+        if (attendance.length > 0) {
+            // Very simplified trend based on recent attendance records
+            trend = attendance.slice(-7).map((a) => ({
+                day: new Date(a.date).toLocaleDateString('en-US', { weekday: 'short' }),
+                attendance: a.status === 'Present' ? 100 : a.status === 'Late' ? 75 : 0
+            }));
+        } else {
+            trend = [
+                { day: 'Mon', attendance: 85 }, { day: 'Tue', attendance: 92 },
+                { day: 'Wed', attendance: 88 }, { day: 'Thu', attendance: 95 },
+                { day: 'Fri', attendance: 82 }, { day: 'Sat', attendance: 75 },
+                { day: 'Sun', attendance: 60 }
+            ];
+        }
+
+        return {
+            stats,
+            upcomingExams: upcoming,
+            attendanceTrend: trend,
+            staffInsights: {
+                statusData,
+                attentionStudents,
+                departmentSummary,
+                activeCount: statusCounts.Active || 0,
+                totalStudents: staffStudents.length,
+            },
+        };
+    }, [isStudent, staffStudents, exams, grades, attendance]);
 
     return (
         <div className="dashboard-container animate-fade-in">
@@ -120,12 +177,123 @@ const Dashboard = () => {
                 )}
             </div>
 
+            {isStaff && (
+                <div className="staff-insights-grid">
+                    <div className="glass-card staff-chart-card">
+                        <div className="section-header">
+                            <div className="header-info">
+                                <h2>Student Status</h2>
+                                <span className="text-muted text-sm">
+                                    {staffStudentsLoading ? 'Loading student records...' : `${staffInsights.totalStudents} students tracked`}
+                                </span>
+                            </div>
+                            <UserRoundCheck size={20} className="section-icon" />
+                        </div>
+
+                        {staffStudentsError ? (
+                            <p className="text-muted text-sm">{staffStudentsError}</p>
+                        ) : (
+                            <div className="status-chart-layout">
+                                <div className="status-chart">
+                                    <ResponsiveContainer width="100%" height={220}>
+                                        <PieChart>
+                                            <Pie
+                                                data={staffInsights.statusData}
+                                                dataKey="value"
+                                                nameKey="name"
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={56}
+                                                outerRadius={82}
+                                                paddingAngle={3}
+                                                stroke="transparent"
+                                            >
+                                                {staffInsights.statusData.map(entry => (
+                                                    <Cell key={entry.name} fill={studentStatusColors[entry.name]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip
+                                                contentStyle={{
+                                                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                                                    borderRadius: '12px',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    color: '#fff'
+                                                }}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                    <div className="chart-center-label">
+                                        <strong>{staffInsights.activeCount}</strong>
+                                        <span>Active</span>
+                                    </div>
+                                </div>
+                                <div className="status-legend">
+                                    {staffInsights.statusData.map(item => (
+                                        <div key={item.name} className="legend-row">
+                                            <span className="legend-color" style={{ background: studentStatusColors[item.name] }}></span>
+                                            <span>{item.name}</span>
+                                            <strong>{item.value}</strong>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="glass-card attention-card">
+                        <div className="section-header">
+                            <div className="header-info">
+                                <h2>Needs Attention</h2>
+                                <span className="text-muted text-sm">Students and class load signals</span>
+                            </div>
+                            <AlertTriangle size={20} className="section-icon warning-icon" />
+                        </div>
+
+                        <div className="attention-list">
+                            {staffInsights.attentionStudents.length > 0 ? staffInsights.attentionStudents.map(student => (
+                                <div key={student._id} className="attention-row">
+                                    <div className="attention-avatar">{student.user?.name?.charAt(0) || student.enrollmentNumber?.charAt(0) || 'S'}</div>
+                                    <div className="attention-info">
+                                        <h4>{student.user?.name || student.enrollmentNumber || 'Student'}</h4>
+                                        <p>{student.department || 'No department'} - {student.enrollmentNumber || 'No enrollment no.'}</p>
+                                    </div>
+                                    <span className={`badge ${student.status === 'Suspended' ? 'badge-danger' : 'badge-warning'}`}>
+                                        {student.status}
+                                    </span>
+                                </div>
+                            )) : (
+                                <div className="attention-empty">
+                                    <CheckCircle2 size={22} />
+                                    <span>No probation or suspended students right now.</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="department-strip">
+                            <div className="department-strip-title">
+                                <Users size={16} />
+                                <span>Largest Departments</span>
+                            </div>
+                            {staffInsights.departmentSummary.map(([department, count]) => (
+                                <div key={department} className="department-row">
+                                    <span>{department}</span>
+                                    <strong>{count}</strong>
+                                </div>
+                            ))}
+                            {staffInsights.departmentSummary.length === 0 && (
+                                <p className="text-muted text-sm">No department data yet.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="dashboard-content">
                 <div className="glass-card attendance-section">
                     <div className="section-header">
                         <div className="header-info">
                             <h2>Attendance Trends</h2>
-                            <span className="text-muted text-sm">Last 7 Days</span>
+                            <span className="text-muted text-sm">Recent Activity</span>
                         </div>
                         <Link to="/attendance" className="view-link">
                             View Full Records
@@ -134,7 +302,7 @@ const Dashboard = () => {
                     </div>
                     <div className="chart-container">
                         <ResponsiveContainer width="100%" height={300}>
-                            <AreaChart data={attendanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <AreaChart data={attendanceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorAttend" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="var(--primary-color)" stopOpacity={0.3} />
@@ -178,7 +346,7 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {user?.role === 'Student' ? (
+                {isStudent ? (
                     <div className="glass-card student-widgets">
                         <div className="widget-section">
                             <div className="section-header">
@@ -187,7 +355,7 @@ const Dashboard = () => {
                             </div>
                             <div className="mini-list">
                                 {upcomingExams.length > 0 ? upcomingExams.map(ex => (
-                                    <div key={ex.id} className="mini-item glass-panel">
+                                    <div key={ex._id} className="mini-item glass-panel">
                                         <div className="item-date">
                                             <span className="month">{new Date(ex.date).toLocaleString('default', { month: 'short' })}</span>
                                             <span className="day">{new Date(ex.date).getDate()}</span>
@@ -203,21 +371,17 @@ const Dashboard = () => {
 
                         <div className="widget-section mt-6">
                             <div className="section-header">
-                                <h2>Recommended Resources</h2>
-                                <Link to="/files" className="text-sm view-link">Library <ArrowRight size={14} /></Link>
+                                <h2>Latest Notifications</h2>
                             </div>
                             <div className="mini-list">
-                                {recommendedFiles.map(file => (
-                                    <div key={file.id} className="mini-item glass-panel">
-                                        <div className="item-icon">
-                                            <FileText size={18} />
-                                        </div>
+                                {notifications.length > 0 ? notifications.slice(0, 3).map(notif => (
+                                    <div key={notif._id} className="mini-item glass-panel" style={{ padding: '0.75rem' }}>
                                         <div className="item-info">
-                                            <h4>{file.name}</h4>
-                                            <p>{file.category} • {file.size}</p>
+                                            <p style={{ margin: 0 }}>{notif.message}</p>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(notif.createdAt).toLocaleDateString()}</span>
                                         </div>
                                     </div>
-                                ))}
+                                )) : <p className="text-muted text-sm">No recent notifications</p>}
                             </div>
                         </div>
                     </div>
@@ -225,20 +389,17 @@ const Dashboard = () => {
                     <div className="glass-card recent-activity">
                         <h2>Recent Activity</h2>
                         <div className="activity-list">
-                            <div className="activity-item">
-                                <div className="activity-dot"></div>
-                                <div className="activity-details">
-                                    <p>System Update: Midterm grades are due next week.</p>
-                                    <span>2 hours ago</span>
+                            {notifications.length > 0 ? notifications.map((notif, index) => (
+                                <div key={notif._id} className="activity-item">
+                                    <div className={`activity-dot ${index > 0 ? 'pt-2' : ''}`}></div>
+                                    <div className="activity-details">
+                                        <p>{notif.message}</p>
+                                        <span>{new Date(notif.createdAt).toLocaleString()}</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="activity-item">
-                                <div className="activity-dot pt-2"></div>
-                                <div className="activity-details">
-                                    <p>New Course Material uploaded for CS101.</p>
-                                    <span>Yesterday</span>
-                                </div>
-                            </div>
+                            )) : (
+                                <p className="text-muted text-sm">No recent activity found.</p>
+                            )}
                         </div>
                     </div>
                 )}

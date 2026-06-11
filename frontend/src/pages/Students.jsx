@@ -1,16 +1,72 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { X, Shield, UserCircle, Settings } from 'lucide-react';
+import { X, Settings, Save } from 'lucide-react';
 import './Students.css';
 
-const yearLookup = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+const DEFAULT_ACADEMIC_CONFIG = {
+    maxYear: 6,
+    departments: [
+        { name: 'Mechatronics', code: 'MC', active: true },
+        { name: 'Civil', code: 'C', active: true },
+        { name: 'Computer Science', code: 'CS', active: true },
+    ],
+};
 
-const semesterToYearLabel = (semester) => {
+const romanize = (num) => {
+    const n = Number(num);
+    if (!Number.isFinite(n) || n <= 0) return '';
+    const romans = [
+        ['M', 1000],
+        ['CM', 900],
+        ['D', 500],
+        ['CD', 400],
+        ['C', 100],
+        ['XC', 90],
+        ['L', 50],
+        ['XL', 40],
+        ['X', 10],
+        ['IX', 9],
+        ['V', 5],
+        ['IV', 4],
+        ['I', 1],
+    ];
+    let value = Math.floor(n);
+    let out = '';
+    for (const [sym, v] of romans) {
+        while (value >= v) {
+            out += sym;
+            value -= v;
+        }
+    }
+    return out;
+};
+
+const ordinalYearLabel = (yearNumber) => {
+    const y = Number(yearNumber);
+    if (!Number.isFinite(y) || y <= 0) return 'Year';
+    const lastTwo = y % 100;
+    const last = y % 10;
+    const suffix = (lastTwo >= 11 && lastTwo <= 13)
+        ? 'th'
+        : last === 1
+            ? 'st'
+            : last === 2
+                ? 'nd'
+                : last === 3
+                    ? 'rd'
+                    : 'th';
+    return `${y}${suffix} Year`;
+};
+
+const pad3 = (num) => String(num).padStart(3, '0');
+
+const semesterToYearLabel = (semester, maxYear) => {
     if (!semester) return '1st Year';
-    const bucket = Math.min(6, Math.max(1, Math.ceil(semester / 2)));
-    return yearLookup[bucket - 1] || `${bucket}th Year`;
+    const bucket = Math.ceil(Number(semester) / 2);
+    const clamped = Math.min(maxYear || 6, Math.max(1, bucket));
+    return ordinalYearLabel(clamped);
 };
 
 const getAvatarUrl = (name, id) => {
@@ -21,7 +77,6 @@ const getAvatarUrl = (name, id) => {
 const Students = () => {
     const { user } = useContext(AuthContext);
     const isAdmin = user?.role === 'Admin';
-    const isStudent = user?.role === 'Student';
 
     const [students, setStudents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -29,17 +84,50 @@ const Students = () => {
     const [manageStudent, setManageStudent] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [selectedRole, setSelectedRole] = useState('Student');
-    const [selectedStatus, setSelectedStatus] = useState('Active');
     const [modalSaving, setModalSaving] = useState(false);
     const [modalError, setModalError] = useState('');
+    const [editForm, setEditForm] = useState({
+        enrollmentNumber: '',
+        department: '',
+        year: 1,
+        semesterInYear: 1,
+        semester: 1,
+        contactNumber: '',
+        status: 'Active',
+    });
     const [showAddModal, setShowAddModal] = useState(false);
-    const [addForm, setAddForm] = useState({ name: '', email: '', password: '', enrollmentNumber: '', department: '', semester: 1, contactNumber: '' });
+    const [addForm, setAddForm] = useState({
+        name: '',
+        email: '',
+        password: '',
+        enrollmentNumber: '',
+        department: '',
+        year: 1,
+        semesterInYear: 1,
+        semester: 1,
+        contactNumber: '',
+    });
+    const [isEnrollmentAuto, setIsEnrollmentAuto] = useState(true);
     const [addLoading, setAddLoading] = useState(false);
     const [addError, setAddError] = useState('');
-    const navigate = useNavigate();
+    const [academicConfig, setAcademicConfig] = useState(DEFAULT_ACADEMIC_CONFIG);
 
-    const years = ['All', ...yearLookup];
+    const maxYear = academicConfig?.maxYear ?? DEFAULT_ACADEMIC_CONFIG.maxYear;
+    const departmentOptions = (academicConfig?.departments || DEFAULT_ACADEMIC_CONFIG.departments).filter(d => d?.active !== false);
+
+    const years = ['All', ...Array.from({ length: maxYear }, (_, i) => ordinalYearLabel(i + 1))];
+
+    useEffect(() => {
+        const fetchAcademicConfig = async () => {
+            try {
+                const { data } = await apiClient.get('/academic-config');
+                setAcademicConfig(data || DEFAULT_ACADEMIC_CONFIG);
+            } catch {
+                setAcademicConfig(DEFAULT_ACADEMIC_CONFIG);
+            }
+        };
+        fetchAcademicConfig();
+    }, []);
 
     useEffect(() => {
         const fetchStudents = async () => {
@@ -60,7 +148,7 @@ const Students = () => {
 
     const enhancedStudents = students.map(student => ({
         ...student,
-        yearLabel: semesterToYearLabel(student.semester),
+        yearLabel: semesterToYearLabel(student.semester, maxYear),
         displayName: student.user?.name || student.enrollmentNumber || 'Student',
     }));
 
@@ -71,55 +159,73 @@ const Students = () => {
         return matchesSearch && matchesYear;
     });
 
-    const handleViewGrades = (student) => {
-        const studentId = student.user?._id || student._id;
-        navigate('/grades', { state: { studentId, studentName: student.displayName } });
-    };
+    useEffect(() => {
+        if (!manageStudent) return;
+        const semesterRaw = Number(manageStudent.semester) || 1;
+        const year = Math.max(1, Math.min(maxYear || 6, Math.ceil(semesterRaw / 2)));
+        const semesterInYear = semesterRaw % 2 === 0 ? 2 : 1;
+        setEditForm({
+            enrollmentNumber: manageStudent.enrollmentNumber || '',
+            department: manageStudent.department || '',
+            year,
+            semesterInYear,
+            semester: semesterRaw,
+            contactNumber: manageStudent.contactNumber || '',
+            status: manageStudent.status || 'Active',
+        });
+        setModalError('');
+    }, [manageStudent, maxYear]);
 
     useEffect(() => {
         if (!manageStudent) return;
-        setSelectedRole(manageStudent.user?.role || 'Student');
-        setSelectedStatus(manageStudent.status || 'Active');
-        setModalError('');
-    }, [manageStudent]);
+        setEditForm(prev => {
+            const year = Number(prev.year) || 1;
+            const semesterInYear = Number(prev.semesterInYear) || 1;
+            const yearClamped = Math.max(1, Math.min(maxYear || 6, year));
+            const semester = (yearClamped - 1) * 2 + (semesterInYear === 2 ? 2 : 1);
+            if (Number(prev.semester) === semester) return prev;
+            return { ...prev, semester };
+        });
+    }, [editForm.year, editForm.semesterInYear, manageStudent, maxYear]);
 
-    const handleSavePermissions = async () => {
+    const handleSaveProfile = async () => {
         if (!manageStudent) return;
         setModalSaving(true);
         setModalError('');
 
         try {
-            const updates = [];
-            if (manageStudent.user && manageStudent.user.role !== selectedRole) {
-                updates.push(apiClient.put(`/users/${manageStudent.user._id}/role`, { role: selectedRole }));
-            }
+            const payload = {
+                enrollmentNumber: editForm.enrollmentNumber,
+                department: editForm.department,
+                semester: parseInt(editForm.semester, 10),
+                contactNumber: editForm.contactNumber,
+                status: editForm.status,
+            };
 
-            updates.push(apiClient.put(`/students/${manageStudent._id}`, { status: selectedStatus }));
+            const { data: updatedStudent } = await apiClient.put(`/students/${manageStudent._id}`, payload);
 
-            await Promise.all(updates);
+            setStudents(prev =>
+                prev.map(s => {
+                    if (s._id !== manageStudent._id) return s;
 
-            setStudents(prev => prev.map(s => {
-                if (s._id !== manageStudent._id) return s;
-                return {
-                    ...s,
-                    status: selectedStatus || s.status,
-                    user: {
-                        ...s.user,
-                        role: selectedRole || s.user?.role,
-                    },
-                };
-            }));
+                    const merged = { ...s, ...updatedStudent };
 
-            setManageStudent(prev => prev ? {
-                ...prev,
-                status: selectedStatus,
-                user: {
-                    ...prev.user,
-                    role: selectedRole,
-                },
-            } : prev);
+                    // If the API responds with an unpopulated `user` (ObjectId or minimal object),
+                    // keep the existing populated user so the UI doesn't lose `user.name`.
+                    const updatedUser = updatedStudent?.user;
+                    const updatedUserIsPopulated =
+                        updatedUser &&
+                        typeof updatedUser === 'object' &&
+                        (updatedUser.name || updatedUser.email || updatedUser.role);
+
+                    if (!updatedUserIsPopulated) {
+                        merged.user = s.user;
+                    }
+
+                    return merged;
+                })
+            );
             setManageStudent(null);
-
         } catch (err) {
             setModalError(err.response?.data?.message || err.message || 'Unable to save changes');
         } finally {
@@ -128,10 +234,59 @@ const Students = () => {
     };
 
     const openAddModal = () => {
-        setAddForm({ name: '', email: '', password: '', enrollmentNumber: '', department: '', semester: 1, contactNumber: '' });
+        setAddForm({
+            name: '',
+            email: '',
+            password: '',
+            enrollmentNumber: '',
+            department: '',
+            year: 1,
+            semesterInYear: 1,
+            semester: 1,
+            contactNumber: '',
+        });
+        setIsEnrollmentAuto(true);
         setAddError('');
         setShowAddModal(true);
     };
+
+    useEffect(() => {
+        setAddForm(prev => {
+            const year = Number(prev.year) || 1;
+            const semesterInYear = Number(prev.semesterInYear) || 1;
+            const yearClamped = Math.max(1, Math.min(maxYear || 6, year));
+            const semester = (yearClamped - 1) * 2 + (semesterInYear === 2 ? 2 : 1);
+            if (Number(prev.semester) === semester) return prev;
+            return { ...prev, semester };
+        });
+    }, [addForm.year, addForm.semesterInYear, maxYear]);
+
+    useEffect(() => {
+        if (!showAddModal) return;
+        if (!isEnrollmentAuto) return;
+
+        const year = Math.max(1, Math.min(maxYear || 6, Number(addForm.year) || 1));
+        const romanYear = romanize(year) || 'I';
+        const deptCode = departmentOptions.find(d => d.name === addForm.department)?.code || '';
+        if (!deptCode) {
+            setAddForm(prev => (prev.enrollmentNumber ? { ...prev, enrollmentNumber: '' } : prev));
+            return;
+        }
+
+        const prefix = `${romanYear}-${deptCode}-`;
+        const used = new Set(
+            students
+                .map(s => s.enrollmentNumber)
+                .filter(Boolean)
+                .filter(en => en.startsWith(prefix))
+        );
+
+        let next = 1;
+        while (used.has(`${prefix}${pad3(next)}`)) next += 1;
+
+        const nextEnrollment = `${prefix}${pad3(next)}`;
+        setAddForm(prev => (prev.enrollmentNumber === nextEnrollment ? prev : { ...prev, enrollmentNumber: nextEnrollment }));
+    }, [showAddModal, isEnrollmentAuto, addForm.department, addForm.year, students, maxYear, departmentOptions]);
 
     const handleAddStudent = async (e) => {
         e.preventDefault();
@@ -234,16 +389,19 @@ const Students = () => {
                                     </div>
                                 </div>
                                 <div className="student-card-footer">
-                                    <button className="btn btn-secondary btn-sm" onClick={() => handleViewGrades(student)}>
-                                        View Grades
-                                    </button>
+                                    <Link
+                                        className="btn btn-secondary btn-sm"
+                                        to={`/students/${student._id}`}
+                                        state={{ student }}
+                                    >
+                                        Profile
+                                    </Link>
                                     {isAdmin && (
                                         <button className="btn btn-primary btn-sm" onClick={() => setManageStudent(student)}>
                                             <Settings size={14} />
                                             Manage
                                         </button>
                                     )}
-                                    {!isStudent && !isAdmin && <button className="btn btn-secondary btn-sm">View Profile</button>}
                                 </div>
                             </div>
                         );
@@ -260,8 +418,8 @@ const Students = () => {
                     <div className="modal-content glass-panel account-mgmt-modal" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
                             <div>
-                                <h2>Manage Account</h2>
-                                <p className="modal-subtitle">Update permissions for {manageStudent.displayName}</p>
+                                <h2>Edit Student Profile</h2>
+                                <p className="modal-subtitle">Update academic year, major, and contact for {manageStudent.displayName}</p>
                             </div>
                             <button className="close-btn" onClick={() => setManageStudent(null)}><X size={24} /></button>
                         </div>
@@ -272,52 +430,80 @@ const Students = () => {
                                     <span className="user-preview-name">{manageStudent.displayName}</span>
                                     <span className="user-preview-role">
                                         <span className="role-arrow">-&gt;</span>
-                                        <span>{manageStudent.user?.role || 'Role not assigned'}</span>
+                                        <span>{manageStudent.enrollmentNumber || 'Enrollment not set'}</span>
                                     </span>
                                 </div>
                             </div>
 
-                            <div className="form-group mt-6">
-                                <label className="form-label">System Role</label>
-                                <div className="role-selector-grid">
-                                    <button
-                                        className={`role-option ${selectedRole === 'Student' ? 'active' : ''}`}
-                                        onClick={() => setSelectedRole('Student')}
-                                        type="button"
-                                    >
-                                        <UserCircle size={18} />
-                                        <span>Student</span>
-                                    </button>
-                                    <button
-                                        className={`role-option ${selectedRole === 'Teacher' ? 'active' : ''}`}
-                                        onClick={() => setSelectedRole('Teacher')}
-                                        type="button"
-                                    >
-                                        <Shield size={18} />
-                                        <span>Teacher</span>
-                                    </button>
-                                    <button
-                                        className={`role-option ${selectedRole === 'Admin' ? 'active' : ''}`}
-                                        onClick={() => setSelectedRole('Admin')}
-                                        type="button"
-                                    >
-                                        <Shield size={18} className="text-primary" />
-                                        <span>Admin</span>
-                                    </button>
+                            <div className="role-selector-grid" style={{ marginTop: '1.5rem', gridTemplateColumns: '1fr 1fr' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Enrollment No.</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g. I-MC-001"
+                                        value={editForm.enrollmentNumber}
+                                        onChange={(e) => setEditForm({ ...editForm, enrollmentNumber: e.target.value })}
+                                    />
                                 </div>
-                            </div>
-
-                            <div className="form-group mt-4">
-                                <label className="form-label">Account Status</label>
-                                <select
-                                    className="form-input"
-                                    value={selectedStatus}
-                                    onChange={(e) => setSelectedStatus(e.target.value)}
-                                >
-                                    <option value="Active">Active</option>
-                                    <option value="Probation">Probation</option>
-                                    <option value="Suspended">Suspended</option>
-                                </select>
+                                <div className="form-group">
+                                    <label className="form-label">Major / Department</label>
+                                    <select
+                                        className="form-input"
+                                        value={editForm.department}
+                                        onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                                    >
+                                        <option value="" disabled>Select department</option>
+                                        {departmentOptions.map(dep => (
+                                            <option key={dep.code} value={dep.name}>{dep.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Academic Year</label>
+                                    <select
+                                        className="form-input"
+                                        value={editForm.year}
+                                        onChange={(e) => setEditForm({ ...editForm, year: parseInt(e.target.value, 10) })}
+                                    >
+                                        {Array.from({ length: maxYear || 6 }, (_, i) => i + 1).map(y => (
+                                            <option key={y} value={y}>{romanize(y)} ({ordinalYearLabel(y)})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Semester</label>
+                                    <select
+                                        className="form-input"
+                                        value={editForm.semesterInYear}
+                                        onChange={(e) => setEditForm({ ...editForm, semesterInYear: parseInt(e.target.value, 10) })}
+                                    >
+                                        <option value={1}>Semester 1</option>
+                                        <option value={2}>Semester 2</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Contact Number</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Optional"
+                                        value={editForm.contactNumber}
+                                        onChange={(e) => setEditForm({ ...editForm, contactNumber: e.target.value })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Status</label>
+                                    <select
+                                        className="form-input"
+                                        value={editForm.status}
+                                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                                    >
+                                        <option value="Active">Active</option>
+                                        <option value="Probation">Probation</option>
+                                        <option value="Suspended">Suspended</option>
+                                    </select>
+                                </div>
                             </div>
                             {modalError && (
                                 <div className="alert alert-warning mt-4">
@@ -329,10 +515,11 @@ const Students = () => {
                             <button className="btn btn-secondary" onClick={() => setManageStudent(null)}>Cancel</button>
                             <button
                                 className="btn btn-primary"
-                                onClick={handleSavePermissions}
+                                onClick={handleSaveProfile}
                                 disabled={modalSaving}
                             >
-                                {modalSaving ? 'Saving…' : 'Save Permissions'}
+                                <Save size={18} />
+                                {modalSaving ? 'Saving...' : 'Save Profile'}
                             </button>
                         </div>
                     </div>
@@ -369,15 +556,53 @@ const Students = () => {
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Enrollment No.</label>
-                                        <input type="text" className="form-input" placeholder="e.g. STU-2024-001" value={addForm.enrollmentNumber} onChange={e => setAddForm({ ...addForm, enrollmentNumber: e.target.value })} required />
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="e.g. I-MC-001"
+                                            value={addForm.enrollmentNumber}
+                                            onChange={e => { setIsEnrollmentAuto(false); setAddForm({ ...addForm, enrollmentNumber: e.target.value }); }}
+                                            required
+                                        />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Department</label>
-                                        <input type="text" className="form-input" placeholder="e.g. Computer Science" value={addForm.department} onChange={e => setAddForm({ ...addForm, department: e.target.value })} required />
+                                        <select
+                                            className="form-input"
+                                            value={addForm.department}
+                                            onChange={e => { setIsEnrollmentAuto(true); setAddForm({ ...addForm, department: e.target.value }); }}
+                                            required
+                                        >
+                                            <option value="" disabled>Select department</option>
+                                            {departmentOptions.map(dep => (
+                                                <option key={dep.code} value={dep.name}>{dep.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Year</label>
+                                        <select
+                                            className="form-input"
+                                            value={addForm.year}
+                                            onChange={e => { setIsEnrollmentAuto(true); setAddForm({ ...addForm, year: parseInt(e.target.value, 10) }); }}
+                                            required
+                                        >
+                                            {Array.from({ length: maxYear || 6 }, (_, i) => i + 1).map(y => (
+                                                <option key={y} value={y}>{romanize(y)} ({ordinalYearLabel(y)})</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Semester</label>
-                                        <input type="number" className="form-input" min="1" max="12" value={addForm.semester} onChange={e => setAddForm({ ...addForm, semester: e.target.value })} required />
+                                        <select
+                                            className="form-input"
+                                            value={addForm.semesterInYear}
+                                            onChange={e => setAddForm({ ...addForm, semesterInYear: parseInt(e.target.value, 10) })}
+                                            required
+                                        >
+                                            <option value={1}>Semester 1</option>
+                                            <option value={2}>Semester 2</option>
+                                        </select>
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Contact Number</label>

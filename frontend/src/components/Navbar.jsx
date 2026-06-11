@@ -1,22 +1,24 @@
 import { useContext, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { LayoutDashboard, Users, BookOpen, Clock, FileSpreadsheet, LogOut, BotMessageSquare, GraduationCap, FileEdit, CalendarDays, FolderSearch, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, Clock, FileSpreadsheet, LogOut, BotMessageSquare, GraduationCap, FileEdit, CalendarDays, FolderSearch, ShieldCheck, Settings, FileText } from 'lucide-react';
 import './Navbar.css';
 
 const NAV_LINKS = [
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Timetable', path: '/time-table', icon: <CalendarDays size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
-    { name: 'Courses', path: '/courses', icon: <BookOpen size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'Subjects', path: '/courses', icon: <BookOpen size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Attendance', path: '/attendance', icon: <Clock size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Teachers', path: '/teachers', icon: <GraduationCap size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Students', path: '/students', icon: <Users size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'Assignments', path: '/assignments', icon: <FileText size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Files', path: '/files', icon: <FolderSearch size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Exams', path: '/exams', icon: <FileEdit size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Grades', path: '/grades', icon: <FileSpreadsheet size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'AI Assistant', path: '/ai-assistant', icon: <BotMessageSquare size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'AI Config', path: '/admin/ai-settings', icon: <FileEdit size={20} />, roles: ['Admin'] },
     { name: 'Accounts', path: '/admin/accounts', icon: <ShieldCheck size={20} />, roles: ['Admin'] },
+    { name: 'Academic', path: '/admin/academic-settings', icon: <Settings size={20} />, roles: ['Admin'] },
 ];
 
 const Navbar = () => {

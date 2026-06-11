@@ -104,6 +104,18 @@ To seed `Admin`, `Teacher`, and `Student` users into the **Docker MongoDB** (`mo
 docker compose --profile seed up --build seed-users
 ```
 
+For a thesis demo, reset the known demo passwords and verify the demo student profile:
+
+```powershell
+docker compose --profile demo up --build seed-demo
+```
+
+Local/Atlas equivalent:
+
+```powershell
+npm.cmd --prefix backend run seed:demo
+```
+
 To seed `Admin`, `Teacher`, and `Student` users into **MongoDB Atlas** (uses `MONGODB_URI` from `backend/.env`):
 
 ```powershell
@@ -111,8 +123,38 @@ docker compose --profile atlas-seed up --build seed-users-atlas
 ```
 
 Notes:
-- The seed container will exit after seeding (that’s expected).
-- To also overwrite existing seeded users’ passwords, set `SEED_OVERWRITE_PASSWORDS=true` when running compose.
+- The seed container will exit after seeding (that is expected).
+- `seed:users` preserves existing passwords unless `SEED_OVERWRITE_PASSWORDS=true` is set.
+- `seed:demo` intentionally refreshes the demo passwords so the presentation logins stay reliable.
+
+## Demo Accounts
+
+Run `seed:demo` before your presentation to make these logins reliable:
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | `admin@gmail.com` | `ChangeMeAdmin123!` |
+| Teacher | `teacher@gmail.com` | `ChangeMeTeacher123!` |
+| Student | `student@gmail.com` | `ChangeMeStudent123!` |
+
+## Thesis Demo Walkthrough
+
+Use this flow for a clean final-year project presentation:
+
+1. Start the system and seed demo data:
+
+```powershell
+docker compose up --build -d
+docker compose --profile demo up --build seed-demo
+```
+
+2. Open `http://localhost:5111` and log in as Admin: `admin@gmail.com` / `ChangeMeAdmin123!`.
+3. Show the dashboard overview, then open Students and create or edit a student profile.
+4. Open Teachers and create or edit a teacher account/profile.
+5. Open Courses, Attendance, Grades, Exams, and Timetable to show the core academic management workflow.
+6. Log in as Teacher to show staff-level access for academic records.
+7. Log in as Student to show the student-facing dashboard, grades, exams, and timetable.
+8. Finish with AI Assistant and AI Prompt Settings as the extra innovation layer for campus support.
 
 ## Reverse Proxy (Works Locally + Production)
 
@@ -147,6 +189,7 @@ So your frontend never needs to call `http://localhost:5001` directly in product
 
 - MongoDB connection errors
   - Inside Docker, the backend must connect to `mongodb://mongo:27017/cms`.
+  - `/health` starts responding as soon as the backend starts and includes a `database` field (`starting`, `connected`, `disconnected`, or `error`), so slow MongoDB startup is easier to diagnose.
 
 - Dev proxy target in Docker
   - In `docker-compose.dev.yml`, Vite uses `VITE_DEV_PROXY_TARGET=http://backend:5001` so `/api` works inside the Docker network.
@@ -154,6 +197,7 @@ So your frontend never needs to call `http://localhost:5001` directly in product
 - Seed admin/teacher/student users
   - Set `MONGODB_URI` in `backend/.env` (local Mongo or Atlas).
   - Run: `npm.cmd --prefix backend run seed:users`
+  - For a reliable thesis demo reset, run: `npm.cmd --prefix backend run seed:demo`
   - Default accounts: `admin@gmail.com`, `teacher@gmail.com`, `student@gmail.com` (passwords are in `backend/.env.example` seed section).
 
 ## Security Notes

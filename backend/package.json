@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed:users": "node seed.js"
+    "seed:users": "node seed.js",
+    "seed:demo": "node seed.js --demo"
   },
   "keywords": [],
   "author": "",

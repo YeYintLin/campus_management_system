@@ -1,0 +1,91 @@
+.assignments-page {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 1rem 0;
+}
+
+.assignments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+.assignment-card {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    gap: 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    transition: all 0.3s ease;
+}
+
+.assignment-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-color);
+}
+
+.assignment-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.assignment-course .course-code {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    background: var(--primary-bg);
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+}
+
+.assignment-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.assignment-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.assignment-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.assignment-description {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.assignment-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.detail-item.overdue {
+    color: var(--danger-color);
+    font-weight: 600;
+}

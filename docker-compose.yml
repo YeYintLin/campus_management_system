@@ -55,6 +55,22 @@ services:
         condition: service_healthy
     command: ["npm", "run", "seed:users"]
 
+  seed-demo:
+    build:
+      context: ./backend
+    profiles: ["demo"]
+    restart: "no"
+    env_file:
+      - ./backend/.env
+    environment:
+      NODE_ENV: development
+      PORT: 5001
+      MONGODB_URI: mongodb://mongo:27017/cms
+    depends_on:
+      mongo:
+        condition: service_healthy
+    command: ["npm", "run", "seed:demo"]
+
   seed-users-atlas:
     build:
       context: ./backend

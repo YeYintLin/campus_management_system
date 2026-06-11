@@ -1,0 +1,75 @@
+.academic-settings-card {
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.settings-divider {
+  height: 1px;
+  margin: 1.25rem 0;
+  background: var(--surface-border);
+}
+
+.departments-header h3 {
+  margin: 0 0 0.25rem 0;
+}
+
+.departments-header .text-muted {
+  margin: 0 0 1rem 0;
+  opacity: 0.75;
+}
+
+.departments-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dept-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 120px 56px;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.dept-head {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+
+.dept-empty {
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed var(--surface-border);
+  text-align: center;
+  opacity: 0.8;
+}
+
+.dept-active {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  user-select: none;
+}
+
+.dept-delete {
+  padding: 0.5rem 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .dept-row {
+    grid-template-columns: 1fr;
+  }
+  .dept-head {
+    display: none;
+  }
+}
+

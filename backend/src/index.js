@@ -6,6 +6,8 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
+let dbStatus = 'starting';
+let server;
 
 // Fail fast if JWT secret is missing. This prevents accidentally running with an insecure default.
 if (!process.env.JWT_SECRET) {
@@ -30,6 +32,11 @@ const assignmentRoutes = require('./routes/assignmentRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const userRoutes = require('./routes/userRoutes');
+const academicConfigRoutes = require('./routes/academicConfigRoutes');
+const examRoutes = require('./routes/examRoutes');
+const timetableRoutes = require('./routes/timetableRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const searchRoutes = require('./routes/searchRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
@@ -40,11 +47,17 @@ app.use('/api/assignments', assignmentRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/academic-config', academicConfigRoutes);
+app.use('/api/exams', examRoutes);
+app.use('/api/timetable', timetableRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/search', searchRoutes);
 
 // Healthcheck endpoint (used by Docker/Kubernetes probes)
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'ok',
+        database: dbStatus,
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
     });
@@ -63,13 +76,37 @@ if (!MONGODB_URI) {
 }
 
 mongoose
-    .connect(MONGODB_URI)
+    .connect(MONGODB_URI, {
+        serverSelectionTimeoutMS: Number(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS) || 10000,
+    })
     .then(() => {
+        dbStatus = 'connected';
         console.log('Connected to MongoDB');
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
-        });
     })
     .catch((err) => {
+        dbStatus = 'error';
         console.error('Error connecting to MongoDB:', err.message);
     });
+
+mongoose.connection.on('disconnected', () => {
+    dbStatus = 'disconnected';
+});
+
+mongoose.connection.on('reconnected', () => {
+    dbStatus = 'connected';
+});
+
+server = app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
+
+const shutdown = () => {
+    if (server) {
+        server.close(() => {
+            mongoose.connection.close(false).finally(() => process.exit(0));
+        });
+    }
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

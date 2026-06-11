@@ -8,16 +8,20 @@ const Register = lazy(() => import('./pages/Register'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'));
 const Students = lazy(() => import('./pages/Students'));
+const StudentProfile = lazy(() => import('./pages/StudentProfile'));
 const Courses = lazy(() => import('./pages/Courses'));
 const Attendance = lazy(() => import('./pages/Attendance'));
 const Grades = lazy(() => import('./pages/Grades'));
 const AIAssistant = lazy(() => import('./pages/AIAssistant'));
 const Teachers = lazy(() => import('./pages/Teachers'));
+const TeacherProfile = lazy(() => import('./pages/TeacherProfile'));
 const Exams = lazy(() => import('./pages/Exams'));
 const TimeTable = lazy(() => import('./pages/TimeTable'));
 const Files = lazy(() => import('./pages/Files'));
+const Assignments = lazy(() => import('./pages/Assignments'));
 const AIPromptSettings = lazy(() => import('./pages/AIPromptSettings'));
 const AccountManagement = lazy(() => import('./pages/AccountManagement'));
+const AcademicSettings = lazy(() => import('./pages/AcademicSettings'));
 
 const restrictedRoles = new Set(['Student', 'Teacher']);
 
@@ -66,16 +70,20 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/students" element={<Students />} />
+            <Route path="/students/:studentId" element={<StudentProfile />} />
             <Route path="/courses" element={<Courses />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/grades" element={<Grades />} />
             <Route path="/ai-assistant" element={<AIAssistant />} />
             <Route path="/teachers" element={<Teachers />} />
+            <Route path="/teachers/:teacherId" element={<TeacherProfile />} />
             <Route path="/exams" element={<Exams />} />
             <Route path="/time-table" element={<TimeTable />} />
             <Route path="/files" element={<Files />} />
+            <Route path="/assignments" element={<Assignments />} />
             <Route path="/admin/ai-settings" element={<AIPromptSettings />} />
             <Route path="/admin/accounts" element={<AccountManagement />} />
+            <Route path="/admin/academic-settings" element={<AcademicSettings />} />
           </Route>
 
           <Route path="/" element={<Navigate to="/login" />} />

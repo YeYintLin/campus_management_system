@@ -243,7 +243,7 @@ const Grades = () => {
             new TableRow({
                 children: [
                     new TableCell({
-                        children: [new Paragraph({ text: "ID", alignment: AlignmentType.CENTER, style: "Normal" })],
+                        children: [new Paragraph({ text: "ENROLLMENT NO.", alignment: AlignmentType.CENTER, style: "Normal" })],
                         shading: { fill: "f3f4f6" },
                         verticalAlign: VerticalAlign.CENTER
                     }),
@@ -257,29 +257,24 @@ const Grades = () => {
                         shading: { fill: "f3f4f6" },
                         verticalAlign: VerticalAlign.CENTER
                     })),
-                    new TableCell({
-                        children: [new Paragraph({ text: "GPA", alignment: AlignmentType.CENTER, style: "Normal" })],
-                        shading: { fill: "f3f4f6" },
-                        verticalAlign: VerticalAlign.CENTER
-                    }),
-                ],
+                    ],
             }),
         ];
 
         const tableBodyRows = studentList.map(student => {
             const studentGrades = getGrades(student.id);
-            const gpa = calculateGPA(student.id);
 
             return new TableRow({
                 children: [
-                    new TableCell({ children: [new Paragraph({ text: student.id, alignment: AlignmentType.CENTER })] }),
+                    new TableCell({ children: [new Paragraph({ text: student.displayId || student.id, alignment: AlignmentType.CENTER })] }),
                     new TableCell({ children: [new Paragraph({ text: student.name.toUpperCase() })] }),
+                    
                     ...allSubjects.map(sub => {
                         const gradeRecord = studentGrades.find(g => g.course === sub);
                         const letterGrade = gradeRecord ? calculateLetterGrade(gradeRecord.score) : "-";
                         return new TableCell({ children: [new Paragraph({ text: letterGrade, alignment: AlignmentType.CENTER })] });
                     }),
-                    new TableCell({ children: [new Paragraph({ text: gpa, alignment: AlignmentType.CENTER })] }),
+                    
                 ],
             });
         });
@@ -375,9 +370,10 @@ const Grades = () => {
     };
 
     // Get all unique subjects for table headers
-    const allSubjects = Array.from(new Set(
-        Object.values(gradesData).flat().map(g => g.course)
-    )).sort();
+    const allSubjects = Array.from(new Set([
+        ...courses.map(c => c.code),
+        ...Object.values(gradesData).flat().map(g => g.course)
+    ])).sort();
 
     const filteredStudents = studentList.filter(s => {
         const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -424,7 +420,7 @@ const Grades = () => {
                             <table className="formal-doc-table">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
+                                        <th>ENROLLMENT NO.</th>
                                         <th>STUDENT NAME</th>
                                         {allSubjects.map(sub => <th key={sub}>{sub}</th>)}
                                         <th>GPA</th>
@@ -436,8 +432,9 @@ const Grades = () => {
                                         const gpa = calculateGPA(student.id);
                                         return (
                                             <tr key={student.id}>
-                                                <td className="text-center">{student.id}</td>
+                                                <td className="text-center">{student.displayId || student.id}</td>
                                                 <td className="font-bold">{student.name.toUpperCase()}</td>
+                                                
                                                 {allSubjects.map(sub => {
                                                     const gradeRecord = studentGrades.find(g => g.course === sub);
                                                     return (
@@ -446,7 +443,8 @@ const Grades = () => {
                                                         </td>
                                                     );
                                                 })}
-                                                <td className="text-center font-bold">{gpa}</td>
+                                                <td className="text-center">{gpa}</td>
+                                                
                                             </tr>
                                         );
                                     })}
@@ -582,24 +580,32 @@ const Grades = () => {
                                 <table className="master-grades-table">
                                     <thead>
                                         <tr>
-                                            <th className="sticky-col id-col">ID</th>
+                                            <th className="sticky-col id-col">Enrollment No.</th>
                                             <th className="sticky-col name-col">Student Name</th>
                                             {allSubjects.map(sub => (
                                                 <th key={sub} className="text-center">{sub}</th>
                                             ))}
-                                            <th className="text-center gpa-col">GPA</th>
-                                            <th className="text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filteredStudents.map(student => {
                                             const studentGrades = getGrades(student.id);
-                                            const gpa = calculateGPA(student.id);
 
                                             return (
                                                 <tr key={student.id} className="hover-row">
-                                                    <td className="sticky-col id-col font-mono">{student.id}</td>
-                                                    <td className="sticky-col name-col font-semibold">{student.name}</td>
+                                                    <td
+                                                        className="sticky-col id-col font-mono"
+                                                        onClick={() => handleSelectStudent(student)}
+                                                    >
+                                                        {student.displayId || student.id}
+                                                    </td>
+                                                    <td
+                                                        className="sticky-col name-col font-semibold"
+                                                        onClick={() => handleSelectStudent(student)}
+                                                    >
+                                                        {student.name}
+                                                    </td>
+                                                    
                                                     {allSubjects.map(sub => {
                                                         const gradeRecord = studentGrades.find(g => g.course === sub);
                                                         const isEditing = editingCell?.studentId === student.id && editingCell?.course === sub;
@@ -619,7 +625,12 @@ const Grades = () => {
                                                                         placeholder="0-100"
                                                                         autoFocus
                                                                         onBlur={(e) => handleSaveScore(student.id, sub, e.target.value)}
-                                                                        onKeyDown={(e) => e.key === 'Enter' && handleSaveScore(student.id, sub, e.target.value)}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                e.preventDefault();
+                                                                                handleSaveScore(student.id, sub, e.target.value);
+                                                                            }
+                                                                        }}
                                                                     />
                                                                 ) : (
                                                                     gradeRecord ? (
@@ -627,7 +638,7 @@ const Grades = () => {
                                                                             <span className={`matrix-grade-pill grade-${letterGrade?.toLowerCase()}`}>
                                                                                 {letterGrade}
                                                                             </span>
-                                                                            <span className="matrix-score-hint">{gradeRecord.score}</span>
+                                                                            
                                                                         </div>
                                                                     ) : (
                                                                         <span className="add-grade-placeholder">-</span>
@@ -636,14 +647,6 @@ const Grades = () => {
                                                             </td>
                                                         );
                                                     })}
-                                                    <td className="text-center gpa-col">
-                                                        <span className="gpa-badge">{gpa}</span>
-                                                    </td>
-                                                    <td className="text-right">
-                                                        <button className="view-link-btn" onClick={() => handleSelectStudent(student)}>
-                                                            Edit Record
-                                                        </button>
-                                                    </td>
                                                 </tr>
                                             );
                                         })}

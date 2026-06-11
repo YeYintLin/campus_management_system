@@ -424,6 +424,13 @@
     align-items: center;
     gap: 1rem;
     animation: slide-up 0.4s ease-out;
+    z-index: 1000;
+}
+
+.error-toast {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    color: #ef4444;
 }
 
 @keyframes slide-up {
@@ -431,11 +438,56 @@
     to { transform: translateY(0); opacity: 1; }
 }
 
+/* Loading state */
+.ai-settings-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    min-height: 400px;
+    color: var(--text-secondary);
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+    color: var(--primary-light);
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Unsaved changes banner */
+.unsaved-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    margin-top: 1rem;
+    background: rgba(245, 158, 11, 0.08) !important;
+    border: 1px solid rgba(245, 158, 11, 0.25) !important;
+    color: #f59e0b;
+    font-size: 0.88rem;
+    animation: slide-up 0.3s ease-out;
+}
+
+/* Pulse animation for save button when there are unsaved changes */
+.btn-pulse {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+    50% { box-shadow: 0 0 12px 4px rgba(99, 102, 241, 0.25); }
+}
+
 @media (max-width: 1100px) {
     .ai-settings-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .ai-preview-sidebar {
         grid-row: 1;
     }

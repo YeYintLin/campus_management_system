@@ -1,0 +1,209 @@
+.teacher-profile-page {
+  padding: var(--page-pad-top) 0 var(--page-pad-bottom);
+}
+
+.profile-back-link {
+  width: fit-content;
+  margin-bottom: 1rem;
+}
+
+.teacher-profile-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1.3rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.profile-avatar-wrap {
+  display: flex;
+}
+
+.profile-avatar {
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(var(--primary-rgb), 0.5);
+}
+
+.profile-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--primary-rgb), 0.16);
+  color: var(--primary-light);
+  font-size: 2.4rem;
+  font-weight: 800;
+}
+
+.profile-hero-info {
+  min-width: 0;
+}
+
+.profile-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.profile-title-row h1 {
+  margin-bottom: 0.35rem;
+}
+
+.profile-title-row p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.profile-contact-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.94rem;
+}
+
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.profile-message {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.success-message {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.32);
+  color: #86efac;
+}
+
+.error-message {
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.32);
+  color: #fda4af;
+}
+
+.profile-edit-card {
+  margin-bottom: 1rem;
+}
+
+.profile-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1rem;
+}
+
+.profile-wide-field {
+  grid-column: 1 / -1;
+}
+
+.profile-wide-field textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+
+.profile-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 0.35rem;
+}
+
+.profile-details-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.profile-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.36rem;
+  min-height: 132px;
+}
+
+.profile-detail-card svg {
+  color: var(--primary-light);
+}
+
+.profile-detail-card span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.profile-detail-card strong {
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.profile-overview-card {
+  padding: 1.25rem 1.35rem;
+}
+
+.profile-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.profile-section-heading svg {
+  color: var(--primary-light);
+}
+
+.profile-section-heading h2 {
+  margin: 0;
+  font-size: 1.12rem;
+}
+
+.profile-overview-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+@media (max-width: 960px) {
+  .profile-details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .teacher-profile-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-title-row {
+    flex-direction: column;
+  }
+
+  .profile-actions {
+    justify-content: flex-start;
+  }
+
+  .profile-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-edit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-edit-actions {
+    flex-direction: column-reverse;
+  }
+}

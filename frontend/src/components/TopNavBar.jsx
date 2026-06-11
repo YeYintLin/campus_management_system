@@ -1,8 +1,9 @@
-import { useContext, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Moon, Sun } from 'lucide-react';
+import { useCallback, useContext, useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Moon, Sun, Search, X } from 'lucide-react';
 import Notifications from './Notifications';
 import { ThemeContext } from '../context/ThemeContext';
+import apiClient from '../api/apiClient';
 import './TopNavBar.css';
 
 const PAGE_TITLES = [
@@ -17,6 +18,7 @@ const PAGE_TITLES = [
     { prefix: '/courses', title: 'Courses' },
     { prefix: '/grades', title: 'Grades' },
     { prefix: '/files', title: 'Files' },
+    { prefix: '/assignments', title: 'Assignments' },
     { prefix: '/exams', title: 'Exams' },
 ];
 
@@ -28,21 +30,98 @@ const getPageTitle = (pathname) => {
 const TopNavBar = () => {
     const { theme, toggleTheme } = useContext(ThemeContext);
     const location = useLocation();
+    const navigate = useNavigate();
     const pageTitle = getPageTitle(location.pathname);
+    
     const [showNotifications, setShowNotifications] = useState(false);
-    const [notifications, setNotifications] = useState([
-        { id: 1, type: 'file', message: 'New CS101 Lecture Notes uploaded', time: '2h ago', read: false },
-        { id: 2, type: 'exam', message: 'Midterm schedule updated for 3rd Year', time: '5h ago', read: false },
-        { id: 3, type: 'system', message: 'Welcome to TU Hmawbi CMS!', time: '1d ago', read: true },
-    ]);
+    const [notifications, setNotifications] = useState([]);
+    
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState(null);
+    const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+    const searchRef = useRef(null);
+
+    const performSearch = useCallback(async (query) => {
+        try {
+            const { data } = await apiClient.get('/search', { params: { q: query } });
+            setSearchResults(data);
+            setShowSearchDropdown(true);
+        } catch (err) {
+            console.error('Search failed:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        let ignore = false;
+
+        const fetchNotifications = async () => {
+            try {
+                const { data } = await apiClient.get('/notifications');
+                if (ignore) return;
+
+                const formatted = data.map(n => {
+                    const diffMs = new Date() - new Date(n.createdAt);
+                    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+                    const diffDays = Math.floor(diffHrs / 24);
+                    let timeStr = 'Just now';
+                    if (diffDays > 0) timeStr = `${diffDays}d ago`;
+                    else if (diffHrs > 0) timeStr = `${diffHrs}h ago`;
+                    else if (diffMs > 60000) timeStr = `${Math.floor(diffMs / 60000)}m ago`;
+
+                    return { ...n, time: timeStr };
+                });
+                setNotifications(formatted);
+            } catch (err) {
+                if (!ignore) console.error('Failed to fetch notifications:', err);
+            }
+        };
+
+        fetchNotifications();
+        return () => {
+            ignore = true;
+        };
+    }, [location.pathname]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (searchRef.current && !searchRef.current.contains(event.target)) {
+                setShowSearchDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        const debounceTimer = setTimeout(() => {
+            if (searchQuery.trim().length >= 2) {
+                performSearch(searchQuery);
+            } else {
+                setSearchResults(null);
+            }
+        }, 300);
+        return () => clearTimeout(debounceTimer);
+    }, [performSearch, searchQuery]);
+
     const unreadCount = notifications.filter((notification) => !notification.read).length;
 
-    const handleMarkAsRead = (id) => {
-        setNotifications((previous) =>
-            previous.map((notification) =>
-                notification.id === id ? { ...notification, read: true } : notification
-            )
-        );
+    const handleMarkAsRead = async (id) => {
+        try {
+            await apiClient.put(`/notifications/${id}/read`);
+            setNotifications((previous) =>
+                previous.map((notification) =>
+                    notification._id === id ? { ...notification, read: true } : notification
+                )
+            );
+        } catch (err) {
+            console.error('Failed to mark read:', err);
+        }
+    };
+
+    const handleNavigate = (path) => {
+        setShowSearchDropdown(false);
+        setSearchQuery('');
+        navigate(path);
     };
 
     return (
@@ -52,10 +131,69 @@ const TopNavBar = () => {
                 <h2>{pageTitle}</h2>
             </div>
 
-            <div className="topbar-center">
+            <div className="topbar-center" ref={searchRef}>
                 <div className="form topbar-search-form">
-                    <input className="input" type="text" placeholder="Search courses, files, and users..." required aria-label="Search" />
+                    <input 
+                        className="input" 
+                        type="text" 
+                        placeholder="Search courses, users, exams..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onFocus={() => { if(searchResults) setShowSearchDropdown(true) }}
+                        aria-label="Search" 
+                    />
                     <span className="input-border"></span>
+                    
+                    {showSearchDropdown && searchResults && (
+                        <div className="search-dropdown glass-panel">
+                            {searchResults.users?.length > 0 && (
+                                <div className="search-category">
+                                    <h4>Users</h4>
+                                    {searchResults.users.map(u => (
+                                        <div key={u._id} className="search-result-item" onClick={() => handleNavigate(u.role === 'Student' ? `/students/${u._id}` : `/teachers/${u._id}`)}>
+                                            <span>{u.name}</span>
+                                            <span className="search-badge">{u.role}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {searchResults.courses?.length > 0 && (
+                                <div className="search-category">
+                                    <h4>Courses</h4>
+                                    {searchResults.courses.map(c => (
+                                        <div key={c._id} className="search-result-item" onClick={() => handleNavigate('/courses')}>
+                                            <span>{c.code} - {c.name}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {searchResults.exams?.length > 0 && (
+                                <div className="search-category">
+                                    <h4>Exams</h4>
+                                    {searchResults.exams.map(e => (
+                                        <div key={e._id} className="search-result-item" onClick={() => handleNavigate('/exams')}>
+                                            <span>{e.title}</span>
+                                            <span className="search-badge">{e.course}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {searchResults.assignments?.length > 0 && (
+                                <div className="search-category">
+                                    <h4>Assignments</h4>
+                                    {searchResults.assignments.map(a => (
+                                        <div key={a._id} className="search-result-item" onClick={() => handleNavigate('/assignments')}>
+                                            <span>{a.title}</span>
+                                            <span className="search-badge">{a.course}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {(!searchResults.users?.length && !searchResults.courses?.length && !searchResults.exams?.length && !searchResults.assignments?.length) && (
+                                <div className="search-no-results">No results found for "{searchQuery}"</div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 

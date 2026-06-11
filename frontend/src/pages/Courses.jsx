@@ -151,20 +151,20 @@ const Courses = () => {
         <div className={`courses-page${isModalOpen ? '' : ' animate-fade-in'}`}>
             <header className="page-header">
                 <div>
-                    <h1>Course Directory</h1>
-                    <p className="subtitle">Explore and manage academic courses</p>
+                    <h1>Subjects Directory</h1>
+                    <p className="subtitle">Explore and manage academic subjects</p>
                 </div>
                 <div className="header-actions">
                     <input
                         type="text"
-                        placeholder="Search courses..."
+                        placeholder="Search subjects..."
                         className="form-input search-input"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     {canEditCourses && (
                         <button className="btn btn-primary" onClick={() => openCourseModal()}>
-                            + Add Course
+                            + Add Subject
                         </button>
                     )}
                 </div>
@@ -191,7 +191,7 @@ const Courses = () => {
             <div className="courses-grid">
                 {loading ? (
                     <div className="glass-panel empty-state">
-                        <p>Loading courses...</p>
+                        <p>Loading subjects...</p>
                     </div>
                 ) : filteredCourses.length > 0 ? (
                     filteredCourses.map((course, index) => {
@@ -258,7 +258,7 @@ const Courses = () => {
                     })
                 ) : (
                     <div className="glass-panel empty-state">
-                        <p>No courses found matching your search.</p>
+                        <p>No subjects found matching your search.</p>
                     </div>
                 )}
             </div>
@@ -271,7 +271,7 @@ const Courses = () => {
                     >
                         <div className="modal-header">
                             <div>
-                                <h2>{modalCourse ? 'Edit Course' : 'Add Course'}</h2>
+                                <h2>{modalCourse ? 'Edit Subject' : 'Add Subject'}</h2>
                                 <p className="subtitle">{modalCourse ? 'Modify existing data' : 'Create a new offering'}</p>
                             </div>
                             <button className="close-btn" type="button" onClick={closeCourseModal}><X size={18} /></button>
@@ -279,7 +279,7 @@ const Courses = () => {
 
                         <div className="modal-body">
                             <div className="form-group">
-                                <label className="form-label">Course Name</label>
+                                <label className="form-label">Subject Name</label>
                                 <input
                                     type="text"
                                     name="name"
@@ -290,7 +290,7 @@ const Courses = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Course Code</label>
+                                <label className="form-label">Subject Code</label>
                                 <input
                                     type="text"
                                     name="code"
@@ -298,16 +298,6 @@ const Courses = () => {
                                     value={formData.code}
                                     onChange={handleFormChange}
                                     required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Description</label>
-                                <textarea
-                                    name="description"
-                                    className="form-input"
-                                    rows={3}
-                                    value={formData.description}
-                                    onChange={handleFormChange}
                                 />
                             </div>
                             <div className="form-group">
@@ -322,10 +312,20 @@ const Courses = () => {
                                     <option value="">Select instructor</option>
                                     {teachers.map(teacher => (
                                         <option key={teacher._id} value={teacher._id}>
-                                            {teacher.name} ({teacher.email})
+                                            {teacher.name}
                                         </option>
                                     ))}
                                 </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Description</label>
+                                <textarea
+                                    name="description"
+                                    className="form-input"
+                                    rows={2}
+                                    value={formData.description}
+                                    onChange={handleFormChange}
+                                />
                             </div>
                             {modalError && (
                                 <div className="alert alert-warning mt-4">
@@ -337,7 +337,7 @@ const Courses = () => {
                         <div className="modal-footer">
                             <button type="button" className="btn btn-secondary" onClick={closeCourseModal}>Cancel</button>
                             <button type="submit" className="btn btn-primary" disabled={savingCourse}>
-                                {savingCourse ? 'Saving…' : modalCourse ? 'Save Changes' : 'Create Course'}
+                                {savingCourse ? 'Saving…' : modalCourse ? 'Save Changes' : 'Create Subject'}
                             </button>
                         </div>
                     </form>

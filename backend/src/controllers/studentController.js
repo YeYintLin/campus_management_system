@@ -1,11 +1,13 @@
 const Student = require('../models/Student');
 
+const STUDENT_USER_FIELDS = 'name email role';
+
 // @desc    Get all students
 // @route   GET /api/students
 // @access  Private (Admin, Teacher)
 const getStudents = async (req, res) => {
     try {
-        const students = await Student.find().populate('user', 'name email role');
+        const students = await Student.find().populate('user', STUDENT_USER_FIELDS);
         res.json(students);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -19,7 +21,7 @@ const getStudentById = async (req, res) => {
     try {
         const student = await Student.findById(req.params.id).populate(
             'user',
-            'name email role'
+            STUDENT_USER_FIELDS
         );
         if (student) {
             res.json(student);
@@ -53,6 +55,7 @@ const createStudent = async (req, res) => {
             status: status || 'Active',
         });
 
+        await student.populate('user', STUDENT_USER_FIELDS);
         res.status(201).json(student);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -76,6 +79,7 @@ const updateStudent = async (req, res) => {
             student.status = status || student.status;
 
             const updatedStudent = await student.save();
+            await updatedStudent.populate('user', STUDENT_USER_FIELDS);
             res.json(updatedStudent);
         } else {
             res.status(404).json({ message: 'Student not found' });

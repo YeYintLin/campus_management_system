@@ -25,6 +25,10 @@ coverage/
 # Runtime data / uploads (should not be committed)
 backend/uploads/
 backend/uploads/*
+backend-start.out
+backend-start.err
+frontend-dev.out
+frontend-dev.err
 
 # OS / IDE
 .DS_Store
@@ -35,4 +39,3 @@ Thumbs.db
 
 # Git tooling
 *.orig
-
