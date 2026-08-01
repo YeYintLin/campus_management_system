@@ -241,8 +241,12 @@ const Courses = () => {
                                     <p className="course-description">{course.description || 'No description yet.'}</p>
 
                                     <div className="course-meta">
-                                        <span className="meta-item">{`Enrolled ${enrolled}`}</span>
-                                        <span className="meta-item">{`Teacher: ${course.teacher?.email || '?'}`}</span>
+                                        <span
+                                            className="meta-item teacher-chip"
+                                            title={course.teacher?.email ? `Teacher: ${course.teacher.email}` : 'Teacher: TBA'}
+                                        >
+                                            {`Teacher: ${course.teacher?.email || 'TBA'}`}
+                                        </span>
                                     </div>
 
                                     <div className="enrollment-section">

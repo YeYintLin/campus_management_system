@@ -61,6 +61,66 @@
 }
 
 /* Year Filter Bar */
+
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.course-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+}
+
+.course-color-strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+}
+
+.course-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-left: 0.5rem;
+}
+
+.header-left {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.course-code {
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.year-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--primary-color);
+    background: rgba(99, 102, 241, 0.1);
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+/* Year Filter Bar */
 .year-filter-bar {
     display: flex;
     gap: 0.75rem;
@@ -71,7 +131,7 @@
 }
 
 .year-filter-bar::-webkit-scrollbar {
-    display: none; /* Hide scrollbar Chrome/Safari */
+    display: none;
 }
 
 .year-tag {
@@ -113,22 +173,29 @@
 .course-instructor {
   color: var(--text-muted);
   font-size: 0.95rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .course-meta {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
+  width: 100%;
 }
 
-.meta-item {
+.teacher-chip,
+.meta-item.teacher-chip {
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   background: rgba(0, 0, 0, 0.2);
   padding: 0.35rem 0.75rem;
   border-radius: 20px;
   font-size: 0.85rem;
   color: var(--text-main);
   border: 1px solid var(--surface-border);
+  box-sizing: border-box;
 }
 
 .enrollment-section {

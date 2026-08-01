@@ -272,6 +272,16 @@ h3 {
   animation: fadeIn 0.45s ease forwards;
 }
 
+.badge,
+.chip,
+.pill,
+.meta-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
 .badge {
   padding: 0.24rem 0.62rem;
   border-radius: 999px;
