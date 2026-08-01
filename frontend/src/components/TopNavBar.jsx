@@ -39,6 +39,7 @@ const TopNavBar = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState(null);
     const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+    const [showMobileSearch, setShowMobileSearch] = useState(false);
     const searchRef = useRef(null);
 
     const performSearch = useCallback(async (query) => {
@@ -131,7 +132,7 @@ const TopNavBar = () => {
                 <h2>{pageTitle}</h2>
             </div>
 
-            <div className="topbar-center" ref={searchRef}>
+            <div className={`topbar-center ${showMobileSearch ? 'mobile-expanded' : ''}`} ref={searchRef}>
                 <div className="form topbar-search-form">
                     <input 
                         className="input" 
@@ -198,6 +199,15 @@ const TopNavBar = () => {
             </div>
 
             <div className="topbar-right">
+                <button
+                    type="button"
+                    className="topbar-search-toggle mobile-only"
+                    onClick={() => setShowMobileSearch(!showMobileSearch)}
+                    aria-label="Toggle mobile search"
+                >
+                    {showMobileSearch ? <X size={18} /> : <Search size={18} />}
+                </button>
+
                 <button
                     type="button"
                     className="topbar-theme-toggle"
