@@ -482,7 +482,7 @@
 .audit-panel-overlay {
     position: fixed;
     top: 0;
-    left: 0;
+    left: 272px;
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.65);
@@ -491,12 +491,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.5rem;
+    padding: 1.5rem 2rem;
 }
 
 .audit-panel {
     width: 100%;
-    max-width: 950px;
+    max-width: 1100px;
     max-height: 85vh;
     border-radius: 20px;
     padding: 1.8rem;
@@ -505,7 +505,6 @@
     gap: 1.2rem;
     overflow-y: auto;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-    margin: auto;
 }
 
 .audit-panel-header {
@@ -705,6 +704,11 @@
 }
 
 @media (max-width: 768px) {
+    .audit-panel-overlay {
+        left: 0;
+        padding: 1rem;
+    }
+
     .audit-stats-grid {
         grid-template-columns: 1fr;
     }
