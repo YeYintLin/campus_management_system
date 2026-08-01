@@ -8,8 +8,9 @@ import './TimeTable.css';
 
 const TimeTable = () => {
     const { user } = useContext(AuthContext);
-    const canManageTimetable = user?.role === 'Admin' || user?.role === 'Teacher';
-    const isStudent = user?.role === 'Student';
+    const roleStr = (user?.role || '').toLowerCase().trim();
+    const canManageTimetable = roleStr === 'admin' || roleStr === 'teacher' || roleStr === 'superadmin' || roleStr === 'academicadmin';
+    const isStudent = roleStr === 'student';
     const studentYear = getNormalizedUserYear(user);
 
     const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : '1st Year');
@@ -29,7 +30,9 @@ const TimeTable = () => {
     const [importError, setImportError] = useState('');
     const [importSuccess, setImportSuccess] = useState('');
 
-    const years = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+    const years = isStudent
+        ? [studentYear]
+        : ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
     const semesters = ['Semester 1', 'Semester 2'];
 
     const fetchTimetable = useCallback(async () => {
@@ -336,19 +339,17 @@ const TimeTable = () => {
                 </div>
             )}
 
-            {!isStudent && (
-                <div className="year-filter-bar glass-panel">
-                    {years.map(year => (
-                        <button
-                            key={year}
-                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                            onClick={() => handleYearSelect(year)}
-                        >
-                            {year}
-                        </button>
-                    ))}
-                </div>
-            )}
+            <div className="year-filter-bar glass-panel">
+                {years.map(year => (
+                    <button
+                        key={year}
+                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                        onClick={() => handleYearSelect(year)}
+                    >
+                        {year}
+                    </button>
+                ))}
+            </div>
 
             <div className="year-filter-bar semester-filter-bar glass-panel">
                 {semesters.map(semester => (

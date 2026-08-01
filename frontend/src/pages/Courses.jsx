@@ -36,12 +36,17 @@ const initialCourseForm = {
 
 const Courses = () => {
     const { user } = useContext(AuthContext);
-    const isAdmin = user?.role === 'Admin';
-    const isTeacher = user?.role === 'Teacher';
-    const isStudent = user?.role === 'Student';
+    const roleStr = (user?.role || '').toLowerCase().trim();
+    const isAdmin = roleStr === 'admin' || roleStr === 'superadmin' || roleStr === 'academicadmin';
+    const isTeacher = roleStr === 'teacher';
+    const isStudent = roleStr === 'student';
     const studentYear = getNormalizedUserYear(user);
     const canCreateCourses = isAdmin;
     const canEditCourses = isAdmin || isTeacher;
+
+    const yearFilters = isStudent
+        ? [studentYear]
+        : ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
 
     const canManageCourse = (course) => {
         if (isAdmin) return true;
@@ -194,19 +199,17 @@ const Courses = () => {
                 </div>
             </header>
 
-            {!isStudent && (
-                <div className="year-filter-bar glass-panel">
-                    {yearFilters.map(year => (
-                        <button
-                            key={year}
-                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                            onClick={() => setSelectedYear(year)}
-                        >
-                            {year}
-                        </button>
-                    ))}
-                </div>
-            )}
+            <div className="year-filter-bar glass-panel">
+                {yearFilters.map(year => (
+                    <button
+                        key={year}
+                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                        onClick={() => setSelectedYear(year)}
+                    >
+                        {year}
+                    </button>
+                ))}
+            </div>
 
             {error && (
                 <div className="glass-panel empty-state">

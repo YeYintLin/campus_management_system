@@ -77,8 +77,9 @@ const getAvatarUrl = (name, id) => {
 
 const Students = () => {
     const { user } = useContext(AuthContext);
-    const isAdmin = user?.role === 'Admin';
-    const isStudent = user?.role === 'Student';
+    const roleStr = (user?.role || '').toLowerCase().trim();
+    const isAdmin = roleStr === 'admin' || roleStr === 'superadmin' || roleStr === 'academicadmin';
+    const isStudent = roleStr === 'student';
     const studentYear = getNormalizedUserYear(user);
 
     const [students, setStudents] = useState([]);
@@ -118,7 +119,9 @@ const Students = () => {
     const maxYear = academicConfig?.maxYear ?? DEFAULT_ACADEMIC_CONFIG.maxYear;
     const departmentOptions = (academicConfig?.departments || DEFAULT_ACADEMIC_CONFIG.departments).filter(d => d?.active !== false);
 
-    const years = ['All', ...Array.from({ length: maxYear }, (_, i) => ordinalYearLabel(i + 1))];
+    const years = isStudent
+        ? [studentYear]
+        : ['All', ...Array.from({ length: maxYear }, (_, i) => ordinalYearLabel(i + 1))];
 
     useEffect(() => {
         const fetchAcademicConfig = async () => {
@@ -338,19 +341,17 @@ const Students = () => {
                 </div>
             </header>
 
-            {!isStudent && (
-                <div className="year-filter-bar glass-panel">
-                    {years.map(year => (
-                        <button
-                            key={year}
-                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                            onClick={() => setSelectedYear(year)}
-                        >
-                            {year}
-                        </button>
-                    ))}
-                </div>
-            )}
+            <div className="year-filter-bar glass-panel">
+                {years.map(year => (
+                    <button
+                        key={year}
+                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                        onClick={() => setSelectedYear(year)}
+                    >
+                        {year}
+                    </button>
+                ))}
+            </div>
 
             {error && (
                 <div className="glass-panel empty-state">

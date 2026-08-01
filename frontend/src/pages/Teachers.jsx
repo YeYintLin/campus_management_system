@@ -11,8 +11,9 @@ const getTeacherId = (teacher) => teacher._id || teacher.id;
 
 const Teachers = () => {
     const { user } = useContext(AuthContext);
-    const isAdmin = user?.role === 'Admin';
-    const isStudent = user?.role === 'Student';
+    const roleStr = (user?.role || '').toLowerCase().trim();
+    const isAdmin = roleStr === 'admin' || roleStr === 'superadmin' || roleStr === 'academicadmin';
+    const isStudent = roleStr === 'student';
     const studentYear = getNormalizedUserYear(user);
 
     const [teachers, setTeachers] = useState(defaultTeachers);
@@ -25,7 +26,9 @@ const Teachers = () => {
     const [addError, setAddError] = useState('');
     const [addSuccess, setAddSuccess] = useState('');
 
-    const years = ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+    const years = isStudent
+        ? [studentYear]
+        : ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
 
     useEffect(() => {
         const abortController = new AbortController();
@@ -130,19 +133,17 @@ const Teachers = () => {
                 </div>
             </header>
 
-            {!isStudent && (
-                <div className="year-filter-bar glass-panel">
-                    {years.map(year => (
-                        <button
-                            key={year}
-                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                            onClick={() => setSelectedYear(year)}
-                        >
-                            {year}
-                        </button>
-                    ))}
-                </div>
-            )}
+            <div className="year-filter-bar glass-panel">
+                {years.map(year => (
+                    <button
+                        key={year}
+                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                        onClick={() => setSelectedYear(year)}
+                    >
+                        {year}
+                    </button>
+                ))}
+            </div>
 
             <div className="teachers-grid">
                 {filteredTeachers.map(teacher => (

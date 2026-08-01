@@ -25,7 +25,10 @@ const Files = () => {
     const { user } = useContext(AuthContext);
     const fileInputRef = useRef(null);
 
-    const isStudent = user?.role === 'Student';
+    const roleStr = (user?.role || '').toLowerCase().trim();
+    const isAdmin = roleStr === 'admin' || roleStr === 'superadmin' || roleStr === 'academicadmin';
+    const canManageFiles = roleStr === 'admin' || roleStr === 'teacher' || roleStr === 'superadmin' || roleStr === 'academicadmin';
+    const isStudent = roleStr === 'student';
     const studentYear = getNormalizedUserYear(user);
 
     const [files, setFiles] = useState(initialFiles);
@@ -35,7 +38,9 @@ const Files = () => {
     const [viewMode, setViewMode] = useState('folders'); // 'folders' or 'files'
     const [selectedFolder, setSelectedFolder] = useState(null);
 
-    const years = ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+    const years = isStudent
+        ? [studentYear]
+        : ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
 
     // Modal states
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
@@ -48,9 +53,6 @@ const Files = () => {
         year: '1st Year',
         folder: ''
     });
-
-    const isAdmin = user?.role === 'Admin';
-    const canManageFiles = user?.role === 'Admin' || user?.role === 'Teacher';
 
     // ── Audit Panel State ──
     const [showAuditPanel, setShowAuditPanel] = useState(false);
@@ -257,19 +259,17 @@ const Files = () => {
                 </div>
             </header>
 
-            {!isStudent && (
-                <div className="year-filter-bar glass-panel">
-                    {years.map(year => (
-                        <button
-                            key={year}
-                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                            onClick={() => setSelectedYear(year)}
-                        >
-                            {year}
-                        </button>
-                    ))}
-                </div>
-            )}
+            <div className="year-filter-bar glass-panel">
+                {years.map(year => (
+                    <button
+                        key={year}
+                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                        onClick={() => setSelectedYear(year)}
+                    >
+                        {year}
+                    </button>
+                ))}
+            </div>
 
             <div className="files-controls glass-panel">
                 <div className="search-box">

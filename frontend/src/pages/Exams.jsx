@@ -7,8 +7,9 @@ import './Exams.css';
 
 const Exams = () => {
     const { user } = useContext(AuthContext);
-    const canManageExams = user?.role === 'Admin' || user?.role === 'Teacher';
-    const isStudent = user?.role === 'Student';
+    const roleStr = (user?.role || '').toLowerCase().trim();
+    const canManageExams = roleStr === 'admin' || roleStr === 'teacher' || roleStr === 'superadmin' || roleStr === 'academicadmin';
+    const isStudent = roleStr === 'student';
     const studentYear = getNormalizedUserYear(user);
 
     const [exams, setExams] = useState([]);
@@ -21,7 +22,9 @@ const Exams = () => {
         course: '', title: '', date: '', time: '', duration: '', room: '', status: 'Upcoming', year: '1st Year'
     });
 
-    const years = ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+    const years = isStudent
+        ? [studentYear]
+        : ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
 
     const fetchExams = useCallback(async () => {
         setLoading(true);
@@ -119,19 +122,17 @@ const Exams = () => {
                 )}
             </header>
 
-            {!isStudent && (
-                <div className="year-filter-bar glass-panel">
-                    {years.map(year => (
-                        <button
-                            key={year}
-                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                            onClick={() => setSelectedYear(year)}
-                        >
-                            {year}
-                        </button>
-                    ))}
-                </div>
-            )}
+            <div className="year-filter-bar glass-panel">
+                {years.map(year => (
+                    <button
+                        key={year}
+                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                        onClick={() => setSelectedYear(year)}
+                    >
+                        {year}
+                    </button>
+                ))}
+            </div>
 
             {error && (
                 <div className="empty-state-full glass-panel" style={{ marginBottom: '1rem' }}>
