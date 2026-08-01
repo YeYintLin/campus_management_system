@@ -215,17 +215,50 @@ const getDashboardStats = async (req, res) => {
 
         if (roleNorm === 'admin' || roleNorm === 'superadmin' || roleNorm === 'academicadmin') {
             // ── Admin stats ──
-            const [studentCount, courseCount, students, notifications] = await Promise.all([
-                Student.countDocuments({ status: 'Active' }),
+            const [allStudents, allStudentUsers, courseCount, notifications] = await Promise.all([
+                Student.find().populate('user', 'name status year role email'),
+                User.find({ role: { $regex: /^student$/i } }).select('name status year role email'),
                 Course.countDocuments(),
-                Student.find().populate('user', 'name status year'),
                 Notification.find().sort({ createdAt: -1 }).limit(5),
             ]);
 
+            // Map users & students into a consolidated student map by user ID
+            const studentMap = new Map();
+
+            for (const u of allStudentUsers) {
+                studentMap.set(u._id.toString(), {
+                    userId: u._id.toString(),
+                    name: u.name,
+                    email: u.email,
+                    status: u.status || 'Active',
+                    year: u.year || 1,
+                });
+            }
+
+            for (const s of allStudents) {
+                const uid = s.user?._id?.toString() || s.user?.toString();
+                const existing = uid ? studentMap.get(uid) : null;
+                const statusVal = s.user?.status || s.status || existing?.status || 'Active';
+                if (uid) {
+                    studentMap.set(uid, {
+                        ...existing,
+                        status: statusVal,
+                        year: s.semester ? Math.ceil(s.semester / 2) : existing?.year || 1,
+                    });
+                } else {
+                    studentMap.set(s._id.toString(), {
+                        status: statusVal,
+                        year: s.semester ? Math.ceil(s.semester / 2) : 1,
+                    });
+                }
+            }
+
+            const consolidatedStudents = Array.from(studentMap.values());
+
             // Students by year
             const yearCounts = {};
-            for (const s of students) {
-                const year = s.user?.year || 0;
+            for (const s of consolidatedStudents) {
+                const year = Number(s.year) || 1;
                 yearCounts[year] = (yearCounts[year] || 0) + 1;
             }
             const studentsByYear = Object.entries(yearCounts)
@@ -233,21 +266,26 @@ const getDashboardStats = async (req, res) => {
                 .filter(item => item.year > 0)
                 .sort((a, b) => a.year - b.year);
 
-            // Students by status
+            // Students by status (case-insensitive normalization)
             const statusCounts = { Active: 0, Probation: 0, Suspended: 0 };
-            for (const s of students) {
-                const status = s.user?.status || s.status || 'Active';
-                statusCounts[status] = (statusCounts[status] || 0) + 1;
+            for (const s of consolidatedStudents) {
+                const st = (s.status || '').toLowerCase().trim();
+                if (st === 'suspended') {
+                    statusCounts.Suspended += 1;
+                } else if (st === 'probation') {
+                    statusCounts.Probation += 1;
+                } else {
+                    statusCounts.Active += 1;
+                }
             }
 
-            // Notifications sent today
             const todayStart = new Date();
             todayStart.setHours(0, 0, 0, 0);
             const notificationsSentToday = await Notification.countDocuments({
                 createdAt: { $gte: todayStart },
             });
 
-            stats.totalStudents = studentCount;
+            stats.totalStudents = consolidatedStudents.length;
             stats.activeCourses = courseCount;
             stats.studentsByYear = studentsByYear;
             stats.studentsByStatus = statusCounts;
