@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { Calendar, Users, BookOpen, ChevronRight, ArrowLeft, CheckCircle2, XCircle, Clock, Save, Search, Award, TrendingUp } from 'lucide-react';
+import { Calendar, Users, BookOpen, ChevronRight, ArrowLeft, CheckCircle2, XCircle, Clock, Save, Search, Award, TrendingUp, Zap, KeyRound, Send, Check } from 'lucide-react';
 import './Attendance.css';
 
 const Attendance = () => {
@@ -24,11 +24,77 @@ const Attendance = () => {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
 
+    // State for Active Live Session (Zero-Tap / Code)
+    const [activeSession, setActiveSession] = useState(null);
+    const [inputCode, setInputCode] = useState('');
+    const [codeSubmitting, setCodeSubmitting] = useState(false);
+    const [codeMessage, setCodeMessage] = useState('');
+    const [codeSuccess, setCodeSuccess] = useState(false);
+    const [startingSession, setStartingSession] = useState(false);
+
     // State for Student personal view
     const [studentAttendanceLogs, setStudentAttendanceLogs] = useState([]);
     const [studentStats, setStudentStats] = useState({ present: 0, late: 0, absent: 0, total: 0, percentage: '100%' });
 
     const years = ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+
+    // Poll for active attendance session every 10 seconds
+    const fetchActiveSession = useCallback(async () => {
+        try {
+            const { data } = await apiClient.get('/attendance/active-session');
+            setActiveSession(data);
+        } catch (err) {
+            console.error('Error checking active session:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchActiveSession();
+        const interval = setInterval(fetchActiveSession, 10000);
+        return () => clearInterval(interval);
+    }, [fetchActiveSession]);
+
+    // Teacher/Admin manually starts a live session
+    const handleStartLiveSession = async (course) => {
+        setStartingSession(true);
+        try {
+            const { data } = await apiClient.post('/attendance/create-session', {
+                courseId: course.code || course._id,
+                courseName: course.title || course.name || course.code,
+                durationMinutes: 5
+            });
+            setActiveSession(data);
+            setMessage(`⚡ Live session started for ${course.name || course.code}! 4-Digit Code: ${data.code}`);
+        } catch (err) {
+            console.error('Failed to start live session:', err);
+            setMessage('Failed to start live session');
+        } finally {
+            setStartingSession(false);
+        }
+    };
+
+    // Student submits 4-digit code
+    const handleSubmitCode = async (e) => {
+        e.preventDefault();
+        if (!inputCode || inputCode.length !== 4) return;
+        setCodeSubmitting(true);
+        setCodeMessage('');
+        try {
+            const { data } = await apiClient.post('/attendance/submit-code', { code: inputCode });
+            setCodeSuccess(true);
+            setCodeMessage(data.message || 'Attendance marked Present!');
+            setInputCode('');
+            // Refresh student stats
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } catch (err) {
+            setCodeSuccess(false);
+            setCodeMessage(err.response?.data?.message || 'Invalid or expired code');
+        } finally {
+            setCodeSubmitting(false);
+        }
+    };
 
     // Load courses for Teacher / Admin
     useEffect(() => {
@@ -191,6 +257,75 @@ const Attendance = () => {
                     </div>
                 </header>
 
+                {/* ── Active Live Session Banner for Student ── */}
+                {activeSession && (
+                    <div className="glass-panel" style={{
+                        padding: '1.25rem 1.5rem',
+                        borderRadius: '16px',
+                        marginBottom: '1.5rem',
+                        background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.15))',
+                        border: '1px solid rgba(99,102,241,0.3)',
+                        boxShadow: '0 8px 24px rgba(99,102,241,0.2)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                            <Zap size={22} style={{ color: '#818cf8', animation: 'pulse 1.5s infinite' }} />
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff' }}>
+                                    Live Attendance Active: <span style={{ color: '#a78bfa' }}>{activeSession.courseName || activeSession.courseId}</span>
+                                </h3>
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                    Enter the 4-digit code displayed by your teacher before it expires
+                                </p>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSubmitCode} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                            <div style={{ position: 'relative', flex: '1', maxWidth: '240px' }}>
+                                <KeyRound size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                <input
+                                    type="text"
+                                    maxLength="4"
+                                    placeholder="4-Digit Code"
+                                    value={inputCode}
+                                    onChange={(e) => setInputCode(e.target.value.replace(/[^0-9]/g, ''))}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.65rem 0.75rem 0.65rem 2.5rem',
+                                        borderRadius: '10px',
+                                        border: '1px solid rgba(255,255,255,0.2)',
+                                        background: 'rgba(0,0,0,0.3)',
+                                        color: '#fff',
+                                        fontSize: '1.1rem',
+                                        fontWeight: '700',
+                                        letterSpacing: '0.2em',
+                                        textAlign: 'center'
+                                    }}
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="btn btn-primary"
+                                disabled={codeSubmitting || inputCode.length !== 4}
+                                style={{ padding: '0.65rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                <Send size={16} />
+                                {codeSubmitting ? 'Verifying...' : 'Submit Code'}
+                            </button>
+                        </form>
+
+                        {codeMessage && (
+                            <p style={{
+                                margin: '0.75rem 0 0',
+                                fontSize: '0.85rem',
+                                color: codeSuccess ? '#4ade80' : '#f87171',
+                                fontWeight: '600'
+                            }}>
+                                {codeSuccess ? '✓ ' : '✗ '}{codeMessage}
+                            </p>
+                        )}
+                    </div>
+                )}
+
                 <div className="attendance-summary-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
                     <div className="glass-panel" style={{ padding: '1.25rem', borderRadius: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -308,6 +443,44 @@ const Attendance = () => {
                 </div>
             )}
 
+            {/* ── Active Live Session Banner for Teacher ── */}
+            {activeSession && activeSession.code && (
+                <div className="glass-panel" style={{
+                    padding: '1.25rem 1.5rem',
+                    borderRadius: '16px',
+                    marginBottom: '1.5rem',
+                    background: 'linear-gradient(135deg, rgba(20,184,166,0.15), rgba(99,102,241,0.15))',
+                    border: '1px solid rgba(20,184,166,0.3)',
+                    boxShadow: '0 8px 24px rgba(20,184,166,0.2)'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <Zap size={24} style={{ color: '#14b8a6' }} />
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff' }}>
+                                    Active Live Session: <span style={{ color: '#2dd4bf' }}>{activeSession.courseName || activeSession.courseId}</span>
+                                </h3>
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                    Students can enter this code to mark themselves Present
+                                </p>
+                            </div>
+                        </div>
+                        <div style={{
+                            background: 'rgba(0,0,0,0.4)',
+                            padding: '0.5rem 1.25rem',
+                            borderRadius: '12px',
+                            border: '1px solid rgba(45,212,191,0.4)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem'
+                        }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Passcode:</span>
+                            <span style={{ fontSize: '1.6rem', fontWeight: '800', color: '#2dd4bf', letterSpacing: '0.25em' }}>{activeSession.code}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {view === 'courses' ? (
                 <div className="courses-grid">
                     {loading ? (
@@ -319,25 +492,49 @@ const Attendance = () => {
                             <div
                                 key={course._id}
                                 className="course-attendance-card glass-panel hover-glow"
-                                onClick={() => handleCourseSelect(course)}
+                                style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
                             >
-                                <div className="course-card-icon" style={{ backgroundColor: '#6366f115', color: '#6366f1' }}>
-                                    <BookOpen size={32} />
-                                </div>
-                                <div className="course-card-info">
-                                    <span className="dept-tag" style={{ backgroundColor: '#6366f120', color: '#6366f1' }}>
-                                        {course.code}
-                                    </span>
-                                    <h3>{course.name}</h3>
-                                    <p>Teacher: {course.teacher?.name || 'Assigned Staff'}</p>
-                                    <div className="course-stats">
-                                        <div className="stat">
-                                            <Users size={14} />
-                                            <span>{course.students?.length || 0} Enrolled</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%', cursor: 'pointer' }} onClick={() => handleCourseSelect(course)}>
+                                    <div className="course-card-icon" style={{ backgroundColor: '#6366f115', color: '#6366f1' }}>
+                                        <BookOpen size={32} />
+                                    </div>
+                                    <div className="course-card-info" style={{ flex: 1 }}>
+                                        <span className="dept-tag" style={{ backgroundColor: '#6366f120', color: '#6366f1' }}>
+                                            {course.code}
+                                        </span>
+                                        <h3>{course.name}</h3>
+                                        <p>Teacher: {course.teacher?.name || 'Assigned Staff'}</p>
+                                        <div className="course-stats">
+                                            <div className="stat">
+                                                <Users size={14} />
+                                                <span>{course.students?.length || 0} Enrolled</span>
+                                            </div>
                                         </div>
                                     </div>
+                                    <ChevronRight className="card-arrow" />
                                 </div>
-                                <ChevronRight className="card-arrow" />
+
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStartLiveSession(course);
+                                    }}
+                                    disabled={startingSession}
+                                    style={{
+                                        width: '100%',
+                                        justifyContent: 'center',
+                                        fontSize: '0.85rem',
+                                        padding: '0.5rem',
+                                        gap: '0.5rem',
+                                        background: 'rgba(99,102,241,0.12)',
+                                        borderColor: 'rgba(99,102,241,0.3)',
+                                        color: '#818cf8'
+                                    }}
+                                >
+                                    <Zap size={16} />
+                                    <span>Start 5-Min Live Session</span>
+                                </button>
                             </div>
                         ))
                     ) : (

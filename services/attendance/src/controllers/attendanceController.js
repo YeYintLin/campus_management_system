@@ -51,6 +51,44 @@ const getActiveSession = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────
+// POST /api/attendance/create-session
+// Teacher/Admin manually triggers a live attendance session
+// ─────────────────────────────────────────────
+const createSession = async (req, res) => {
+    try {
+        const { courseId, courseName, durationMinutes = 5 } = req.body;
+
+        if (!courseId) {
+            return res.status(400).json({ message: 'courseId is required' });
+        }
+
+        // Expire any existing active sessions for this course
+        await AttendanceSession.updateMany(
+            { courseId, status: 'active' },
+            { status: 'expired' }
+        );
+
+        // Generate random 4-digit code (1000-9999)
+        const code = Math.floor(1000 + Math.random() * 9000).toString();
+        const expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000);
+
+        const session = await AttendanceSession.create({
+            courseId,
+            courseName: courseName || courseId,
+            code,
+            expiresAt,
+            status: 'active',
+            createdBy: req.user._id.toString(),
+        });
+
+        res.status(201).json(session);
+    } catch (error) {
+        console.error('createSession error:', error.message);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// ─────────────────────────────────────────────
 // POST /api/attendance/submit-code
 // Student submits 4-digit code to mark attendance
 // ─────────────────────────────────────────────
@@ -431,6 +469,7 @@ module.exports = {
     markAttendance,
     getUserAttendance,
     getActiveSession,
+    createSession,
     submitAttendanceCode,
     createSessionOverride,
     getSessionOverrides,

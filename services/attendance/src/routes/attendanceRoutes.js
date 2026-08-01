@@ -4,6 +4,7 @@ const {
     markAttendance,
     getUserAttendance,
     getActiveSession,
+    createSession,
     submitAttendanceCode,
     createSessionOverride,
     getSessionOverrides,
@@ -14,6 +15,7 @@ const router = express.Router();
 
 // Active session & Code submission (Zero-Tap)
 router.get('/active-session', protect, getActiveSession);
+router.post('/create-session', protect, teacher, createSession);
 router.post('/submit-code', protect, submitAttendanceCode);
 
 // Overrides (Cancel / Reschedule)
