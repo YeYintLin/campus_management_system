@@ -201,29 +201,12 @@ const TopNavBar = () => {
             </div>
 
             <div className="topbar-right">
+                {/* Circle 1: User Avatar */}
                 <div className="topbar-avatar-badge" title={user?.name || 'User'}>
                     {(user?.name?.trim()?.charAt(0) || 'U').toUpperCase()}
                 </div>
 
-                <button
-                    type="button"
-                    className="topbar-search-toggle mobile-only"
-                    onClick={() => setShowMobileSearch(!showMobileSearch)}
-                    aria-label="Toggle mobile search"
-                >
-                    {showMobileSearch ? <X size={18} /> : <Search size={18} />}
-                </button>
-
-                <button
-                    type="button"
-                    className="topbar-theme-toggle"
-                    onClick={toggleTheme}
-                    aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                    title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                >
-                    {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
-
+                {/* Circle 2: Notifications */}
                 <div className="topbar-notif-area">
                     <button
                         type="button"
@@ -234,8 +217,8 @@ const TopNavBar = () => {
                         <svg
                             viewBox="0 0 24 24"
                             fill="none"
-                            height="24"
-                            width="24"
+                            height="20"
+                            width="20"
                             xmlns="http://www.w3.org/2000/svg"
                             aria-hidden="true"
                         >
@@ -257,6 +240,27 @@ const TopNavBar = () => {
                         />
                     )}
                 </div>
+
+                {/* Circle 3: Theme Toggle */}
+                <button
+                    type="button"
+                    className="topbar-theme-toggle"
+                    onClick={toggleTheme}
+                    aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                    title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                >
+                    {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+
+                {/* Circle 4: Mobile Search Toggle */}
+                <button
+                    type="button"
+                    className="topbar-search-toggle mobile-only"
+                    onClick={() => setShowMobileSearch(!showMobileSearch)}
+                    aria-label="Toggle mobile search"
+                >
+                    {showMobileSearch ? <X size={18} /> : <Search size={18} />}
+                </button>
             </div>
         </header>
     );
