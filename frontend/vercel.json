@@ -3,8 +3,8 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://PLACEHOLDER.ondigitalocean.app/api/:path*" },
-    { "source": "/uploads/:path*", "destination": "https://PLACEHOLDER.ondigitalocean.app/uploads/:path*" },
+    { "source": "/api/:path*", "destination": "http://165.245.181.251:5001/api/:path*" },
+    { "source": "/uploads/:path*", "destination": "http://165.245.181.251:5001/uploads/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
