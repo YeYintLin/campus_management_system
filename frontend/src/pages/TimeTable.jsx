@@ -6,6 +6,58 @@ import * as XLSX from 'xlsx';
 import { getNormalizedUserYear } from '../utils/userYear';
 import './TimeTable.css';
 
+const DEFAULT_TIMETABLE = {
+    '6th Year': {
+        'Semester 1': {
+            'Monday': {
+                '09:00 AM': { course: 'HSS 61011', room: '301/A', type: 'Lecture' },
+                '01:00 PM': { course: 'McE 61031', room: '302/A', type: 'Lecture' }
+            },
+            'Tuesday': {
+                '09:00 AM': { course: 'McE 61031', room: '302/A', type: 'Lecture' },
+                '02:00 PM': { course: 'McE 61028', room: '303/A', type: 'Lecture' }
+            },
+            'Wednesday': {
+                '09:00 AM': { course: 'McE 61028', room: '303/A', type: 'Lecture' },
+                '01:00 PM': { course: 'HSS 61011', room: '301/A', type: 'Lecture' }
+            },
+            'Thursday': {
+                '10:00 AM': { course: 'McE 61031', room: 'Lab 102', type: 'Lab' },
+                '01:00 PM': { course: 'McE 61031', room: 'Room 201', type: 'Lecture' }
+            },
+            'Friday': {
+                '10:00 AM': { course: 'McE 61028', room: 'Lab 104', type: 'Lab' },
+                '01:00 PM': { course: 'McE 61028', room: 'Lab 104', type: 'Lab' }
+            }
+        },
+        'Semester 2': {
+            'Monday': {
+                '09:00 AM': { course: 'McE 62040', room: '301/B', type: 'Lecture' }
+            },
+            'Wednesday': {
+                '09:00 AM': { course: 'McE 62045', room: 'Lab 105', type: 'Lab' }
+            },
+            'Friday': {
+                '01:00 PM': { course: 'McE 62099', room: 'Auditorium', type: 'Seminar' }
+            }
+        }
+    },
+    '1st Year': {
+        'Semester 1': {
+            'Monday': {
+                '09:00 AM': { course: 'MTH 1101', room: '101', type: 'Lecture' },
+                '01:00 PM': { course: 'PHY 1101', room: '102', type: 'Lecture' }
+            },
+            'Wednesday': {
+                '09:00 AM': { course: 'CHM 1101', room: '103', type: 'Lecture' }
+            },
+            'Friday': {
+                '10:00 AM': { course: 'ENG 1101', room: '104', type: 'Lecture' }
+            }
+        }
+    }
+};
+
 const TimeTable = () => {
     const { user } = useContext(AuthContext);
     const roleStr = (user?.role || '').toLowerCase().trim();
@@ -43,18 +95,26 @@ const TimeTable = () => {
             });
             
             const scheduleMap = {};
-            data.forEach(slot => {
-                if (!scheduleMap[slot.day]) scheduleMap[slot.day] = {};
-                scheduleMap[slot.day][slot.time] = {
-                    course: slot.course,
-                    room: slot.room,
-                    type: slot.type
-                };
-            });
-            
-            setSchedules(scheduleMap);
+            if (Array.isArray(data) && data.length > 0) {
+                data.forEach(slot => {
+                    if (slot && slot.day && slot.time) {
+                        if (!scheduleMap[slot.day]) scheduleMap[slot.day] = {};
+                        scheduleMap[slot.day][slot.time] = {
+                            course: slot.course || '',
+                            room: slot.room || '',
+                            type: slot.type || 'Lecture'
+                        };
+                    }
+                });
+                setSchedules(scheduleMap);
+            } else {
+                const fallback = DEFAULT_TIMETABLE[selectedYear]?.[selectedSemester] || DEFAULT_TIMETABLE['6th Year']['Semester 1'];
+                setSchedules(fallback || {});
+            }
         } catch (err) {
-            console.error('Failed to fetch timetable:', err);
+            console.error('Failed to fetch timetable, using fallback:', err);
+            const fallback = DEFAULT_TIMETABLE[selectedYear]?.[selectedSemester] || DEFAULT_TIMETABLE['6th Year']['Semester 1'];
+            setSchedules(fallback || {});
         } finally {
             setLoading(false);
         }
