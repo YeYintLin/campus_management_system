@@ -130,7 +130,7 @@ const TopNavBar = () => {
     return (
         <header className="content-topbar glass-panel">
             <div className="topbar-left-group">
-                <div className="topbar-avatar-badge" title={user?.name || 'User'}>
+                <div className="topbar-avatar-badge mobile-only" title={user?.name || 'User'}>
                     {(user?.name?.trim()?.charAt(0) || 'U').toUpperCase()}
                 </div>
                 <div className="topbar-left">
