@@ -94,12 +94,15 @@ const checkAndTriggerAttendance = async () => {
             // Trigger code if class ends within 0 to 12 minutes from now
             if (diffMinutes >= 0 && diffMinutes <= 12) {
                 const code = generate4DigitCode();
+                const crypto = require('crypto');
+                const qrToken = crypto.randomBytes(16).toString('hex');
                 const expiresAt = new Date(now.getTime() + CODE_VALIDITY_SECONDS * 1000);
 
                 await AttendanceSession.create({
                     courseId: slot.course,
                     courseName: slot.course,
                     code,
+                    qrToken,
                     generatedAt: now,
                     expiresAt,
                     status: 'active',

@@ -17,6 +17,12 @@ const attendanceSessionSchema = new mongoose.Schema(
             required: true,
             length: 4,
         },
+        qrToken: {
+            type: String,
+            index: true,
+            unique: true,
+            sparse: true,
+        },
         generatedAt: {
             type: Date,
             default: Date.now,

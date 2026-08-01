@@ -11,11 +11,11 @@ const CORE_SERVICE_URL = process.env.CORE_SERVICE_URL || 'http://localhost:5002'
 // ─────────────────────────────────────────────
 const getActiveSession = async (req, res) => {
     try {
-        const { role, _id: userId } = req.user;
+        const { role } = req.user;
         const now = new Date();
 
         // Find currently active, non-expired session
-        const session = await AttendanceSession.findOne({
+        let session = await AttendanceSession.findOne({
             status: 'active',
             expiresAt: { $gt: now },
         }).sort({ createdAt: -1 });
@@ -24,23 +24,20 @@ const getActiveSession = async (req, res) => {
             return res.json(null);
         }
 
-        // Teacher sees the code; Student gets metadata without code
-        if (role === 'Teacher' || role === 'Admin' || role === 'SuperAdmin') {
-            return res.json({
-                _id: session._id,
-                courseId: session.courseId,
-                courseName: session.courseName,
-                code: session.code,
-                expiresAt: session.expiresAt,
-                status: session.status,
-            });
+        // Generate qrToken if missing on older active session
+        if (!session.qrToken) {
+            const crypto = require('crypto');
+            session.qrToken = crypto.randomBytes(16).toString('hex');
+            await session.save();
         }
 
-        // Student payload — hide code field
+        // Return session info (including qrToken for QR rendering & URL matching)
         res.json({
             _id: session._id,
             courseId: session.courseId,
             courseName: session.courseName,
+            code: role === 'Teacher' || role === 'Admin' || role === 'SuperAdmin' ? session.code : undefined,
+            qrToken: session.qrToken,
             expiresAt: session.expiresAt,
             status: session.status,
         });
@@ -68,14 +65,17 @@ const createSession = async (req, res) => {
             { status: 'expired' }
         );
 
-        // Generate random 4-digit code (1000-9999)
+        // Generate random 4-digit code (1000-9999) & unique qrToken
+        const crypto = require('crypto');
         const code = Math.floor(1000 + Math.random() * 9000).toString();
+        const qrToken = crypto.randomBytes(16).toString('hex');
         const expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000);
 
         const session = await AttendanceSession.create({
             courseId,
             courseName: courseName || courseId,
             code,
+            qrToken,
             expiresAt,
             status: 'active',
             createdBy: req.user._id.toString(),
@@ -85,6 +85,118 @@ const createSession = async (req, res) => {
     } catch (error) {
         console.error('createSession error:', error.message);
         res.status(500).json({ message: error.message });
+    }
+};
+
+// ─────────────────────────────────────────────
+// POST /api/attendance/scan-qr
+// Student scans QR code token to auto-verify attendance
+// ─────────────────────────────────────────────
+const scanQRAttendance = async (req, res) => {
+    try {
+        const { qrToken, code } = req.body;
+        const studentId = req.user._id; // Never trust body studentId
+        const now = new Date();
+
+        if (!qrToken && !code) {
+            return res.status(400).json({
+                success: false,
+                errorCode: 'MISSING_TOKEN',
+                message: 'QR code token or passcode is required',
+            });
+        }
+
+        // 1. Find session by qrToken or code
+        const query = [];
+        if (qrToken) query.push({ qrToken: qrToken.trim() });
+        if (code) query.push({ code: code.trim() });
+
+        const session = await AttendanceSession.findOne({ $or: query });
+
+        if (!session) {
+            return res.status(404).json({
+                success: false,
+                errorCode: 'NOT_FOUND',
+                message: 'Invalid or unrecognized QR code session',
+            });
+        }
+
+        // 2. Validate session status
+        if (session.status !== 'active') {
+            return res.status(400).json({
+                success: false,
+                errorCode: 'SESSION_ENDED',
+                message: 'This attendance session is no longer active',
+            });
+        }
+
+        // 3. Validate expiration time
+        if (now > new Date(session.expiresAt)) {
+            session.status = 'expired';
+            await session.save();
+            return res.status(400).json({
+                success: false,
+                errorCode: 'SESSION_EXPIRED',
+                message: 'Attendance session has expired',
+            });
+        }
+
+        // 4. Record attendance in DB for today
+        const todayStart = new Date(now);
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(now);
+        todayEnd.setHours(23, 59, 59, 999);
+
+        let attendanceRecord = await Attendance.findOne({
+            courseId: session.courseId,
+            date: { $gte: todayStart, $lte: todayEnd },
+        });
+
+        if (!attendanceRecord) {
+            attendanceRecord = new Attendance({
+                courseId: session.courseId,
+                date: todayStart,
+                records: [],
+            });
+        }
+
+        // Check if student already marked
+        const existingRecord = attendanceRecord.records.find(
+            r => r.studentId.toString() === studentId.toString()
+        );
+
+        if (existingRecord) {
+            return res.json({
+                success: true,
+                alreadyMarked: true,
+                courseName: session.courseName || session.courseId,
+                timestamp: existingRecord.updatedAt || now,
+                message: 'Already marked Present for this session',
+            });
+        }
+
+        // Push new Present record
+        attendanceRecord.records.push({
+            studentId: studentId,
+            status: 'Present',
+        });
+
+        await attendanceRecord.save();
+
+        res.json({
+            success: true,
+            alreadyMarked: false,
+            courseName: session.courseName || session.courseId,
+            timestamp: now,
+            message: `Attendance marked Present for ${session.courseName || session.courseId}`,
+        });
+    } catch (error) {
+        console.error('scanQRAttendance error:', error.message);
+        res.status(500).json({
+            success: false,
+            errorCode: 'SERVER_ERROR',
+            message: 'Failed to process QR attendance verification',
+        });
     }
 };
 
@@ -470,6 +582,7 @@ module.exports = {
     getUserAttendance,
     getActiveSession,
     createSession,
+    scanQRAttendance,
     submitAttendanceCode,
     createSessionOverride,
     getSessionOverrides,

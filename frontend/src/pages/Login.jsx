@@ -20,7 +20,13 @@ const Login = () => {
 
         const result = await login(email, password);
         if (result.success) {
-            navigate('/dashboard');
+            const pendingQR = sessionStorage.getItem('pendingQRScan');
+            if (pendingQR) {
+                sessionStorage.removeItem('pendingQRScan');
+                navigate(`/attendance${pendingQR}`);
+            } else {
+                navigate('/dashboard');
+            }
         } else {
             setErrorMsg(result.message);
         }

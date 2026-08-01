@@ -5,6 +5,7 @@ const {
     getUserAttendance,
     getActiveSession,
     createSession,
+    scanQRAttendance,
     submitAttendanceCode,
     createSessionOverride,
     getSessionOverrides,
@@ -13,9 +14,10 @@ const { protect, teacher } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Active session & Code submission (Zero-Tap)
+// Active session & Code / QR submission (Zero-Tap)
 router.get('/active-session', protect, getActiveSession);
 router.post('/create-session', protect, teacher, createSession);
+router.post('/scan-qr', protect, scanQRAttendance);
 router.post('/submit-code', protect, submitAttendanceCode);
 
 // Overrides (Cancel / Reschedule)
