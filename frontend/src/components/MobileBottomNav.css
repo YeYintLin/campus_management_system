@@ -100,7 +100,10 @@
     .avatar-dot {
         width: 36px;
         height: 36px;
-        border-radius: 50%;
+        min-width: 36px;
+        min-height: 36px;
+        aspect-ratio: 1 / 1;
+        border-radius: 50% !important;
         background: var(--primary-color);
         color: #fff;
         display: flex;
@@ -108,6 +111,8 @@
         justify-content: center;
         font-weight: 700;
         font-size: 0.9rem;
+        flex-shrink: 0;
+        box-sizing: border-box;
     }
 
     .user-mini-badge h4 {
