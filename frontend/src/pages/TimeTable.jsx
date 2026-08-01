@@ -44,6 +44,7 @@ const TimeTable = () => {
     const [isEditingMode, setIsEditingMode] = useState(false);
     const [editingCell, setEditingCell] = useState(null);
     const [tempCellData, setTempCellData] = useState({ course: '', room: '', type: 'Lecture' });
+    const [mobileDay, setMobileDay] = useState('All');
 
     // Excel import state
     const fileInputRef = useRef(null);
@@ -384,6 +385,20 @@ const TimeTable = () => {
                 ))}
             </div>
 
+            {/* Mobile Day Selector Bar */}
+            <div className="year-filter-bar mobile-day-filter-bar glass-panel">
+                <span className="mobile-day-label">View Day:</span>
+                {['All', ...days].map(day => (
+                    <button
+                        key={day}
+                        className={`year-tag ${mobileDay === day ? 'active' : ''}`}
+                        onClick={() => setMobileDay(day)}
+                    >
+                        {day === 'All' ? 'All Days' : day.substring(0, 3)}
+                    </button>
+                ))}
+            </div>
+
             {isEditingMode && (
                 <div className="edit-hint-toast glass-panel">
                     <Edit3 size={16} />
@@ -403,16 +418,16 @@ const TimeTable = () => {
                                 <tr>
                                     <th className="sticky-col">
                                         <Clock size={16} />
-                                        <span>Time Slot</span>
+                                        <span>Time</span>
                                     </th>
-                                    {days.map(day => <th key={day}>{day}</th>)}
+                                    {(mobileDay === 'All' ? days : [mobileDay]).map(day => <th key={day}>{day}</th>)}
                                 </tr>
                             </thead>
                             <tbody>
                                 {times.map(time => (
                                     <tr key={time}>
                                         <td className="time-column sticky-col">{time}</td>
-                                        {days.map(day => {
+                                        {(mobileDay === 'All' ? days : [mobileDay]).map(day => {
                                             const session = schedules[day]?.[time];
                                             const isEditingThisCell = editingCell?.day === day && editingCell?.time === time;
 
