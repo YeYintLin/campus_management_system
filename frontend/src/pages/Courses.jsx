@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import apiClient from '../api/apiClient';
 import { AuthContext } from '../context/AuthContext';
 import { X } from 'lucide-react';
+import { getNormalizedUserYear } from '../utils/userYear';
 import './Courses.css';
 
 const yearFilters = ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
@@ -37,6 +38,8 @@ const Courses = () => {
     const { user } = useContext(AuthContext);
     const isAdmin = user?.role === 'Admin';
     const isTeacher = user?.role === 'Teacher';
+    const isStudent = user?.role === 'Student';
+    const studentYear = getNormalizedUserYear(user);
     const canCreateCourses = isAdmin;
     const canEditCourses = isAdmin || isTeacher;
 
@@ -51,7 +54,7 @@ const Courses = () => {
 
     const [courses, setCourses] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedYear, setSelectedYear] = useState('All');
+    const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [teachers, setTeachers] = useState([]);
@@ -162,7 +165,7 @@ const Courses = () => {
         const target = `${course.name} ${course.code} ${course.description || ''} ${course.teacher?.name || ''}`.toLowerCase();
         const matchesSearch = target.includes(searchTerm.toLowerCase());
         const courseYear = deriveYearTag(course.code);
-        const matchesYear = selectedYear === 'All' || courseYear === selectedYear;
+        const matchesYear = isStudent ? (courseYear === studentYear) : (selectedYear === 'All' || courseYear === selectedYear);
         return matchesSearch && matchesYear;
     });
 
@@ -171,7 +174,9 @@ const Courses = () => {
             <header className="page-header">
                 <div>
                     <h1>Subjects Directory</h1>
-                    <p className="subtitle">Explore and manage academic subjects</p>
+                    <p className="subtitle">
+                        {isStudent ? `Showing ${studentYear} Academic Subjects` : 'Explore and manage academic subjects'}
+                    </p>
                 </div>
                 <div className="header-actions">
                     <input
@@ -189,17 +194,19 @@ const Courses = () => {
                 </div>
             </header>
 
-            <div className="year-filter-bar glass-panel">
-                {yearFilters.map(year => (
-                    <button
-                        key={year}
-                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                        onClick={() => setSelectedYear(year)}
-                    >
-                        {year}
-                    </button>
-                ))}
-            </div>
+            {!isStudent && (
+                <div className="year-filter-bar glass-panel">
+                    {yearFilters.map(year => (
+                        <button
+                            key={year}
+                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                            onClick={() => setSelectedYear(year)}
+                        >
+                            {year}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {error && (
                 <div className="glass-panel empty-state">

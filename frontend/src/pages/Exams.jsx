@@ -2,16 +2,19 @@ import React, { useCallback, useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
 import { Edit2, Trash2, X, Calendar, Clock, MapPin, Timer, BookOpen, Plus, MoreVertical } from 'lucide-react';
+import { getNormalizedUserYear } from '../utils/userYear';
 import './Exams.css';
 
 const Exams = () => {
     const { user } = useContext(AuthContext);
     const canManageExams = user?.role === 'Admin' || user?.role === 'Teacher';
+    const isStudent = user?.role === 'Student';
+    const studentYear = getNormalizedUserYear(user);
 
     const [exams, setExams] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentExam, setCurrentExam] = useState(null);
-    const [selectedYear, setSelectedYear] = useState('All');
+    const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
@@ -23,8 +26,9 @@ const Exams = () => {
     const fetchExams = useCallback(async () => {
         setLoading(true);
         try {
+            const targetYear = isStudent ? studentYear : selectedYear;
             const { data } = await apiClient.get('/exams', {
-                params: { year: selectedYear !== 'All' ? selectedYear : undefined }
+                params: { year: targetYear !== 'All' ? targetYear : undefined }
             });
             setExams(data);
         } catch (err) {
@@ -33,7 +37,7 @@ const Exams = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedYear]);
+    }, [selectedYear, isStudent, studentYear]);
 
     useEffect(() => {
         fetchExams();
@@ -115,17 +119,19 @@ const Exams = () => {
                 )}
             </header>
 
-            <div className="year-filter-bar glass-panel">
-                {years.map(year => (
-                    <button
-                        key={year}
-                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                        onClick={() => setSelectedYear(year)}
-                    >
-                        {year}
-                    </button>
-                ))}
-            </div>
+            {!isStudent && (
+                <div className="year-filter-bar glass-panel">
+                    {years.map(year => (
+                        <button
+                            key={year}
+                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                            onClick={() => setSelectedYear(year)}
+                        >
+                            {year}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {error && (
                 <div className="empty-state-full glass-panel" style={{ marginBottom: '1rem' }}>
@@ -140,13 +146,16 @@ const Exams = () => {
                     </div>
                 ) : exams.length === 0 ? (
                     <div className="empty-state-full glass-panel" style={{ gridColumn: '1 / -1' }}>
-                        <p>No exams currently scheduled for {selectedYear}.</p>
+                        <p>No exams currently scheduled for {isStudent ? studentYear : selectedYear}.</p>
                         {canManageExams && (
                             <button className="btn btn-primary" onClick={() => handleOpenModal()}>+ Schedule One Now</button>
                         )}
                     </div>
                 ) : (
-                    exams.map(exam => (
+                    exams.filter(exam => {
+                        const targetYear = isStudent ? studentYear : selectedYear;
+                        return targetYear === 'All' || exam.year === targetYear || exam.year === 'All';
+                    }).map(exam => (
                         <div key={exam._id} className="exam-card glass-panel hover-glow">
                             <div className="exam-card-header">
                                 <div className="exam-course">

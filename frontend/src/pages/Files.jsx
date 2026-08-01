@@ -2,6 +2,7 @@ import React, { useState, useContext, useRef, useEffect, useCallback } from 'rea
 import { Search, FileText, Download, Trash2, Upload, Folder, Filter, FileCode, FileImage, FileStack, ChevronRight, ArrowLeft, FolderPlus, X, ClipboardList, TrendingUp, Users, BarChart3 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
+import { getNormalizedUserYear } from '../utils/userYear';
 import './Files.css';
 
 const initialFiles = [
@@ -11,6 +12,7 @@ const initialFiles = [
     { id: 4, name: 'Advanced_JS_Tutorial.mp4', type: 'VIDEO', size: '45 MB', category: 'Tutorial', owner: 'Prof. Grace Hopper', date: '2026-03-07', year: '2nd Year' },
     { id: 5, name: 'Midterm_MTH101_2023.docx', type: 'DOCX', size: '85 KB', category: 'Old Question', owner: 'Prof. Grace Hopper', date: '2026-03-04', year: '1st Year' },
     { id: 6, name: 'Clean_Code_Reference.epub', type: 'BOOK', size: '2.8 MB', category: 'Reference Books', owner: 'Admin', date: '2026-03-02', year: 'All' },
+    { id: 7, name: 'McE_6th_Year_Project_Guidelines.pdf', type: 'PDF', size: '3.1 MB', category: 'Tutorial', owner: 'HOD Mechatronics', date: '2026-03-10', year: '6th Year' },
 ];
 
 const initialFolders = [
@@ -23,10 +25,13 @@ const Files = () => {
     const { user } = useContext(AuthContext);
     const fileInputRef = useRef(null);
 
+    const isStudent = user?.role === 'Student';
+    const studentYear = getNormalizedUserYear(user);
+
     const [files, setFiles] = useState(initialFiles);
     const [folders, setFolders] = useState(initialFolders);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedYear, setSelectedYear] = useState('All');
+    const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
     const [viewMode, setViewMode] = useState('folders'); // 'folders' or 'files'
     const [selectedFolder, setSelectedFolder] = useState(null);
 
@@ -186,17 +191,18 @@ const Files = () => {
 
     const filteredFolders = folders.filter(f => {
         const matchesSearch = f.name.toLowerCase().includes(searchTerm.toLowerCase());
-        // For folders, we show them if any file inside matches the year, or if it's 'All'
         const folderFiles = files.filter(file => file.category === f.name);
-        const hasYearMatch = selectedYear === 'All' || folderFiles.some(file => file.year === selectedYear || file.year === 'All');
+        const targetYear = isStudent ? studentYear : selectedYear;
+        const hasYearMatch = targetYear === 'All' || folderFiles.some(file => file.year === targetYear || file.year === 'All');
         return matchesSearch && hasYearMatch;
     });
 
-    const filteredFiles = files.filter(f =>
-        (!selectedFolder || f.category === selectedFolder) &&
-        f.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        (selectedYear === 'All' || f.year === selectedYear || f.year === 'All')
-    );
+    const filteredFiles = files.filter(f => {
+        const targetYear = isStudent ? studentYear : selectedYear;
+        return (!selectedFolder || f.category === selectedFolder) &&
+            f.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+            (targetYear === 'All' || f.year === targetYear || f.year === 'All');
+    });
 
     return (
         <div className="files-page animate-fade-in">
@@ -210,7 +216,9 @@ const Files = () => {
                     <div>
                         <h1>{viewMode === 'folders' ? 'Resource Library' : selectedFolder}</h1>
                         <p className="subtitle">
-                            {viewMode === 'folders'
+                            {isStudent
+                                ? `Showing ${studentYear} Academic Resources`
+                                : viewMode === 'folders'
                                 ? 'Browse through organized academic collections'
                                 : `Viewing files in ${selectedFolder}`}
                         </p>
@@ -249,17 +257,19 @@ const Files = () => {
                 </div>
             </header>
 
-            <div className="year-filter-bar glass-panel">
-                {years.map(year => (
-                    <button
-                        key={year}
-                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                        onClick={() => setSelectedYear(year)}
-                    >
-                        {year}
-                    </button>
-                ))}
-            </div>
+            {!isStudent && (
+                <div className="year-filter-bar glass-panel">
+                    {years.map(year => (
+                        <button
+                            key={year}
+                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                            onClick={() => setSelectedYear(year)}
+                        >
+                            {year}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             <div className="files-controls glass-panel">
                 <div className="search-box">

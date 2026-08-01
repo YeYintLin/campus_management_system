@@ -3,40 +3,16 @@ import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
 import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { getNormalizedUserYear } from '../utils/userYear';
 import './TimeTable.css';
-
-const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-const times = ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM'];
-
-const normalizeDay = (val) => {
-    if (!val) return null;
-    const str = String(val).trim().toLowerCase();
-    if (str.includes('mon')) return 'Monday';
-    if (str.includes('tue')) return 'Tuesday';
-    if (str.includes('wed')) return 'Wednesday';
-    if (str.includes('thu')) return 'Thursday';
-    if (str.includes('fri')) return 'Friday';
-    return null;
-};
-
-const normalizeTime = (val) => {
-    if (!val) return null;
-    let str = String(val).trim().toUpperCase();
-    if (str.includes('9') && !str.includes('19')) return '09:00 AM';
-    if (str.includes('10')) return '10:00 AM';
-    if (str.includes('11')) return '11:00 AM';
-    if (str.includes('12')) return '12:00 PM';
-    if (str.includes('1') || str.includes('13')) return '01:00 PM';
-    if (str.includes('2') || str.includes('14')) return '02:00 PM';
-    if (str.includes('3') || str.includes('15')) return '03:00 PM';
-    return '09:00 AM';
-};
 
 const TimeTable = () => {
     const { user } = useContext(AuthContext);
     const canManageTimetable = user?.role === 'Admin' || user?.role === 'Teacher';
+    const isStudent = user?.role === 'Student';
+    const studentYear = getNormalizedUserYear(user);
 
-    const [selectedYear, setSelectedYear] = useState('1st Year');
+    const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : '1st Year');
     const [selectedSemester, setSelectedSemester] = useState('Semester 1');
     const [schedules, setSchedules] = useState({});
     const [loading, setLoading] = useState(true);
@@ -360,17 +336,19 @@ const TimeTable = () => {
                 </div>
             )}
 
-            <div className="year-filter-bar glass-panel">
-                {years.map(year => (
-                    <button
-                        key={year}
-                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                        onClick={() => handleYearSelect(year)}
-                    >
-                        {year}
-                    </button>
-                ))}
-            </div>
+            {!isStudent && (
+                <div className="year-filter-bar glass-panel">
+                    {years.map(year => (
+                        <button
+                            key={year}
+                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                            onClick={() => handleYearSelect(year)}
+                        >
+                            {year}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             <div className="year-filter-bar semester-filter-bar glass-panel">
                 {semesters.map(semester => (
