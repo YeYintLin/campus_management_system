@@ -43,8 +43,8 @@ services:
     restart: unless-stopped
     environment:
       PORT: 5002
-      MONGODB_URI: mongodb://mongo:27017/core_db
-      JWT_SECRET: 2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792
+      MONGODB_URI: ${MONGODB_URI_CORE:-mongodb://mongo:27017/core_db}
+      JWT_SECRET: ${JWT_SECRET:-2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792}
     ports:
       - "5002:5002"
     volumes:
@@ -55,9 +55,6 @@ services:
       timeout: 3s
       retries: 10
       start_period: 20s
-    depends_on:
-      mongo:
-        condition: service_healthy
 
   attendance-service:
     build:
@@ -65,8 +62,8 @@ services:
     restart: unless-stopped
     environment:
       PORT: 5003
-      MONGODB_URI: mongodb://mongo:27017/attendance_db
-      JWT_SECRET: 2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792
+      MONGODB_URI: ${MONGODB_URI_ATTENDANCE:-mongodb://mongo:27017/attendance_db}
+      JWT_SECRET: ${JWT_SECRET:-2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792}
       CORE_SERVICE_URL: http://core-service:5002
     ports:
       - "5003:5003"
@@ -76,9 +73,6 @@ services:
       timeout: 3s
       retries: 10
       start_period: 20s
-    depends_on:
-      mongo:
-        condition: service_healthy
 
   ai-service:
     build:
@@ -86,8 +80,8 @@ services:
     restart: unless-stopped
     environment:
       PORT: 5004
-      MONGODB_URI: mongodb://mongo:27017/ai_db
-      JWT_SECRET: 2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792
+      MONGODB_URI: ${MONGODB_URI_AI:-mongodb://mongo:27017/ai_db}
+      JWT_SECRET: ${JWT_SECRET:-2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792}
       OLLAMA_API_URL: ${OLLAMA_API_URL:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5-coder:7b}
     extra_hosts:
@@ -100,9 +94,6 @@ services:
       timeout: 3s
       retries: 10
       start_period: 20s
-    depends_on:
-      mongo:
-        condition: service_healthy
 
   seed-users:
     build:
