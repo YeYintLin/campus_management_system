@@ -1,6 +1,7 @@
-import React, { useState, useContext, useRef } from 'react';
-import { Search, FileText, Download, Trash2, Upload, Folder, Filter, FileCode, FileImage, FileStack, ChevronRight, ArrowLeft, FolderPlus, X } from 'lucide-react';
+import React, { useState, useContext, useRef, useEffect, useCallback } from 'react';
+import { Search, FileText, Download, Trash2, Upload, Folder, Filter, FileCode, FileImage, FileStack, ChevronRight, ArrowLeft, FolderPlus, X, ClipboardList, TrendingUp, Users, BarChart3 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
+import apiClient from '../api/apiClient';
 import './Files.css';
 
 const initialFiles = [
@@ -45,6 +46,50 @@ const Files = () => {
 
     const isAdmin = user?.role === 'Admin';
     const canManageFiles = user?.role === 'Admin' || user?.role === 'Teacher';
+
+    // ── Audit Panel State ──
+    const [showAuditPanel, setShowAuditPanel] = useState(false);
+    const [auditLogs, setAuditLogs] = useState([]);
+    const [auditStats, setAuditStats] = useState(null);
+    const [auditSearch, setAuditSearch] = useState('');
+    const [auditLoading, setAuditLoading] = useState(false);
+
+    const fetchAuditData = useCallback(async () => {
+        if (!canManageFiles) return;
+        setAuditLoading(true);
+        try {
+            const [logsRes, statsRes] = await Promise.all([
+                apiClient.get('/files/download-logs', { params: { search: auditSearch, limit: 100 } }),
+                apiClient.get('/files/download-stats'),
+            ]);
+            setAuditLogs(logsRes.data.logs || []);
+            setAuditStats(statsRes.data);
+        } catch (err) {
+            console.error('Failed to fetch audit data:', err);
+        } finally {
+            setAuditLoading(false);
+        }
+    }, [canManageFiles, auditSearch]);
+
+    useEffect(() => {
+        if (showAuditPanel) fetchAuditData();
+    }, [showAuditPanel, fetchAuditData]);
+
+    const handleDownloadFile = async (file) => {
+        try {
+            await apiClient.post('/files/log-download', {
+                userName: user?.name || 'Unknown',
+                fileName: file.name,
+                fileCategory: file.category,
+                fileSize: file.size,
+                year: file.year,
+            });
+        } catch (err) {
+            console.warn('Download log failed (non-blocking):', err.message);
+        }
+        // Trigger actual download (placeholder — adapt when real file URLs are wired)
+        console.log('Downloading:', file.name);
+    };
 
     const getFileIcon = (type) => {
         const t = type?.toUpperCase();
@@ -172,6 +217,15 @@ const Files = () => {
                     </div>
                 </div>
                 <div className="header-actions">
+                    {canManageFiles && (
+                        <button
+                            className={`btn ${showAuditPanel ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setShowAuditPanel(!showAuditPanel)}
+                        >
+                            <ClipboardList size={18} />
+                            {showAuditPanel ? 'Close Logs' : 'Download Logs'}
+                        </button>
+                    )}
                     {canManageFiles && viewMode === 'folders' && (
                         <button className="btn btn-secondary" onClick={() => setIsFolderModalOpen(true)}>
                             <FolderPlus size={18} />
@@ -293,7 +347,7 @@ const Files = () => {
                                 </div>
                             </div>
                             <div className="file-card-footer">
-                                <button className="btn-icon-text" title="Download">
+                                <button className="btn-icon-text" title="Download" onClick={() => handleDownloadFile(file)}>
                                     <Download size={18} />
                                     <span>Download</span>
                                 </button>
@@ -415,6 +469,103 @@ const Files = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Download Audit Logs Panel ── */}
+            {showAuditPanel && canManageFiles && (
+                <div className="audit-panel-overlay" onClick={() => setShowAuditPanel(false)}>
+                    <div className="audit-panel glass-panel animate-slide-up" onClick={(e) => e.stopPropagation()}>
+                        <div className="audit-panel-header">
+                            <div>
+                                <h2>Download Audit Logs</h2>
+                                <p className="text-muted text-sm">Track all file download activity by students</p>
+                            </div>
+                            <button className="close-btn" onClick={() => setShowAuditPanel(false)}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Stats Cards */}
+                        {auditStats && (
+                            <div className="audit-stats-grid">
+                                <div className="audit-stat-card">
+                                    <div className="audit-stat-icon"><Download size={20} /></div>
+                                    <div>
+                                        <h4>{auditStats.totalDownloads || 0}</h4>
+                                        <p>Total Downloads</p>
+                                    </div>
+                                </div>
+                                <div className="audit-stat-card">
+                                    <div className="audit-stat-icon top-file"><TrendingUp size={20} /></div>
+                                    <div>
+                                        <h4>{auditStats.topFiles?.[0]?._id?.substring(0, 20) || 'N/A'}</h4>
+                                        <p>Most Downloaded</p>
+                                    </div>
+                                </div>
+                                <div className="audit-stat-card">
+                                    <div className="audit-stat-icon students"><Users size={20} /></div>
+                                    <div>
+                                        <h4>{auditStats.activeStudents?.length || 0}</h4>
+                                        <p>Active Students</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Search */}
+                        <div className="audit-search-bar">
+                            <Search size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search by student name or file name..."
+                                value={auditSearch}
+                                onChange={(e) => setAuditSearch(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Log Table */}
+                        <div className="audit-table-wrapper">
+                            {auditLoading ? (
+                                <p className="text-muted" style={{ padding: '2rem', textAlign: 'center' }}>Loading audit logs...</p>
+                            ) : auditLogs.length > 0 ? (
+                                <table className="audit-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Student</th>
+                                            <th>Role</th>
+                                            <th>File</th>
+                                            <th>Category</th>
+                                            <th>Year</th>
+                                            <th>Downloaded At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {auditLogs.map((log, idx) => (
+                                            <tr key={log._id || idx}>
+                                                <td>
+                                                    <div className="audit-user-cell">
+                                                        <div className="audit-avatar">{(log.userName?.charAt(0) || '?').toUpperCase()}</div>
+                                                        <div>
+                                                            <span className="audit-name">{log.userName}</span>
+                                                            <span className="audit-email">{log.userEmail}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td><span className={`audit-role-badge role-${log.userRole?.toLowerCase()}`}>{log.userRole}</span></td>
+                                                <td className="audit-filename">{log.fileName}</td>
+                                                <td>{log.fileCategory}</td>
+                                                <td>{log.year}</td>
+                                                <td className="audit-timestamp">{new Date(log.downloadedAt).toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <p className="text-muted" style={{ padding: '2rem', textAlign: 'center' }}>No download records found.</p>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

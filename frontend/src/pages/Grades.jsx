@@ -15,6 +15,18 @@ const semesterToYearLabel = (semester) => {
     return yearLookup[bucket - 1] || `${bucket}th Year`;
 };
 
+const deriveYearTag = (code = '') => {
+    const digits = code?.match(/\d+/);
+    if (!digits) return '1st Year';
+    const number = parseInt(digits[0], 10);
+    if (number < 200) return '1st Year';
+    if (number < 300) return '2nd Year';
+    if (number < 400) return '3rd Year';
+    if (number < 500) return '4th Year';
+    if (number < 600) return '5th Year';
+    return '6th Year';
+};
+
 const getAvatarUrl = (name, id) => {
     const initials = name ? encodeURIComponent(name) : encodeURIComponent(id || 'Student');
     return `https://ui-avatars.com/api/?name=${initials}&background=1f2937&color=ffffff`;
@@ -82,6 +94,7 @@ const Grades = () => {
                 const { data } = await apiClient.get('/students');
                 const mapped = data.map(student => ({
                     id: student.user?._id || student._id,
+                    displayId: student.enrollmentNumber,
                     name: student.user?.name || 'Student',
                     major: student.department || 'Undeclared',
                     year: semesterToYearLabel(student.semester),
@@ -243,12 +256,12 @@ const Grades = () => {
             new TableRow({
                 children: [
                     new TableCell({
-                        children: [new Paragraph({ text: "ENROLLMENT NO.", alignment: AlignmentType.CENTER, style: "Normal" })],
+                        children: [new Paragraph({ text: "ID", alignment: AlignmentType.CENTER, style: "Normal" })],
                         shading: { fill: "f3f4f6" },
                         verticalAlign: VerticalAlign.CENTER
                     }),
                     new TableCell({
-                        children: [new Paragraph({ text: "STUDENT NAME", alignment: AlignmentType.CENTER, style: "Normal" })],
+                        children: [new Paragraph({ text: "NAME", alignment: AlignmentType.CENTER, style: "Normal" })],
                         shading: { fill: "f3f4f6" },
                         verticalAlign: VerticalAlign.CENTER
                     }),
@@ -369,11 +382,13 @@ const Grades = () => {
         return gradesData[studentId] || gradesData['default'];
     };
 
-    // Get all unique subjects for table headers
+    // Get all unique subjects for table headers, filtered by the selected year
     const allSubjects = Array.from(new Set([
         ...courses.map(c => c.code),
         ...Object.values(gradesData).flat().map(g => g.course)
-    ])).sort();
+    ]))
+    .filter(sub => selectedYear === 'All' || deriveYearTag(sub) === selectedYear)
+    .sort();
 
     const filteredStudents = studentList.filter(s => {
         const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -420,8 +435,8 @@ const Grades = () => {
                             <table className="formal-doc-table">
                                 <thead>
                                     <tr>
-                                        <th>ENROLLMENT NO.</th>
-                                        <th>STUDENT NAME</th>
+                                        <th>ID</th>
+                                        <th>NAME</th>
                                         {allSubjects.map(sub => <th key={sub}>{sub}</th>)}
                                         <th>GPA</th>
                                     </tr>
@@ -501,7 +516,7 @@ const Grades = () => {
                             <Eye size={18} />
                             Preview Export
                         </button>
-                        <button className="export-btn-premium" onClick={handleExportWord} disabled={isLoading}>
+                        <button className="export-btn-premium" onClick={() => setShowPreview(true)} disabled={isLoading}>
                             <FileText size={18} />
                             Export to Word
                         </button>
@@ -580,8 +595,8 @@ const Grades = () => {
                                 <table className="master-grades-table">
                                     <thead>
                                         <tr>
-                                            <th className="sticky-col id-col">Enrollment No.</th>
-                                            <th className="sticky-col name-col">Student Name</th>
+                                            <th className="sticky-col id-col">ID</th>
+                                            <th className="sticky-col name-col">Name</th>
                                             {allSubjects.map(sub => (
                                                 <th key={sub} className="text-center">{sub}</th>
                                             ))}
@@ -632,13 +647,12 @@ const Grades = () => {
                                                                             }
                                                                         }}
                                                                     />
-                                                                ) : (
+                                                                 ) : (
                                                                     gradeRecord ? (
                                                                         <div className="matrix-grade-container">
                                                                             <span className={`matrix-grade-pill grade-${letterGrade?.toLowerCase()}`}>
                                                                                 {letterGrade}
                                                                             </span>
-                                                                            
                                                                         </div>
                                                                     ) : (
                                                                         <span className="add-grade-placeholder">-</span>
@@ -705,11 +719,11 @@ const Grades = () => {
                             <Award size={24} />
                         </div>
                         <div className="info">
-                            <span className="label">Cumulative GPA</span>
-                            <div className="main-value">{calculateGPA(displayUser?.id)}</div>
+                            <span className="label">{isStudent ? 'Academic Standing' : 'Cumulative GPA'}</span>
+                            <div className="main-value">{isStudent ? 'Good Standing' : calculateGPA(displayUser?.id)}</div>
                             <div className="sub-value">
                                 <TrendingUp size={14} className="text-success" />
-                                <span>Above average</span>
+                                <span>{isStudent ? 'Verified Record' : 'Above average'}</span>
                             </div>
                         </div>
                     </div>

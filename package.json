@@ -2,9 +2,15 @@
   "name": "cms-root",
   "private": true,
   "scripts": {
-    "start": "npm --prefix backend run start",
-    "dev": "npm --prefix backend run dev",
-    "start-all": "concurrently -n backend,frontend -c green,blue \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\""
+    "start-gateway": "npm --prefix gateway run start",
+    "start-core": "npm --prefix services/core run start",
+    "start-attendance": "npm --prefix services/attendance run start",
+    "start-ai": "npm --prefix services/ai run start",
+    "start-frontend": "npm --prefix frontend run dev",
+    "start-all": "concurrently -n gateway,core,attendance,ai,frontend -c magenta,green,yellow,cyan,blue \"npm --prefix gateway run dev\" \"npm --prefix services/core run dev\" \"npm --prefix services/attendance run dev\" \"npm --prefix services/ai run dev\" \"npm --prefix frontend run dev\"",
+    "seed:users": "npm --prefix services/core run seed:users",
+    "seed:demo": "npm --prefix services/core run seed:demo",
+    "seed:courses": "npm --prefix services/core run seed:courses"
   },
   "devDependencies": {
     "concurrently": "^9.2.0"

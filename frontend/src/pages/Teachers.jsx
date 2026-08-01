@@ -25,8 +25,6 @@ const Teachers = () => {
     const years = ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
 
     useEffect(() => {
-        if (!isAdmin) return undefined;
-
         const abortController = new AbortController();
 
         const fetchTeachers = async () => {
@@ -38,14 +36,14 @@ const Teachers = () => {
                         _id: teacher._id,
                         name: teacher.name,
                         email: teacher.email,
-                        department: teacher.department || 'Unassigned',
-                        role: teacher.title || 'Teacher',
+                        department: teacher.department || 'Mechatronics Engineering',
+                        role: teacher.title || 'Lecturer',
                         status: teacher.status || 'Active',
                         year: teacher.year || 'All Years',
-                        office: teacher.office || '',
-                        consultationHours: teacher.consultationHours || '',
-                        specialization: teacher.specialization || '',
-                        avatar: `https://i.pravatar.cc/150?u=${teacher._id}`,
+                        office: teacher.office || 'MECH-204',
+                        consultationHours: teacher.consultationHours || 'Mon/Wed 2:00 PM - 4:00 PM',
+                        specialization: teacher.specialization || 'Robotics and Control Systems',
+                        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.name)}&background=374151&color=ffffff`,
                     }))
                     : [];
 
@@ -59,7 +57,7 @@ const Teachers = () => {
 
         fetchTeachers();
         return () => abortController.abort();
-    }, [isAdmin]);
+    }, []);
 
     const filteredTeachers = teachers.filter(teacher => {
         const matchesSearch = teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

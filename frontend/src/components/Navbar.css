@@ -15,6 +15,12 @@
   z-index: 90;
 }
 
+@media (max-width: 768px) {
+  .sidebar {
+    display: none !important;
+  }
+}
+
 .sidebar-header {
   padding: 0.2rem 0.35rem 0.95rem;
   border-bottom: 1px solid var(--surface-border);

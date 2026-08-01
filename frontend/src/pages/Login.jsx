@@ -2,11 +2,13 @@ import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import AuthLoader from '../components/AuthLoader';
+import { Eye, EyeOff } from 'lucide-react';
 import './Auth.css';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
     const { login, loading } = useContext(AuthContext);
@@ -53,11 +55,11 @@ const Login = () => {
 
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
-                            <label className="form-label">Email or Username</label>
+                            <label className="form-label">Email</label>
                             <input
                                 type="text"
                                 className="form-input"
-                                placeholder="you@school.edu or your username"
+                                placeholder="example@gmail.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
@@ -65,13 +67,24 @@ const Login = () => {
                         </div>
                         <div className="form-group">
                             <label className="form-label">Password</label>
-                            <input
-                                type="password"
-                                className="form-input"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
+                            <div className="password-input-wrapper">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    className="form-input"
+                                    placeholder=""
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    className="password-toggle-btn"
+                                    onClick={() => setShowPassword(prev => !prev)}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
                         </div>
 
                         <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>

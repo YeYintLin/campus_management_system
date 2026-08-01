@@ -1,0 +1,186 @@
+/* ─────────────────────────────────────────────
+   MobileBottomNav.css
+   Fixed 5-Tab Bottom Navigation & Slide-Up Sheet
+   ───────────────────────────────────────────── */
+
+.mobile-bottom-nav {
+    display: none; /* Hidden on desktop */
+}
+
+.mobile-menu-overlay {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: calc(60px + env(safe-area-inset-bottom, 0px));
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        background: var(--bg-surface, rgba(15, 23, 42, 0.94));
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-top: 1px solid var(--surface-border);
+        z-index: 990;
+        justify-content: space-around;
+        align-items: center;
+    }
+
+    .mobile-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        flex: 1;
+        height: 100%;
+        color: var(--text-muted);
+        text-decoration: none;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 0.68rem;
+        font-weight: 600;
+        transition: color 0.15s ease;
+        min-height: 44px; /* Touch target minimum */
+    }
+
+    .mobile-nav-item:hover,
+    .mobile-nav-item.active {
+        color: var(--primary-color);
+    }
+
+    /* Slide-Up Sheet */
+    .mobile-menu-overlay {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(4px);
+        z-index: 995;
+    }
+
+    .mobile-menu-sheet {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+        background: var(--bg-surface, rgba(15, 23, 42, 0.96));
+        border-top: 1px solid var(--surface-border);
+        padding: 1.2rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom, 0px));
+        max-height: 80vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .sheet-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 0.8rem;
+        border-bottom: 1px solid var(--surface-border);
+    }
+
+    .user-mini-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+
+    .avatar-dot {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    .user-mini-badge h4 {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+
+    .user-mini-badge p {
+        margin: 0;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .close-sheet-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0.4rem;
+        min-height: 44px;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sheet-links {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.65rem;
+    }
+
+    .sheet-item {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.75rem 0.85rem;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        color: var(--text-primary);
+        text-decoration: none;
+        font-size: 0.84rem;
+        font-weight: 500;
+        min-height: 44px;
+    }
+
+    .sheet-divider {
+        grid-column: 1 / -1;
+        height: 1px;
+        background: var(--surface-border);
+        margin: 0.3rem 0;
+    }
+
+    .sheet-footer {
+        margin-top: 0.4rem;
+    }
+
+    .sheet-logout-btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        border-radius: 10px;
+        background: rgba(244, 63, 94, 0.12);
+        color: #fb7185;
+        border: 1px solid rgba(244, 63, 94, 0.25);
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        min-height: 44px;
+    }
+}

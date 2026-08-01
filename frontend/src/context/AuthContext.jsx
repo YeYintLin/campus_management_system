@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
                 }
 
                 const statusCode = error?.response?.status;
-                if (statusCode === 401 || statusCode === 403) {
+                if (statusCode === 401) {
                     if (!hasLoggedExpiryRef.current) {
                         console.error('Session expired. Logging out.');
                         hasLoggedExpiryRef.current = true;

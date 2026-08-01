@@ -1,0 +1,246 @@
+/* ─────────────────────────────────────────────
+   AdminDashboard.css
+   Extends shared Dashboard.css base styles with
+   admin-specific card layouts and charts.
+   ───────────────────────────────────────────── */
+
+/* ── Stat Icon Colors ── */
+.stat-card .admin-students-icon {
+    background: rgba(6, 182, 212, 0.12);
+    color: var(--primary-light);
+}
+.stat-card .admin-courses-icon {
+    background: rgba(139, 92, 246, 0.12);
+    color: #a78bfa;
+}
+.stat-card .admin-notif-icon {
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+}
+.stat-card .admin-risk-icon {
+    background: rgba(244, 63, 94, 0.12);
+    color: #fb7185;
+}
+
+.stat-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* ── Two Column Grid ── */
+.admin-insights-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* ── Year Breakdown Bar Chart ── */
+.year-breakdown-card .chart-container {
+    margin-top: 0.5rem;
+}
+
+/* ── Pass Rates ── */
+.pass-rates-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.pass-rate-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pass-rate-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.pass-rate-info h4 {
+    margin: 0 0 0.1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pass-rate-info p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.pass-rate-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 140px;
+}
+
+.pass-rate-bar-bg {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.pass-rate-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pass-rate-value {
+    font-size: 0.82rem;
+    font-weight: 700;
+    min-width: 38px;
+    text-align: right;
+}
+
+.rate-good {
+    color: #4ade80;
+}
+.rate-warn {
+    color: #fbbf24;
+}
+.rate-danger {
+    color: #fb7185;
+}
+
+/* ── At-Risk Pills (shared with Teacher) ── */
+.risk-reasons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    justify-content: flex-end;
+}
+
+.risk-pill {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.risk-attendance {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.risk-failing {
+    background: rgba(244, 63, 94, 0.15);
+    color: #fb7185;
+    border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+.risk-status {
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+/* ── Recent Activity Card ── */
+.recent-activity-card {
+    margin-bottom: 1.5rem;
+}
+
+.recent-activity-card .activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    margin-top: 0.4rem;
+}
+
+.recent-activity-card .activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.recent-activity-card .activity-item:last-child {
+    border-bottom: none;
+}
+
+.recent-activity-card .activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    margin-top: 0.4rem;
+    flex-shrink: 0;
+}
+
+.recent-activity-card .activity-details p {
+    margin: 0 0 0.2rem;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+}
+
+.recent-activity-card .activity-details span {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* ── Loading ── */
+.dashboard-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    color: var(--text-muted);
+    gap: 0.8rem;
+}
+
+.spin {
+    animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .admin-insights-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pass-rate-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.4rem;
+    }
+
+    .pass-rate-bar-container {
+        width: 100%;
+    }
+
+    .risk-reasons {
+        justify-content: flex-start;
+        margin-top: 0.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}

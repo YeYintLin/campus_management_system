@@ -10,6 +10,13 @@ const palette = ['#6366f1', '#10b981', '#f97316', '#ec4899', '#0ea5e9'];
 const deriveYearTag = (code = '') => {
     const digits = code.match(/\d+/);
     if (!digits) return '1st Year';
+    const firstDigit = digits[0][0];
+    if (firstDigit === '1') return '1st Year';
+    if (firstDigit === '2') return '2nd Year';
+    if (firstDigit === '3') return '3rd Year';
+    if (firstDigit === '4') return '4th Year';
+    if (firstDigit === '5') return '5th Year';
+    if (firstDigit === '6') return '6th Year';
     const number = parseInt(digits[0], 10);
     if (number < 200) return '1st Year';
     if (number < 300) return '2nd Year';
@@ -28,7 +35,19 @@ const initialCourseForm = {
 
 const Courses = () => {
     const { user } = useContext(AuthContext);
-    const canEditCourses = user?.role === 'Admin';
+    const isAdmin = user?.role === 'Admin';
+    const isTeacher = user?.role === 'Teacher';
+    const canCreateCourses = isAdmin;
+    const canEditCourses = isAdmin || isTeacher;
+
+    const canManageCourse = (course) => {
+        if (isAdmin) return true;
+        if (isTeacher) {
+            const teacherId = course.teacher?._id || course.teacher;
+            return teacherId && teacherId.toString() === user?._id?.toString();
+        }
+        return false;
+    };
 
     const [courses, setCourses] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -60,7 +79,7 @@ const Courses = () => {
     }, []);
 
     useEffect(() => {
-        if (!canEditCourses) return;
+        if (!isAdmin && !isTeacher) return;
         const fetchTeachers = async () => {
             try {
                 const { data } = await apiClient.get('/users?role=Teacher');
@@ -71,7 +90,7 @@ const Courses = () => {
         };
 
         fetchTeachers();
-    }, [canEditCourses]);
+    }, [isAdmin, isTeacher]);
 
     const resetForm = () => {
         setFormData({ ...initialCourseForm });
@@ -162,7 +181,7 @@ const Courses = () => {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    {canEditCourses && (
+                    {canCreateCourses && (
                         <button className="btn btn-primary" onClick={() => openCourseModal()}>
                             + Add Subject
                         </button>
@@ -201,6 +220,7 @@ const Courses = () => {
                         const status = enrollmentPercentage >= 100 ? 'Full' : 'Active';
                         const baseColor = palette[index % palette.length];
                         const yearTag = deriveYearTag(course.code);
+                        const isManageable = canManageCourse(course);
 
                         return (
                             <div key={course._id} className="glass-card course-card">
@@ -244,14 +264,15 @@ const Courses = () => {
 
                                 <div className="course-card-footer">
                                     <button className="btn btn-secondary btn-sm">View Syllabus</button>
-                                    <button
-                                        className="btn btn-primary btn-sm"
-                                        style={{ background: baseColor, border: 'none' }}
-                                        onClick={() => openCourseModal(course)}
-                                        disabled={!canEditCourses}
-                                    >
-                                        Manage
-                                    </button>
+                                    {isManageable && (
+                                        <button
+                                            className="btn btn-primary btn-sm"
+                                            style={{ background: baseColor, border: 'none' }}
+                                            onClick={() => openCourseModal(course)}
+                                        >
+                                            Manage
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         );

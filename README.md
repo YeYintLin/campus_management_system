@@ -1,206 +1,121 @@
-# Campus Management System (MERN) - Docker Setup
+# Smart Campus Management System (MERN Microservices)
 
-This is my **Campus Management System** project (MERN stack). I am using **Docker + Docker Compose** so anyone can run the whole app (frontend + backend + database) without installing MongoDB locally.
+This repository implements a **decoupled, database-isolated microservices architecture** for a Smart Campus Management System (CMS). The codebase is divided into independent service components coordinated by an API Gateway.
 
-## What's Inside
+---
 
-- Frontend: React (Vite) and an Nginx production build
-- Backend: Node.js + Express API (includes `GET /health` for healthchecks)
-- Database: MongoDB (runs inside Docker, internal-only)
+## 1. System Architecture Overview
 
-## Prerequisites
+The system consists of the following independently runnable services:
+*   **`/gateway`:** API Gateway running on Port `5001`. Serves as the single public entry point, logging, proxying, and forwarding client requests to internal services without path stripping.
+*   **`/services/core`:** Core Service running on Port `5002`. Manages users, student profiles, courses, grades, exams, timetables, and notification registries. Connects to `core_db`.
+*   **`/services/attendance`:** Attendance Service running on Port `5003`. Handles student attendance grids, resolves student names dynamically via REST calls to the Core Service, and connects to `attendance_db`.
+*   **`/services/ai`:** AI Service running on Port `5004`. Integrates the Gemini API helper models and saves dynamic prompt setups to `ai_db`.
+*   **`/frontend`:** Client React application running on Port `5173` (dev) or Port `8050` (production). Communicates exclusively through the Port 5001 API Gateway.
 
-- Docker Desktop (includes Docker Compose)
+---
 
-## Folder Overview
+## 2. Environment Configuration
 
-- `docker-compose.dev.yml` is for development (hot reload)
-- `docker-compose.prod.yml` is for production-like runs (Nginx reverse proxy on port 8050 by default)
-- `docker-compose.yml` is a simple default compose file (prod-like behavior, but keeps the frontend mapped to port 5111 for convenience)
-- `frontend/` is the React app
-- `backend/` is the Express API
+Each microservice requires a local `.env` configuration file to run. 
 
-## Environment Setup
-
-The backend uses a local env file at `backend/.env`. This file is ignored by git so secrets do not get committed.
-
-1. Create your env file from the example:
-
-```powershell
-cd .
-Copy-Item backend\.env.example backend\.env
+### 2.1 API Gateway Env (`gateway/.env`)
+```env
+PORT=5001
+CORE_SERVICE_URL=http://localhost:5002
+ATTENDANCE_SERVICE_URL=http://localhost:5003
+AI_SERVICE_URL=http://localhost:5004
 ```
 
-2. Open `backend/.env` and update:
+### 2.2 Core Service Env (`services/core/.env`)
+```env
+PORT=5002
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/core_db
+JWT_SECRET=your_jwt_signing_key_here
+```
 
-- `JWT_SECRET` to a long random string (important)
+### 2.3 Attendance Service Env (`services/attendance/.env`)
+```env
+PORT=5003
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/attendance_db
+JWT_SECRET=your_jwt_signing_key_here
+CORE_SERVICE_URL=http://localhost:5002
+```
 
-Notes:
+### 2.4 AI Service Env (`services/ai/.env`)
+```env
+PORT=5004
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/ai_db
+JWT_SECRET=your_jwt_signing_key_here
+OLLAMA_API_URL=http://localhost:11434
+```
+*(Ensure the `JWT_SECRET` key values are completely identical across Core, Attendance, and AI services to ensure token decoding compatibility).*
 
-- MongoDB is internal-only. The backend connects using `mongodb://mongo:27017/cms` (Docker service name `mongo`, not `localhost`).
-- The frontend calls the backend using a relative `/api` path (so it works locally and when hosted). In dev/prod, `/api` is proxied to the backend.
-- To use MongoDB Atlas, set `MONGODB_URI` in `backend/.env` to a `mongodb+srv://.../cms?...` URL (the part after the host is the database name).
+---
 
-## Run With Docker (Recommended)
+## 3. Database Seeding Instructions
 
-Start everything (build included):
+To populate your MongoDB databases with mock mechatronics coursework data, run these commands from the **project root folder**:
 
-```powershell
-cd .
+1.  **Seed User Accounts & Profiles:**
+    ```bash
+    npm --prefix services/core run seed:users
+    ```
+2.  **Seed Courses & Grades:**
+    ```bash
+    npm --prefix services/core run seed:courses
+    ```
+
+This seeds 10 mechatronics engineering courses, mock assessment grades, and 9 profiles linked to institutional emails matching Technological University (Hmawbi).
+
+---
+
+## 4. Run Locally (Development Setup)
+
+Ensure you have run `npm install` at the root folder to install dependencies. Then, run the unified orchestrator command to start all 5 services concurrently:
+
+```bash
+npm run start-all
+```
+
+*   **Vite Frontend:** `http://localhost:5173`
+*   **API Gateway:** `http://localhost:5001`
+*   **Services Health Checks:**
+    *   Core Service: `http://localhost:5002/health`
+    *   Attendance Service: `http://localhost:5003/health`
+    *   AI Service: `http://localhost:5004/health`
+
+---
+
+## 5. Run With Docker (Containerized Setup)
+
+Docker Compose builds all services and runs them on a single virtual network.
+
+### 5.1 Local Developer Environment (Hot reload enabled)
+```bash
 docker compose up --build
 ```
+*   **Frontend Client:** `http://localhost:5111`
+*   **API Gateway:** `http://localhost:5001`
 
-Run in the background (optional):
-
-```powershell
-docker compose up --build -d
+### 5.2 Production Reverse Proxy Setup (Nginx reverse proxy on Port 8050)
+```bash
+docker compose -f docker-compose.prod.yml up --build
 ```
+*   **Nginx Client & Proxied API:** `http://localhost:8050`
+*   *(In production mode, all service ports are kept internal and are only reachable via the frontend proxy).*
 
-Check status and logs:
+---
 
-```powershell
-docker compose ps
-docker compose logs -f
-```
+## 6. Pre-Defense Test Credentials
 
-### Dev vs Prod compose files
-
-Dev (hot reload):
-
-```powershell
-docker compose -f docker-compose.dev.yml up --build
-```
-
-Prod-like (Nginx reverse proxy on port 8050):
-
-```powershell
-docker compose -f docker-compose.prod.yml up --build -d
-```
-
-Local testing on port 8050 in prod-like mode (optional):
-
-```powershell
-$env:FRONTEND_PORT=8050
-docker compose -f docker-compose.prod.yml up --build -d
-```
-
-Stop containers:
-
-```powershell
-docker compose down
-```
-
-Reset everything (also deletes MongoDB data):
-
-```powershell
-docker compose down -v
-```
-
-## Seeding Default Users (Docker)
-
-To seed `Admin`, `Teacher`, and `Student` users into the **Docker MongoDB** (`mongodb://mongo:27017/cms`):
-
-```powershell
-docker compose --profile seed up --build seed-users
-```
-
-For a thesis demo, reset the known demo passwords and verify the demo student profile:
-
-```powershell
-docker compose --profile demo up --build seed-demo
-```
-
-Local/Atlas equivalent:
-
-```powershell
-npm.cmd --prefix backend run seed:demo
-```
-
-To seed `Admin`, `Teacher`, and `Student` users into **MongoDB Atlas** (uses `MONGODB_URI` from `backend/.env`):
-
-```powershell
-docker compose --profile atlas-seed up --build seed-users-atlas
-```
-
-Notes:
-- The seed container will exit after seeding (that is expected).
-- `seed:users` preserves existing passwords unless `SEED_OVERWRITE_PASSWORDS=true` is set.
-- `seed:demo` intentionally refreshes the demo passwords so the presentation logins stay reliable.
-
-## Demo Accounts
-
-Run `seed:demo` before your presentation to make these logins reliable:
+The database contains seeded test users. You can log in at the client login page using these credentials:
 
 | Role | Email | Password |
-| --- | --- | --- |
-| Admin | `admin@gmail.com` | `ChangeMeAdmin123!` |
-| Teacher | `teacher@gmail.com` | `ChangeMeTeacher123!` |
-| Student | `student@gmail.com` | `ChangeMeStudent123!` |
-
-## Thesis Demo Walkthrough
-
-Use this flow for a clean final-year project presentation:
-
-1. Start the system and seed demo data:
-
-```powershell
-docker compose up --build -d
-docker compose --profile demo up --build seed-demo
-```
-
-2. Open `http://localhost:5111` and log in as Admin: `admin@gmail.com` / `ChangeMeAdmin123!`.
-3. Show the dashboard overview, then open Students and create or edit a student profile.
-4. Open Teachers and create or edit a teacher account/profile.
-5. Open Courses, Attendance, Grades, Exams, and Timetable to show the core academic management workflow.
-6. Log in as Teacher to show staff-level access for academic records.
-7. Log in as Student to show the student-facing dashboard, grades, exams, and timetable.
-8. Finish with AI Assistant and AI Prompt Settings as the extra innovation layer for campus support.
-
-## Reverse Proxy (Works Locally + Production)
-
-The frontend uses a **relative** API path (`/api`). This is the key part that makes it work everywhere:
-
-- Local dev (Vite): Vite proxies `/api` and `/uploads` to the backend.
-- Production (Nginx): Nginx serves the frontend and proxies `/api` and `/uploads` to the backend container.
-
-So your frontend never needs to call `http://localhost:5001` directly in production.
-
-## Ports and URLs
-
-- Dev (`docker-compose.dev.yml`): frontend `http://localhost:5111`, backend `http://localhost:5001`
-- Default (`docker-compose.yml`): frontend `http://localhost:5111`, backend `http://localhost:5001`
-- Prod-like (`docker-compose.prod.yml`): frontend `http://localhost:8050`, backend is internal-only (reachable via `http://localhost:8050/api/...` through Nginx)
-- MongoDB: not exposed on your host (Docker internal network only)
-
-## Persistence
-
-- MongoDB data is stored in a Docker volume: `mongo_data` -> `/data/db`
-- File uploads are stored on the host: `./backend/uploads` is mounted to `/app/uploads`
-
-## Common Troubleshooting
-
-- Frontend cannot call the backend
-  - Locally it is usually fine.
-  - For real deployment, the frontend should not hardcode `localhost` (users are not running your backend on their own machine). A reverse proxy setup (Nginx) is the normal solution.
-
-- Backend looks "down" in prod-like mode
-  - In `docker-compose.prod.yml` the backend does not publish port 5001 to your host. That is expected.
-  - Test through the reverse proxy instead: `http://localhost:8050/api/...` or `http://localhost:8050/health`.
-
-- MongoDB connection errors
-  - Inside Docker, the backend must connect to `mongodb://mongo:27017/cms`.
-  - `/health` starts responding as soon as the backend starts and includes a `database` field (`starting`, `connected`, `disconnected`, or `error`), so slow MongoDB startup is easier to diagnose.
-
-- Dev proxy target in Docker
-  - In `docker-compose.dev.yml`, Vite uses `VITE_DEV_PROXY_TARGET=http://backend:5001` so `/api` works inside the Docker network.
-
-- Seed admin/teacher/student users
-  - Set `MONGODB_URI` in `backend/.env` (local Mongo or Atlas).
-  - Run: `npm.cmd --prefix backend run seed:users`
-  - For a reliable thesis demo reset, run: `npm.cmd --prefix backend run seed:demo`
-  - Default accounts: `admin@gmail.com`, `teacher@gmail.com`, `student@gmail.com` (passwords are in `backend/.env.example` seed section).
-
-## Security Notes
-
-- Do not commit real secrets. Keep them in `backend/.env` (git ignores it).
-- MongoDB is internal-only, but it currently has no username/password auth. Before real production deployment, enable MongoDB authentication.
+| :--- | :--- | :--- |
+| **System Admin** | `admin@tuhmawbi.edu.mm` | `ChangeMeAdmin123!` |
+| **Teacher (Daw Myat Thuzar)** | `myatthuzar@tuhmawbi.edu.mm` | `ChangeMeTeacher123!` |
+| **Teacher (Lecturer)** | `teacher@tuhmawbi.edu.mm` | `ChangeMeTeacher123!` |
+| **Student (Ye Yint Lin)** | `yeyintlin@tuhmawbi.edu.mm` | `ChangeMeStudent123!` |
+| **Student (Jane Smith)** | `student@tuhmawbi.edu.mm` | `ChangeMeStudent123!` |
+| **Student (Robert Chen)** | `robert@tuhmawbi.edu.mm` | `ChangeMeStudent123!` |

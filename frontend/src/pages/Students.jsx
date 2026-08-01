@@ -8,8 +8,8 @@ import './Students.css';
 const DEFAULT_ACADEMIC_CONFIG = {
     maxYear: 6,
     departments: [
-        { name: 'Mechatronics', code: 'MC', active: true },
-        { name: 'Civil', code: 'C', active: true },
+        { name: 'Mechatronics Engineering', code: 'MC', active: true },
+        { name: 'Civil Engineering', code: 'C', active: true },
         { name: 'Computer Science', code: 'CS', active: true },
     ],
 };

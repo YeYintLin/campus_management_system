@@ -9,6 +9,7 @@ const Assignments = () => {
     const canManageAssignments = user?.role === 'Admin' || user?.role === 'Teacher';
 
     const [assignments, setAssignments] = useState([]);
+    const [courses, setCourses] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentAssignment, setCurrentAssignment] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -18,7 +19,17 @@ const Assignments = () => {
 
     useEffect(() => {
         fetchAssignments();
+        fetchCourses();
     }, []);
+
+    const fetchCourses = async () => {
+        try {
+            const { data } = await apiClient.get('/courses');
+            setCourses(data);
+        } catch (err) {
+            console.error('Failed to fetch courses:', err);
+        }
+    };
 
     const fetchAssignments = async () => {
         setLoading(true);
@@ -119,12 +130,13 @@ const Assignments = () => {
                     assignments.map(assignment => {
                         const dueDate = new Date(assignment.dueDate);
                         const isOverdue = dueDate < new Date();
+                        const courseCode = typeof assignment.course === 'object' ? assignment.course?.code : assignment.course;
                         
                         return (
                             <div key={assignment._id} className="assignment-card glass-panel hover-glow">
                                 <div className="assignment-card-header">
                                     <div className="assignment-course">
-                                        <span className="course-code">{assignment.course}</span>
+                                        <span className="course-code">{courseCode}</span>
                                     </div>
                                     <div className="assignment-actions">
                                         {canManageAssignments && (
@@ -175,7 +187,20 @@ const Assignments = () => {
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Course Code</label>
-                                    <input required type="text" name="course" value={formData.course} onChange={handleChange} className="form-input" placeholder="e.g. CS101" />
+                                    <select
+                                        required
+                                        name="course"
+                                        value={formData.course}
+                                        onChange={handleChange}
+                                        className="form-input"
+                                    >
+                                        <option value="">Select Course</option>
+                                        {courses.map(c => (
+                                            <option key={c._id} value={c._id}>
+                                                {c.code} - {c.name}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Due Date</label>

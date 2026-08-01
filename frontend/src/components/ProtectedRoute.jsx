@@ -3,6 +3,9 @@ import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import Navbar from './Navbar';
 import TopNavBar from './TopNavBar';
+import AIChatWidget from './AIChatWidget';
+import MobileBottomNav from './MobileBottomNav';
+import PWAInstallPrompt from './PWAInstallPrompt';
 
 const ProtectedRoute = ({ allowedRoles }) => {
     const { user, loading } = useContext(AuthContext);
@@ -26,6 +29,9 @@ const ProtectedRoute = ({ allowedRoles }) => {
                 <TopNavBar />
                 <Outlet />
             </div>
+            <MobileBottomNav />
+            <AIChatWidget />
+            <PWAInstallPrompt />
         </>
     );
 };

@@ -49,7 +49,7 @@ apiClient.interceptors.response.use(
     // Avoid treating login/register credential failures as "session expired".
     const isAuthAttempt = typeof url === 'string' && (url.includes('/auth/login') || url.includes('/auth/register'));
 
-    if (!isAuthAttempt && (status === 401 || status === 403)) {
+    if (!isAuthAttempt && status === 401) {
       try {
         localStorage.removeItem('userInfo');
       } catch {

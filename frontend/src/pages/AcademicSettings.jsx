@@ -1,14 +1,14 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import { Plus, Save, Trash2, Sliders, AlertTriangle } from 'lucide-react';
 import './AcademicSettings.css';
 
 const clamp = (num, min, max) => Math.max(min, Math.min(max, num));
 
 const AcademicSettings = () => {
     const { user } = useContext(AuthContext);
-    const isAdmin = user?.role === 'Admin';
+    const isAdmin = user?.role === 'Admin' || user?.role === 'SuperAdmin' || user?.role === 'AcademicAdmin';
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -17,6 +17,9 @@ const AcademicSettings = () => {
 
     const [maxYear, setMaxYear] = useState(6);
     const [departments, setDepartments] = useState([]);
+    const [atRiskAttendanceThreshold, setAtRiskAttendanceThreshold] = useState(75);
+    const [atRiskFailingThreshold, setAtRiskFailingThreshold] = useState(2);
+    const [passMarkPercent, setPassMarkPercent] = useState(40);
 
     useEffect(() => {
         if (!isAdmin) return;
@@ -27,6 +30,9 @@ const AcademicSettings = () => {
                 const { data } = await apiClient.get('/academic-config');
                 setMaxYear(data?.maxYear ?? 6);
                 setDepartments(Array.isArray(data?.departments) ? data.departments : []);
+                setAtRiskAttendanceThreshold(data?.atRiskAttendanceThreshold ?? 75);
+                setAtRiskFailingThreshold(data?.atRiskFailingThreshold ?? 2);
+                setPassMarkPercent(data?.passMarkPercent ?? 40);
             } catch (err) {
                 setError(err.response?.data?.message || err.message || 'Failed to load academic settings');
             } finally {
@@ -72,12 +78,18 @@ const AcademicSettings = () => {
                     code: String(d.code || '').trim(),
                     active: d.active !== false,
                 })),
+                atRiskAttendanceThreshold: clamp(parseInt(atRiskAttendanceThreshold, 10) || 75, 0, 100),
+                atRiskFailingThreshold: clamp(parseInt(atRiskFailingThreshold, 10) || 2, 1, 10),
+                passMarkPercent: clamp(parseInt(passMarkPercent, 10) || 40, 0, 100),
             };
             const { data } = await apiClient.put('/academic-config', payload);
             setMaxYear(data?.maxYear ?? payload.maxYear);
             setDepartments(Array.isArray(data?.departments) ? data.departments : payload.departments);
-            setSuccess('Saved!');
-            setTimeout(() => setSuccess(''), 1500);
+            setAtRiskAttendanceThreshold(data?.atRiskAttendanceThreshold ?? payload.atRiskAttendanceThreshold);
+            setAtRiskFailingThreshold(data?.atRiskFailingThreshold ?? payload.atRiskFailingThreshold);
+            setPassMarkPercent(data?.passMarkPercent ?? payload.passMarkPercent);
+            setSuccess('Academic settings saved successfully!');
+            setTimeout(() => setSuccess(''), 2500);
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Failed to save academic settings');
         } finally {
@@ -90,7 +102,7 @@ const AcademicSettings = () => {
             <header className="page-header">
                 <div>
                     <h1>Academic Settings</h1>
-                    <p className="subtitle">Manage departments and year range used for student enrollment numbers.</p>
+                    <p className="subtitle">Configure institutional rules, departments, and dynamic at-risk thresholds.</p>
                 </div>
                 <div className="header-actions">
                     <button type="button" className="btn btn-secondary" onClick={addDepartment} disabled={loading || saving}>
@@ -105,7 +117,7 @@ const AcademicSettings = () => {
             </header>
 
             {error && (
-                <div className="glass-panel empty-state" style={{ marginBottom: '1rem' }}>
+                <div className="glass-panel empty-state" style={{ marginBottom: '1rem', color: '#fb7185' }}>
                     <p>{error}</p>
                 </div>
             )}
@@ -116,9 +128,18 @@ const AcademicSettings = () => {
             )}
 
             <div className="glass-panel academic-settings-card">
-                <div className="settings-row">
+                {/* ── Section: Academic Rules & Thresholds ── */}
+                <div className="departments-header" style={{ marginBottom: '1.2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Sliders size={20} className="text-primary" />
+                        <h3>Academic Rules & At-Risk Thresholds</h3>
+                    </div>
+                    <p className="text-muted">These rules automatically calculate at-risk students on the dashboard.</p>
+                </div>
+
+                <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.2rem', marginBottom: '1.5rem' }}>
                     <div className="form-group">
-                        <label className="form-label">Max Year</label>
+                        <label className="form-label">Max Academic Years</label>
                         <input
                             type="number"
                             className="form-input"
@@ -128,11 +149,55 @@ const AcademicSettings = () => {
                             onChange={(e) => setMaxYear(e.target.value)}
                             disabled={loading || saving}
                         />
+                        <span className="text-muted" style={{ fontSize: '0.75rem', marginTop: '0.3rem', display: 'block' }}>Program length (e.g. 6 years)</span>
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Min. Attendance Threshold (%)</label>
+                        <input
+                            type="number"
+                            className="form-input"
+                            min="0"
+                            max="100"
+                            value={atRiskAttendanceThreshold}
+                            onChange={(e) => setAtRiskAttendanceThreshold(e.target.value)}
+                            disabled={loading || saving}
+                        />
+                        <span className="text-muted" style={{ fontSize: '0.75rem', marginTop: '0.3rem', display: 'block' }}>Below this % flags student as at-risk</span>
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Max Failing Subjects Count</label>
+                        <input
+                            type="number"
+                            className="form-input"
+                            min="1"
+                            max="10"
+                            value={atRiskFailingThreshold}
+                            onChange={(e) => setAtRiskFailingThreshold(e.target.value)}
+                            disabled={loading || saving}
+                        />
+                        <span className="text-muted" style={{ fontSize: '0.75rem', marginTop: '0.3rem', display: 'block' }}>Failing ≥ this many subjects flags student</span>
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Subject Pass Mark (%)</label>
+                        <input
+                            type="number"
+                            className="form-input"
+                            min="0"
+                            max="100"
+                            value={passMarkPercent}
+                            onChange={(e) => setPassMarkPercent(e.target.value)}
+                            disabled={loading || saving}
+                        />
+                        <span className="text-muted" style={{ fontSize: '0.75rem', marginTop: '0.3rem', display: 'block' }}>Score % required to pass a subject</span>
                     </div>
                 </div>
 
                 <div className="settings-divider" />
 
+                {/* ── Section: Departments ── */}
                 <div className="departments-header">
                     <h3>Departments</h3>
                     <p className="text-muted">Code is used in enrollment number (e.g. I-MC-001).</p>

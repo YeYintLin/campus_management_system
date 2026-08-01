@@ -2,7 +2,6 @@ services:
   mongo:
     image: mongo:7
     restart: unless-stopped
-    # Internal-only DB: no host port published. Other services reach it at `mongo:27017`.
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -12,30 +11,112 @@ services:
       retries: 5
       start_period: 15s
 
-  backend:
+  gateway:
     image: node:20-bookworm-slim
     working_dir: /app
     restart: unless-stopped
-    env_file:
-      - ./backend/.env
     environment:
       NODE_ENV: development
       PORT: 5001
-      MONGODB_URI: mongodb://mongo:27017/cms
+      CORE_SERVICE_URL: http://core-service:5002
+      ATTENDANCE_SERVICE_URL: http://attendance-service:5003
+      AI_SERVICE_URL: http://ai-service:5004
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./gateway:/app
+      - gateway_node_modules:/app/node_modules
+    command: ["sh", "-lc", "npm install && npm run dev"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      core-service:
+        condition: service_healthy
+      attendance-service:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+
+  core-service:
+    image: node:20-bookworm-slim
+    working_dir: /app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 5002
+      MONGODB_URI: mongodb://mongo:27017/core_db
+      JWT_SECRET: 2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./services/core:/app
+      - core_node_modules:/app/node_modules
+      - ./services/core/uploads:/app/uploads
+    command: ["sh", "-lc", "npm install && npm run dev"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5002/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  attendance-service:
+    image: node:20-bookworm-slim
+    working_dir: /app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 5003
+      MONGODB_URI: mongodb://mongo:27017/attendance_db
+      JWT_SECRET: 2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792
+      CORE_SERVICE_URL: http://core-service:5002
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "5003:5003"
+    volumes:
+      - ./services/attendance:/app
+      - attendance_node_modules:/app/node_modules
+    command: ["sh", "-lc", "npm install && npm run dev"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5003/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  ai-service:
+    image: node:20-bookworm-slim
+    working_dir: /app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 5004
+      MONGODB_URI: mongodb://mongo:27017/ai_db
+      JWT_SECRET: 2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792
       OLLAMA_API_URL: ${OLLAMA_API_URL:-http://host.docker.internal:11434}
       CHOKIDAR_USEPOLLING: "true"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "5001:5001"
+      - "5004:5004"
     volumes:
-      - ./backend:/app
-      # Keep node_modules inside the container so the bind-mount doesn't hide it.
-      - backend_node_modules:/app/node_modules
-      - ./backend/uploads:/app/uploads
+      - ./services/ai:/app
+      - ai_node_modules:/app/node_modules
     command: ["sh", "-lc", "npm install && npm run dev"]
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5004/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -50,9 +131,8 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: development
-      # Frontend calls `/api/*`. Vite dev server proxies it to the backend.
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
-      VITE_DEV_PROXY_TARGET: ${VITE_DEV_PROXY_TARGET:-http://backend:5001}
+      VITE_DEV_PROXY_TARGET: ${VITE_DEV_PROXY_TARGET:-http://gateway:5001}
       CHOKIDAR_USEPOLLING: "true"
     ports:
       - "5111:5111"
@@ -61,10 +141,13 @@ services:
       - frontend_node_modules:/app/node_modules
     command: ["sh", "-lc", "npm install && npm run dev -- --host 0.0.0.0 --port 5111"]
     depends_on:
-      backend:
+      gateway:
         condition: service_healthy
 
 volumes:
   mongo_data:
-  backend_node_modules:
+  gateway_node_modules:
+  core_node_modules:
+  attendance_node_modules:
+  ai_node_modules:
   frontend_node_modules:

@@ -101,13 +101,6 @@
     gap: 0.75rem;
 }
 
-.user-cell img {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 1px solid var(--surface-border);
-}
-
 .user-info {
     display: flex;
     flex-direction: column;
@@ -121,6 +114,28 @@
 .user-info .email {
     font-size: 0.85rem;
     color: var(--text-muted);
+}
+
+.avatar-initials {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+}
+
+.avatar-initials.modal-avatar {
+    width: 60px;
+    height: 60px;
+    font-size: 1.25rem;
 }
 
 .role-badge {
@@ -183,24 +198,18 @@
 .user-profile-summary {
     display: flex;
     align-items: center;
-    gap: 2rem;
-    padding: 1.5rem;
+    gap: 1.5rem;
+    padding: 1.25rem;
     background: rgba(255, 255, 255, 0.03);
     border-radius: 12px;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.user-profile-summary img {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    border: 3px solid var(--surface-border);
-}
-
-.user-profile-summary h3 { margin: 0 0 0.5rem 0; }
+.user-profile-summary h3 { margin: 0 0 0.25rem 0; font-size: 1.1rem; }
 .user-profile-summary p { 
-    margin: 0.25rem 0; 
-    font-size: 0.9rem; 
+    margin: 0.2rem 0; 
+    font-size: 0.85rem; 
     color: var(--text-secondary);
     display: flex;
     align-items: center;
@@ -233,15 +242,102 @@
 }
 
 .alert-box {
-    margin-top: 2rem;
-    padding: 1rem;
+    margin-top: 1.5rem;
+    padding: 0.85rem 1rem;
     background: rgba(245, 158, 11, 0.05);
     border: 1px solid rgba(245, 158, 11, 0.2);
     border-radius: 8px;
     color: #f59e0b;
     display: flex;
-    gap: 1rem;
+    align-items: center;
+    gap: 0.75rem;
     font-size: 0.85rem;
+}
+
+/* Floating Modal Overlay & Content */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 1.5rem;
+}
+
+.modal-content {
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 16px;
+    background: rgba(22, 27, 34, 0.95);
+    border: 1px solid var(--surface-border);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+    animation: modalFadeIn 0.25s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-main);
+}
+
+.modal-subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.35rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--surface-border);
+    background: rgba(0, 0, 0, 0.25);
 }
 
 @media (max-width: 1024px) {

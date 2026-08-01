@@ -172,6 +172,37 @@
   transform: translateY(-1px);
 }
 
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper .form-input {
+  width: 100%;
+  padding-right: 2.8rem;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  color: rgba(226, 232, 240, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border-radius: 8px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.password-toggle-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .auth-links {
   text-align: right;
   margin: -0.4rem 0 1.4rem;

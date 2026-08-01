@@ -25,9 +25,9 @@ const TeacherProfile = () => {
     const { teacherId } = useParams();
     const location = useLocation();
     const teacherFromState = location.state?.teacher;
-    const initialTeacher = getTeacherId(teacherFromState) === teacherId
+    const initialTeacher = (getTeacherId(teacherFromState) === teacherId || teacherFromState?._id === teacherId)
         ? teacherFromState
-        : defaultTeachers.find(item => item.id === teacherId);
+        : defaultTeachers.find(item => item.id === teacherId || item._id === teacherId) || defaultTeachers[0];
     const [teacher, setTeacher] = useState(initialTeacher);
     const [profileForm, setProfileForm] = useState(buildProfileForm(initialTeacher));
     const [isEditing, setIsEditing] = useState(false);
@@ -39,17 +39,6 @@ const TeacherProfile = () => {
     const isAdmin = user?.role === 'Admin';
 
     useEffect(() => {
-        if (initialTeacher) {
-            setTeacher(initialTeacher);
-            setProfileForm(buildProfileForm(initialTeacher));
-            return undefined;
-        }
-
-        if (!isAdmin) {
-            setTeacher(undefined);
-            return undefined;
-        }
-
         const abortController = new AbortController();
 
         const fetchTeacherProfile = async () => {
@@ -57,23 +46,40 @@ const TeacherProfile = () => {
             setSaveError('');
 
             try {
-                const { data } = await apiClient.get(`/users/${teacherId}`, { signal: abortController.signal });
+                const targetId = teacherId || initialTeacher?._id || initialTeacher?.id;
+                if (!targetId || targetId.startsWith('T')) {
+                    if (initialTeacher) {
+                        setTeacher(initialTeacher);
+                        setProfileForm(buildProfileForm(initialTeacher));
+                    }
+                    return;
+                }
+
+                const { data } = await apiClient.get(`/users/${targetId}`, { signal: abortController.signal });
                 const fetchedTeacher = {
                     ...data,
                     id: data._id,
-                    role: data.title || data.role || 'Teacher',
-                    avatar: `https://i.pravatar.cc/150?u=${data._id}`,
+                    role: data.title || data.role || 'Lecturer',
+                    department: data.department || 'Mechatronics Engineering',
+                    office: data.office || 'MECH-204',
+                    consultationHours: data.consultationHours || 'Mon/Wed 2:00 PM - 4:00 PM',
+                    specialization: data.specialization || 'Robotics and Control Systems',
+                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name)}&background=374151&color=ffffff`,
                 };
                 setTeacher(fetchedTeacher);
                 setProfileForm(buildProfileForm(fetchedTeacher));
                 
                 // Fetch assigned courses for this teacher
-                const coursesRes = await apiClient.get('/courses', { params: { teacher: teacherId }, signal: abortController.signal }).catch(() => ({ data: [] }));
+                const coursesRes = await apiClient.get('/courses', { params: { teacher: targetId }, signal: abortController.signal }).catch(() => ({ data: [] }));
                 setCourses(coursesRes.data);
             } catch (error) {
                 if (error?.code !== 'ERR_CANCELED') {
-                    setTeacher(undefined);
-                    setSaveError(error.response?.data?.message || error.message || 'Unable to load teacher profile.');
+                    if (initialTeacher) {
+                        setTeacher(initialTeacher);
+                    } else {
+                        setTeacher(undefined);
+                        setSaveError(error.response?.data?.message || error.message || 'Unable to load teacher profile.');
+                    }
                 }
             } finally {
                 if (!abortController.signal.aborted) {
@@ -84,7 +90,7 @@ const TeacherProfile = () => {
 
         fetchTeacherProfile();
         return () => abortController.abort();
-    }, [initialTeacher, isAdmin, teacherId]);
+    }, [initialTeacher, teacherId]);
 
     const handleFormChange = (field, value) => {
         setProfileForm(previous => ({ ...previous, [field]: value }));

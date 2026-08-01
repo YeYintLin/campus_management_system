@@ -2,7 +2,6 @@ services:
   mongo:
     image: mongo:7
     restart: unless-stopped
-    # Internal-only DB: no host port published. Other services reach it at `mongo:27017`.
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -12,25 +11,45 @@ services:
       retries: 5
       start_period: 15s
 
-  backend:
+  gateway:
     build:
-      context: ./backend
+      context: ./gateway
     restart: unless-stopped
-    env_file:
-      - ./backend/.env
     environment:
       PORT: 5001
-      MONGODB_URI: mongodb://mongo:27017/cms
-      OLLAMA_API_URL: ${OLLAMA_API_URL:-http://host.docker.internal:11434}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    # In production, backend should be internal-only and reached via the frontend reverse proxy (/api).
+      CORE_SERVICE_URL: http://core-service:5002
+      ATTENDANCE_SERVICE_URL: http://attendance-service:5003
+      AI_SERVICE_URL: http://ai-service:5004
     expose:
       - "5001"
-    volumes:
-      - ./backend/uploads:/app/uploads
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      core-service:
+        condition: service_healthy
+      attendance-service:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+
+  core-service:
+    build:
+      context: ./services/core
+    restart: unless-stopped
+    environment:
+      PORT: 5002
+      MONGODB_URI: mongodb://mongo:27017/core_db
+      JWT_SECRET: 2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792
+    expose:
+      - "5002"
+    volumes:
+      - ./services/core/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5002/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -39,18 +58,88 @@ services:
       mongo:
         condition: service_healthy
 
+  attendance-service:
+    build:
+      context: ./services/attendance
+    restart: unless-stopped
+    environment:
+      PORT: 5003
+      MONGODB_URI: mongodb://mongo:27017/attendance_db
+      JWT_SECRET: 2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792
+      CORE_SERVICE_URL: http://core-service:5002
+    expose:
+      - "5003"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5003/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  ai-service:
+    build:
+      context: ./services/ai
+    restart: unless-stopped
+    environment:
+      PORT: 5004
+      MONGODB_URI: mongodb://mongo:27017/ai_db
+      JWT_SECRET: 2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792
+      OLLAMA_API_URL: ${OLLAMA_API_URL:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    expose:
+      - "5004"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5004/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  seed-users-prod:
+    build:
+      context: ./services/core
+    profiles: ["seed-prod"]
+    restart: "no"
+    environment:
+      NODE_ENV: development
+      PORT: 5002
+      MONGODB_URI: mongodb://mongo:27017/core_db
+    depends_on:
+      mongo:
+        condition: service_healthy
+    command: ["npm", "run", "seed:users"]
+
+  seed-demo-prod:
+    build:
+      context: ./services/core
+    profiles: ["demo-prod"]
+    restart: "no"
+    environment:
+      NODE_ENV: development
+      PORT: 5002
+      MONGODB_URI: mongodb://mongo:27017/core_db
+    depends_on:
+      mongo:
+        condition: service_healthy
+    command: ["npm", "run", "seed:demo"]
+
   frontend:
     build:
       context: ./frontend
       args:
-        # Relative base works locally and in production (Nginx proxies `/api` to backend).
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     restart: unless-stopped
     ports:
-      # Requested prod port is 8050. You can override with FRONTEND_PORT=<port> if needed.
       - "${FRONTEND_PORT:-8050}:80"
     depends_on:
-      backend:
+      gateway:
         condition: service_healthy
 
 volumes:

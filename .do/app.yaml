@@ -1,0 +1,88 @@
+name: cms-backend
+region: sgp
+services:
+  - name: gateway
+    dockerfile_path: gateway/Dockerfile
+    source_dir: gateway
+    http_port: 5001
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: PORT
+        value: "5001"
+      - key: CORE_SERVICE_URL
+        value: "http://${core-service.PRIVATE_DOMAIN}:5002"
+      - key: ATTENDANCE_SERVICE_URL
+        value: "http://${attendance-service.PRIVATE_DOMAIN}:5003"
+      - key: AI_SERVICE_URL
+        value: "http://${ai-service.PRIVATE_DOMAIN}:5004"
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 15
+      period_seconds: 10
+
+  - name: core-service
+    dockerfile_path: services/core/Dockerfile
+    source_dir: services/core
+    http_port: 5002
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: PORT
+        value: "5002"
+      - key: MONGODB_URI
+        type: SECRET
+        value: "${MONGODB_URI_CORE}"
+      - key: JWT_SECRET
+        type: SECRET
+        value: "${JWT_SECRET}"
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 15
+      period_seconds: 10
+
+  - name: attendance-service
+    dockerfile_path: services/attendance/Dockerfile
+    source_dir: services/attendance
+    http_port: 5003
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: PORT
+        value: "5003"
+      - key: MONGODB_URI
+        type: SECRET
+        value: "${MONGODB_URI_ATTENDANCE}"
+      - key: JWT_SECRET
+        type: SECRET
+        value: "${JWT_SECRET}"
+      - key: CORE_SERVICE_URL
+        value: "http://${core-service.PRIVATE_DOMAIN}:5002"
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 15
+      period_seconds: 10
+
+  - name: ai-service
+    dockerfile_path: services/ai/Dockerfile
+    source_dir: services/ai
+    http_port: 5004
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: PORT
+        value: "5004"
+      - key: MONGODB_URI
+        type: SECRET
+        value: "${MONGODB_URI_AI}"
+      - key: JWT_SECRET
+        type: SECRET
+        value: "${JWT_SECRET}"
+      - key: OLLAMA_API_URL
+        value: "${OLLAMA_NGROK_URL}"
+      - key: OLLAMA_MODEL
+        value: "qwen2.5-coder:7b"
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 15
+      period_seconds: 10

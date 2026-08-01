@@ -377,3 +377,9 @@ h3 {
     padding: 0 var(--content-pad-x) 1.2rem;
   }
 }
+
+@media (max-width: 768px) {
+  .content-wrapper {
+    padding: 0 1rem calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}
