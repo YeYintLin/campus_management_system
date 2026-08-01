@@ -38,18 +38,19 @@ const StudentDashboard = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const [statsRes, examsRes, gradesRes, attendanceRes, notifRes] = await Promise.all([
+                const [statsRes, examsRes, gradesRes, attendanceRes, notifRes] = await Promise.allSettled([
                     apiClient.get('/dashboard/stats'),
                     apiClient.get('/exams'),
                     apiClient.get('/grades', { params: { student: studentId } }),
                     apiClient.get('/attendance', { params: { student: studentId } }),
                     apiClient.get('/notifications'),
                 ]);
-                setStats(statsRes.data);
-                setExams(examsRes.data);
-                setGrades(gradesRes.data);
-                setAttendance(attendanceRes.data);
-                setNotifications(Array.isArray(notifRes.data) ? notifRes.data.slice(0, 5) : []);
+
+                if (statsRes.status === 'fulfilled') setStats(statsRes.value.data);
+                if (examsRes.status === 'fulfilled') setExams(Array.isArray(examsRes.value.data) ? examsRes.value.data : []);
+                if (gradesRes.status === 'fulfilled') setGrades(Array.isArray(gradesRes.value.data) ? gradesRes.value.data : []);
+                if (attendanceRes.status === 'fulfilled') setAttendance(Array.isArray(attendanceRes.value.data) ? attendanceRes.value.data : []);
+                if (notifRes.status === 'fulfilled') setNotifications(Array.isArray(notifRes.value.data) ? notifRes.value.data.slice(0, 5) : []);
             } catch (err) {
                 console.error('Failed to fetch student dashboard data:', err);
             } finally {

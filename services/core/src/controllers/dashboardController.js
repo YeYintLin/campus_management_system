@@ -209,10 +209,11 @@ const getAtRiskStudents = async (req, res) => {
 const getDashboardStats = async (req, res) => {
     try {
         const { role, _id: userId } = req.user;
+        const roleNorm = (role || '').toLowerCase().trim();
 
         const stats = {};
 
-        if (role === 'Admin' || role === 'SuperAdmin' || role === 'AcademicAdmin') {
+        if (roleNorm === 'admin' || roleNorm === 'superadmin' || roleNorm === 'academicadmin') {
             // ── Admin stats ──
             const [studentCount, courseCount, students, notifications] = await Promise.all([
                 Student.countDocuments({ status: 'Active' }),
@@ -253,15 +254,17 @@ const getDashboardStats = async (req, res) => {
             stats.notificationsSentToday = notificationsSentToday;
             stats.recentNotifications = notifications;
 
-        } else if (role === 'Teacher') {
+        } else if (roleNorm === 'teacher') {
             // ── Teacher stats ──
             const myCourses = await Course.find({ teacher: userId });
 
             // Deduplicate enrolled students
             const myStudentIds = new Set();
             for (const course of myCourses) {
-                for (const sid of course.students) {
-                    myStudentIds.add(sid.toString());
+                if (Array.isArray(course.students)) {
+                    for (const sid of course.students) {
+                        if (sid) myStudentIds.add(sid.toString());
+                    }
                 }
             }
 
@@ -293,7 +296,7 @@ const getDashboardStats = async (req, res) => {
             let pendingGrading = 0;
             for (const course of myCourses) {
                 const gradeCount = await Grade.countDocuments({ course: course._id });
-                if (gradeCount === 0 && course.students.length > 0) {
+                if (gradeCount === 0 && Array.isArray(course.students) && course.students.length > 0) {
                     pendingGrading++;
                 }
             }
@@ -303,7 +306,7 @@ const getDashboardStats = async (req, res) => {
             stats.pendingGrading = pendingGrading;
             stats.todaySchedule = scheduleWithNames;
 
-        } else if (role === 'Student') {
+        } else {
             // ── Student stats ──
             const [courses, grades, notifications] = await Promise.all([
                 Course.find({ students: userId }),
@@ -314,25 +317,31 @@ const getDashboardStats = async (req, res) => {
             ]);
 
             // Calculate GPA
-            const totalPoints = grades.reduce((acc, g) => acc + ((g.score || 0) / (g.maxScore || 100) * 4), 0);
-            const gpa = grades.length > 0 ? (totalPoints / grades.length).toFixed(2) : null;
+            const validGrades = Array.isArray(grades) ? grades : [];
+            const totalPoints = validGrades.reduce((acc, g) => acc + (((g?.score || 0) / (g?.maxScore || 100)) * 4), 0);
+            const gpa = validGrades.length > 0 ? (totalPoints / validGrades.length).toFixed(2) : null;
 
-            // Count assignments due (simplified — courses student hasn't been graded in yet)
-            const gradedCourseIds = new Set(grades.map(g => g.course?._id?.toString()));
-            const assignmentsDue = courses.filter(c => !gradedCourseIds.has(c._id.toString())).length;
+            // Count assignments due
+            const gradedCourseIds = new Set(
+                validGrades
+                    .map(g => (g.course?._id ? g.course._id.toString() : g.course ? g.course.toString() : null))
+                    .filter(Boolean)
+            );
+            const validCourses = Array.isArray(courses) ? courses : [];
+            const assignmentsDue = validCourses.filter(c => c && c._id && !gradedCourseIds.has(c._id.toString())).length;
 
-            stats.activeCourses = courses.length;
+            stats.activeCourses = validCourses.length;
             stats.gpa = gpa;
             stats.assignmentsDue = assignmentsDue;
-            stats.latestGrades = grades.slice(0, 5).map(g => ({
-                courseCode: g.course?.code,
-                courseName: g.course?.name,
-                assessmentType: g.assessmentType,
-                score: g.score,
-                maxScore: g.maxScore,
-                percent: g.maxScore > 0 ? Math.round((g.score / g.maxScore) * 100) : 0,
+            stats.latestGrades = validGrades.slice(0, 5).map(g => ({
+                courseCode: g.course?.code || 'N/A',
+                courseName: g.course?.name || 'Subject',
+                assessmentType: g.assessmentType || 'Assessment',
+                score: g.score || 0,
+                maxScore: g.maxScore || 100,
+                percent: (g.maxScore || 100) > 0 ? Math.round(((g.score || 0) / (g.maxScore || 100)) * 100) : 0,
             }));
-            stats.recentNotifications = notifications;
+            stats.recentNotifications = Array.isArray(notifications) ? notifications : [];
         }
 
         stats.role = role;
