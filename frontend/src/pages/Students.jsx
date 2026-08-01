@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
 import { X, Settings, Save } from 'lucide-react';
+import { getNormalizedUserYear } from '../utils/userYear';
 import './Students.css';
 
 const DEFAULT_ACADEMIC_CONFIG = {
@@ -77,10 +78,12 @@ const getAvatarUrl = (name, id) => {
 const Students = () => {
     const { user } = useContext(AuthContext);
     const isAdmin = user?.role === 'Admin';
+    const isStudent = user?.role === 'Student';
+    const studentYear = getNormalizedUserYear(user);
 
     const [students, setStudents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedYear, setSelectedYear] = useState('All');
+    const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
     const [manageStudent, setManageStudent] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -155,7 +158,8 @@ const Students = () => {
     const filteredStudents = enhancedStudents.filter(student => {
         const fullText = `${student.displayName} ${student.user?.email || ''} ${student.enrollmentNumber || ''}`.toLowerCase();
         const matchesSearch = fullText.includes(searchTerm.toLowerCase());
-        const matchesYear = selectedYear === 'All' || student.yearLabel === selectedYear;
+        const targetYear = isStudent ? studentYear : selectedYear;
+        const matchesYear = targetYear === 'All' || student.yearLabel === targetYear;
         return matchesSearch && matchesYear;
     });
 
@@ -334,17 +338,19 @@ const Students = () => {
                 </div>
             </header>
 
-            <div className="year-filter-bar glass-panel">
-                {years.map(year => (
-                    <button
-                        key={year}
-                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                        onClick={() => setSelectedYear(year)}
-                    >
-                        {year}
-                    </button>
-                ))}
-            </div>
+            {!isStudent && (
+                <div className="year-filter-bar glass-panel">
+                    {years.map(year => (
+                        <button
+                            key={year}
+                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                            onClick={() => setSelectedYear(year)}
+                        >
+                            {year}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {error && (
                 <div className="glass-panel empty-state">

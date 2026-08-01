@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
 import { X, Shield, UserCircle, Settings, UserCheck, UserPlus } from 'lucide-react';
+import { getNormalizedUserYear } from '../utils/userYear';
 import { defaultTeachers } from '../data/teachers';
 import './Teachers.css';
 
@@ -11,10 +12,12 @@ const getTeacherId = (teacher) => teacher._id || teacher.id;
 const Teachers = () => {
     const { user } = useContext(AuthContext);
     const isAdmin = user?.role === 'Admin';
+    const isStudent = user?.role === 'Student';
+    const studentYear = getNormalizedUserYear(user);
 
     const [teachers, setTeachers] = useState(defaultTeachers);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedYear, setSelectedYear] = useState('All');
+    const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
     const [manageTeacher, setManageTeacher] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [addForm, setAddForm] = useState({ name: '', email: '', password: '', department: '', title: 'Professor' });
@@ -62,7 +65,8 @@ const Teachers = () => {
     const filteredTeachers = teachers.filter(teacher => {
         const matchesSearch = teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             teacher.department.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesYear = selectedYear === 'All' || teacher.year === selectedYear;
+        const targetYear = isStudent ? studentYear : selectedYear;
+        const matchesYear = targetYear === 'All' || teacher.year === targetYear || teacher.year === 'All Years' || teacher.year === 'All';
         return matchesSearch && matchesYear;
     });
 
@@ -110,7 +114,9 @@ const Teachers = () => {
             <header className="page-header">
                 <div>
                     <h1>Faculty Directory</h1>
-                    <p className="subtitle">Manage teaching staff and department heads</p>
+                    <p className="subtitle">
+                        {isStudent ? `Showing ${studentYear} Faculty & Department Staff` : 'Manage teaching staff and department heads'}
+                    </p>
                 </div>
                 <div className="header-actions">
                     <input
@@ -124,17 +130,19 @@ const Teachers = () => {
                 </div>
             </header>
 
-            <div className="year-filter-bar glass-panel">
-                {years.map(year => (
-                    <button
-                        key={year}
-                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                        onClick={() => setSelectedYear(year)}
-                    >
-                        {year}
-                    </button>
-                ))}
-            </div>
+            {!isStudent && (
+                <div className="year-filter-bar glass-panel">
+                    {years.map(year => (
+                        <button
+                            key={year}
+                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                            onClick={() => setSelectedYear(year)}
+                        >
+                            {year}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             <div className="teachers-grid">
                 {filteredTeachers.map(teacher => (
