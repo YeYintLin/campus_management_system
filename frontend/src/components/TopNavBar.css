@@ -233,8 +233,8 @@
     }
 
     .content-topbar {
-        margin: 0.6rem 0.85rem 0.85rem;
-        padding: 0.45rem 1.1rem;
+        margin: 0.45rem 0.85rem 0.65rem;
+        padding: 0.3rem 0.9rem;
         border-radius: 9999px !important;
         background: rgba(12, 21, 40, 0.82) !important;
         backdrop-filter: blur(16px) !important;
@@ -242,10 +242,10 @@
         border: 1px solid rgba(255, 255, 255, 0.14) !important;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
         position: sticky;
-        top: 0.6rem;
+        top: 0.45rem;
         z-index: 90;
-        min-height: 48px;
-        gap: 0.5rem;
+        min-height: 40px;
+        gap: 0.4rem;
     }
 
     :root[data-theme='light'] .content-topbar {
@@ -316,12 +316,12 @@
     .topbar-theme-toggle,
     .topbar-search-toggle,
     .topbar-notif-loader {
-        width: 36px !important;
-        height: 36px !important;
-        min-width: 36px !important;
-        min-height: 36px !important;
-        max-width: 36px !important;
-        max-height: 36px !important;
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+        max-width: 32px !important;
+        max-height: 32px !important;
         aspect-ratio: 1 / 1 !important;
         border-radius: 50% !important;
         display: flex !important;

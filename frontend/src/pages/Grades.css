@@ -792,3 +792,117 @@
   color: var(--text-muted);
   opacity: 0.8;
 }
+
+/* ── Grades Mobile Responsive ── */
+@media (max-width: 768px) {
+    .grades-page {
+        padding: 0.5rem 0 4.5rem;
+    }
+
+    .grades-page .page-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        margin-bottom: 1.2rem;
+    }
+
+    .grades-page .page-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .grades-page .page-header .subtitle {
+        font-size: 0.82rem;
+    }
+
+    .grades-page .header-actions {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .grades-page .search-box {
+        min-width: unset;
+        width: 100%;
+        flex: 1 1 100%;
+    }
+
+    .grades-page .btn-secondary-glass,
+    .grades-page .export-btn-premium {
+        flex: 1;
+        justify-content: center;
+        padding: 0.6rem 0.8rem;
+        font-size: 0.78rem;
+        white-space: nowrap;
+        min-width: 0;
+    }
+
+    .grades-page .year-filter-bar {
+        padding: 0.5rem 0.8rem;
+        margin-bottom: 1rem;
+        gap: 0.5rem;
+    }
+
+    .grades-page .year-tag {
+        padding: 0.4rem 0.9rem;
+        font-size: 0.8rem;
+    }
+
+    .grades-overview-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .gpa-card-premium {
+        padding: 1.2rem;
+    }
+
+    .main-value {
+        font-size: 1.6rem;
+    }
+
+    .stats-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        margin-bottom: 1.2rem;
+    }
+
+    .stats-summary {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .master-grid-wrapper {
+        margin-bottom: 1rem;
+    }
+
+    .panel-header {
+        padding: 1rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .panel-header h2 {
+        font-size: 1rem;
+    }
+
+    .premium-table th,
+    .premium-table td {
+        padding: 0.75rem 0.8rem;
+    }
+
+    .preview-floating-modal {
+        width: 95vw;
+        height: 85vh;
+    }
+
+    .preview-content-scroll {
+        padding: 1rem;
+    }
+
+    .document-paper.side-preview {
+        padding: 1.5rem 1rem;
+        min-height: auto;
+    }
+}
