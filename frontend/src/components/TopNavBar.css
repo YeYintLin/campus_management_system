@@ -254,25 +254,40 @@
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08) !important;
     }
 
-    .topbar-left {
-        gap: 0;
+    .topbar-left-group {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
         flex: 1;
         min-width: 0;
     }
 
+    .topbar-left {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.1rem;
+        min-width: 0;
+    }
+
     .topbar-brand {
-        font-size: 0.62rem;
-        letter-spacing: 0.08em;
-        line-height: 1;
+        font-size: 0.88rem !important;
+        font-weight: 800 !important;
+        color: var(--text-primary) !important;
+        letter-spacing: -0.01em !important;
+        text-transform: none !important;
+        line-height: 1.15;
     }
 
     .topbar-left h2 {
-        font-size: 1.02rem;
-        line-height: 1.25;
+        font-size: 0.74rem !important;
+        font-weight: 600 !important;
+        color: var(--text-muted) !important;
+        line-height: 1.15;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 150px;
+        max-width: 140px;
     }
 
     .topbar-center {

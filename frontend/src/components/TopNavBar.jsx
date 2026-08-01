@@ -129,9 +129,14 @@ const TopNavBar = () => {
 
     return (
         <header className="content-topbar glass-panel">
-            <div className="topbar-left">
-                <span className="topbar-brand">TU Hmawbi CMS</span>
-                <h2>{pageTitle}</h2>
+            <div className="topbar-left-group">
+                <div className="topbar-avatar-badge" title={user?.name || 'User'}>
+                    {(user?.name?.trim()?.charAt(0) || 'U').toUpperCase()}
+                </div>
+                <div className="topbar-left">
+                    <span className="topbar-brand">TU Hmawbi CMS</span>
+                    <h2>{pageTitle}</h2>
+                </div>
             </div>
 
             <div className={`topbar-center ${showMobileSearch ? 'mobile-expanded' : ''}`} ref={searchRef}>
@@ -201,12 +206,7 @@ const TopNavBar = () => {
             </div>
 
             <div className="topbar-right">
-                {/* Circle 1: User Avatar */}
-                <div className="topbar-avatar-badge" title={user?.name || 'User'}>
-                    {(user?.name?.trim()?.charAt(0) || 'U').toUpperCase()}
-                </div>
-
-                {/* Circle 2: Notifications */}
+                {/* Notifications */}
                 <div className="topbar-notif-area">
                     <button
                         type="button"
