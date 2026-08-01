@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Moon, Sun, Search, X } from 'lucide-react';
 import Notifications from './Notifications';
 import { ThemeContext } from '../context/ThemeContext';
+import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
 import './TopNavBar.css';
 
@@ -29,6 +30,7 @@ const getPageTitle = (pathname) => {
 
 const TopNavBar = () => {
     const { theme, toggleTheme } = useContext(ThemeContext);
+    const { user } = useContext(AuthContext);
     const location = useLocation();
     const navigate = useNavigate();
     const pageTitle = getPageTitle(location.pathname);
@@ -199,6 +201,10 @@ const TopNavBar = () => {
             </div>
 
             <div className="topbar-right">
+                <div className="topbar-avatar-badge" title={user?.name || 'User'}>
+                    {(user?.name?.trim()?.charAt(0) || 'U').toUpperCase()}
+                </div>
+
                 <button
                     type="button"
                     className="topbar-search-toggle mobile-only"
