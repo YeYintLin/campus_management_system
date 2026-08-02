@@ -599,6 +599,113 @@ const Grades = () => {
         </div>
     );
 
+    const ImportMarksModal = () => (
+        <div className="preview-modal-overlay animate-fade-in" onClick={() => setShowImportModal(false)}>
+            <div className="import-marks-modal glass-panel" onClick={(e) => e.stopPropagation()}>
+                <div className="preview-panel-header">
+                    <div className="modal-header-title">
+                        <FileSpreadsheet size={22} className="text-primary" />
+                        <h2>Import Marks from Excel Sheet</h2>
+                    </div>
+                    <button className="close-panel-btn" onClick={() => setShowImportModal(false)}>
+                        <X size={18} />
+                    </button>
+                </div>
+
+                <div className="import-modal-body">
+                    <div className="import-step-card glass-panel">
+                        <div className="step-badge">Step 1</div>
+                        <div>
+                            <h4>Download Standard Template</h4>
+                            <p className="sub-text">Download the pre-structured Excel template populated with your active student roster and course codes.</p>
+                            <button className="btn btn-secondary-glass mt-2" onClick={handleDownloadMarksTemplate}>
+                                <Download size={16} /> Download Template (.xlsx)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="import-step-card glass-panel">
+                        <div className="step-badge">Step 2</div>
+                        <div>
+                            <h4>Upload Completed Excel Sheet</h4>
+                            <p className="sub-text">Select your completed `.xlsx` or `.csv` spreadsheet containing student grades.</p>
+                            <div className="file-upload-dropzone mt-2">
+                                <FileUp size={28} className="upload-icon-pulse" />
+                                <label htmlFor="marks-file-input" className="file-upload-label">
+                                    {excelFile ? excelFile.name : 'Choose Excel File (.xlsx, .csv)'}
+                                </label>
+                                <input
+                                    id="marks-file-input"
+                                    type="file"
+                                    accept=".xlsx, .xls, .csv"
+                                    onChange={handleFileUpload}
+                                    style={{ display: 'none' }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {importStatus.error && (
+                        <div className="import-alert error-alert">
+                            <p>{importStatus.error}</p>
+                        </div>
+                    )}
+
+                    {importStatus.success && (
+                        <div className="import-alert success-alert">
+                            <p>{importStatus.success}</p>
+                        </div>
+                    )}
+
+                    {parsedMarks.length > 0 && (
+                        <div className="parsed-preview-section">
+                            <h4>Preview Parsed Marks ({parsedMarks.length} records)</h4>
+                            <div className="parsed-table-scroll">
+                                <table className="premium-table mini-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Student</th>
+                                            <th>Course</th>
+                                            <th>Type</th>
+                                            <th className="text-center">Score</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {parsedMarks.slice(0, 5).map((m, idx) => (
+                                            <tr key={idx}>
+                                                <td>{m.studentName || m.rollNo || m.studentEmail}</td>
+                                                <td><span className="course-code-tag">{m.courseCode}</span></td>
+                                                <td>{m.assessmentType}</td>
+                                                <td className="text-center"><strong>{m.score} / {m.maxScore}</strong></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {parsedMarks.length > 5 && (
+                                    <p className="sub-text mt-1">+ {parsedMarks.length - 5} more records ready for import...</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="import-modal-footer">
+                    <button className="btn btn-secondary-glass" onClick={() => setShowImportModal(false)}>
+                        Cancel
+                    </button>
+                    <button
+                        className="export-btn-premium"
+                        onClick={handleSaveImportedMarks}
+                        disabled={parsedMarks.length === 0 || importStatus.loading}
+                    >
+                        <Check size={18} />
+                        {importStatus.loading ? 'Saving Marks...' : 'Confirm & Save Marks'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
     // Master View for Admins/Teachers
     if ((user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'teacher') && !selectedStudent) {
         const classAvg = studentList.length
@@ -788,6 +895,7 @@ const Grades = () => {
                 )}
 
                 {!isLoading && showPreview && <ExportPreviewPanel />}
+                {showImportModal && <ImportMarksModal />}
             </div>
         );
     }
@@ -933,113 +1041,7 @@ const Grades = () => {
                 </div>
             )}
 
-            {/* Excel Marks Import Modal */}
-            {showImportModal && (
-                <div className="preview-modal-overlay" onClick={() => setShowImportModal(false)}>
-                    <div className="import-marks-modal glass-panel animate-fade-in" onClick={(e) => e.stopPropagation()}>
-                        <div className="preview-panel-header">
-                            <div className="modal-header-title">
-                                <FileSpreadsheet size={22} className="text-primary" />
-                                <h2>Import Marks from Excel Sheet</h2>
-                            </div>
-                            <button className="close-panel-btn" onClick={() => setShowImportModal(false)}>
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <div className="import-modal-body">
-                            <div className="import-step-card glass-panel">
-                                <div className="step-badge">Step 1</div>
-                                <div>
-                                    <h4>Download Standard Template</h4>
-                                    <p className="sub-text">Download the pre-structured Excel template populated with your active student roster and course codes.</p>
-                                    <button className="btn btn-secondary-glass mt-2" onClick={handleDownloadMarksTemplate}>
-                                        <Download size={16} /> Download Template (.xlsx)
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="import-step-card glass-panel">
-                                <div className="step-badge">Step 2</div>
-                                <div>
-                                    <h4>Upload Completed Excel Sheet</h4>
-                                    <p className="sub-text">Select your completed `.xlsx` or `.csv` spreadsheet containing student grades.</p>
-                                    <div className="file-upload-dropzone mt-2">
-                                        <FileUp size={28} className="upload-icon-pulse" />
-                                        <label htmlFor="marks-file-input" className="file-upload-label">
-                                            {excelFile ? excelFile.name : 'Choose Excel File (.xlsx, .csv)'}
-                                        </label>
-                                        <input
-                                            id="marks-file-input"
-                                            type="file"
-                                            accept=".xlsx, .xls, .csv"
-                                            onChange={handleFileUpload}
-                                            style={{ display: 'none' }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {importStatus.error && (
-                                <div className="import-alert error-alert">
-                                    <p>{importStatus.error}</p>
-                                </div>
-                            )}
-
-                            {importStatus.success && (
-                                <div className="import-alert success-alert">
-                                    <p>{importStatus.success}</p>
-                                </div>
-                            )}
-
-                            {parsedMarks.length > 0 && (
-                                <div className="parsed-preview-section">
-                                    <h4>Preview Parsed Marks ({parsedMarks.length} records)</h4>
-                                    <div className="parsed-table-scroll">
-                                        <table className="premium-table mini-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Student</th>
-                                                    <th>Course</th>
-                                                    <th>Type</th>
-                                                    <th className="text-center">Score</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {parsedMarks.slice(0, 5).map((m, idx) => (
-                                                    <tr key={idx}>
-                                                        <td>{m.studentName || m.rollNo || m.studentEmail}</td>
-                                                        <td><span className="course-code-tag">{m.courseCode}</span></td>
-                                                        <td>{m.assessmentType}</td>
-                                                        <td className="text-center"><strong>{m.score} / {m.maxScore}</strong></td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        {parsedMarks.length > 5 && (
-                                            <p className="sub-text mt-1">+ {parsedMarks.length - 5} more records ready for import...</p>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="import-modal-footer">
-                            <button className="btn btn-secondary-glass" onClick={() => setShowImportModal(false)}>
-                                Cancel
-                            </button>
-                            <button
-                                className="export-btn-premium"
-                                onClick={handleSaveImportedMarks}
-                                disabled={parsedMarks.length === 0 || importStatus.loading}
-                            >
-                                <Check size={18} />
-                                {importStatus.loading ? 'Saving Marks...' : 'Confirm & Save Marks'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {showImportModal && <ImportMarksModal />}
         </div>
     );
 };
