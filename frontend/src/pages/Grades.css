@@ -906,3 +906,134 @@
         min-height: auto;
     }
 }
+
+/* ── Import Marks Excel Modal Styles ── */
+.import-marks-modal {
+    width: 90%;
+    max-width: 650px;
+    max-height: 90vh;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+    border: 1px solid var(--surface-border);
+}
+
+.modal-header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.modal-header-title h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.import-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.import-step-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.2rem;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--surface-border);
+}
+
+.step-badge {
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    background: linear-gradient(135deg, var(--primary-color), #4f46e5);
+    color: white;
+    font-weight: 800;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.file-upload-dropzone {
+    border: 2px dashed var(--surface-border);
+    border-radius: var(--radius-md);
+    padding: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.file-upload-dropzone:hover {
+    border-color: var(--primary-color);
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.file-upload-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.upload-icon-pulse {
+    color: var(--primary-color);
+}
+
+.import-alert {
+    padding: 0.8rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.error-alert {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #f87171;
+}
+
+.success-alert {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #34d399;
+}
+
+.parsed-preview-section {
+    margin-top: 0.5rem;
+}
+
+.parsed-preview-section h4 {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.parsed-table-scroll {
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.mini-table th, .mini-table td {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.78rem !important;
+}
+
+.import-modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--surface-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+}

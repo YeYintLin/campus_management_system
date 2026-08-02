@@ -1,10 +1,11 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Award, BookOpen, Download, Printer, TrendingUp, HelpCircle, ChevronLeft, User, Search, Users, FileText, Eye, X } from 'lucide-react';
+import { Award, BookOpen, Download, Printer, TrendingUp, HelpCircle, ChevronLeft, User, Search, Users, FileText, Eye, X, Upload, FileSpreadsheet, Check, FileUp } from 'lucide-react';
 import apiClient from '../api/apiClient';
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType, AlignmentType, TableBorders, TextRun, VerticalAlign } from 'docx';
 import { saveAs } from 'file-saver';
+import * as XLSX from 'xlsx';
 import './Grades.css';
 
 const yearLookup = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
@@ -70,6 +71,117 @@ const Grades = () => {
     const [dataError, setDataError] = useState('');
     const [editingCell, setEditingCell] = useState(null); // { studentId, course }
     const [showPreview, setShowPreview] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [excelFile, setExcelFile] = useState(null);
+    const [parsedMarks, setParsedMarks] = useState([]);
+    const [importStatus, setImportStatus] = useState({ loading: false, error: '', success: '' });
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('import') === 'true' || location.state?.openImport) {
+            setShowImportModal(true);
+        }
+    }, [location.search, location.state]);
+
+    const handleDownloadMarksTemplate = () => {
+        const templateData = [
+            ['Roll No / ID', 'Student Name', 'Student Email', 'Course Code', 'Assessment Type', 'Score', 'Max Score', 'Comments'],
+        ];
+
+        if (studentList.length > 0) {
+            studentList.forEach((s) => {
+                const sampleCourse = courses[0]?.code || 'McE 61011';
+                templateData.push([s.rollNo || s.id, s.name, s.email, sampleCourse, 'Final Exam', '', 100, '']);
+            });
+        } else {
+            templateData.push(['STU-6001', 'Ye Yint Lin', 'studentuser@gmail.com', 'McE 61011', 'Final Exam', 85, 100, 'Sample grade']);
+            templateData.push(['STU-6002', 'Aung Aung', 'aung@gmail.com', 'McE 61011', 'Final Exam', 90, 100, 'Sample grade']);
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(templateData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Student Marks');
+        XLSX.writeFile(wb, `Student_Marks_Import_Template.xlsx`);
+    };
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setExcelFile(file);
+        setImportStatus({ loading: true, error: '', success: '' });
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const buffer = evt.target.result;
+                const workbook = XLSX.read(buffer, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                if (rawData.length < 2) {
+                    setImportStatus({ loading: false, error: 'Excel sheet appears empty or missing rows.', success: '' });
+                    return;
+                }
+
+                const records = [];
+                for (let i = 1; i < rawData.length; i++) {
+                    const row = rawData[i];
+                    if (!row || row.length < 4) continue;
+
+                    const rollNo = String(row[0] || '').trim();
+                    const studentName = String(row[1] || '').trim();
+                    const studentEmail = String(row[2] || '').trim();
+                    const courseCode = String(row[3] || '').trim();
+                    const assessmentType = String(row[4] || 'Final Exam').trim();
+                    const score = Number(row[5]);
+                    const maxScore = Number(row[6] || 100);
+                    const comments = String(row[7] || '').trim();
+
+                    if (!isNaN(score) && (rollNo || studentEmail || studentName) && courseCode) {
+                        records.push({
+                            rollNo,
+                            studentName,
+                            studentEmail,
+                            courseCode,
+                            assessmentType,
+                            score,
+                            maxScore,
+                            comments
+                        });
+                    }
+                }
+
+                if (records.length === 0) {
+                    setImportStatus({ loading: false, error: 'No valid mark records found in Excel sheet. Check column headers & scores.', success: '' });
+                } else {
+                    setParsedMarks(records);
+                    setImportStatus({ loading: false, error: '', success: `Successfully parsed ${records.length} mark records.` });
+                }
+            } catch (err) {
+                console.error('Excel parse error:', err);
+                setImportStatus({ loading: false, error: 'Failed to read Excel file. Please ensure it is a valid .xlsx or .csv file.', success: '' });
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    const handleSaveImportedMarks = async () => {
+        if (parsedMarks.length === 0) return;
+        setImportStatus({ loading: true, error: '', success: '' });
+        try {
+            const { data } = await apiClient.post('/grades/bulk', { grades: parsedMarks });
+            setImportStatus({ loading: false, error: '', success: data.message || 'Marks imported successfully!' });
+            setTimeout(() => {
+                setShowImportModal(false);
+                setParsedMarks([]);
+                setExcelFile(null);
+                window.location.reload();
+            }, 1200);
+        } catch (err) {
+            setImportStatus({ loading: false, error: err.response?.data?.message || 'Failed to save imported marks.', success: '' });
+        }
+    };
 
     const years = gradeYearFilters;
 
@@ -512,6 +624,10 @@ const Grades = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
+                        <button className="btn btn-secondary-glass" onClick={() => setShowImportModal(true)} disabled={isLoading}>
+                            <Upload size={18} />
+                            Import Excel Marks
+                        </button>
                         <button className="btn btn-secondary-glass" onClick={() => setShowPreview(true)} disabled={isLoading}>
                             <Eye size={18} />
                             Preview Export
@@ -813,6 +929,114 @@ const Grades = () => {
                                 })}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Excel Marks Import Modal */}
+            {showImportModal && (
+                <div className="preview-modal-overlay" onClick={() => setShowImportModal(false)}>
+                    <div className="import-marks-modal glass-panel animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                        <div className="preview-panel-header">
+                            <div className="modal-header-title">
+                                <FileSpreadsheet size={22} className="text-primary" />
+                                <h2>Import Marks from Excel Sheet</h2>
+                            </div>
+                            <button className="close-panel-btn" onClick={() => setShowImportModal(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="import-modal-body">
+                            <div className="import-step-card glass-panel">
+                                <div className="step-badge">Step 1</div>
+                                <div>
+                                    <h4>Download Standard Template</h4>
+                                    <p className="sub-text">Download the pre-structured Excel template populated with your active student roster and course codes.</p>
+                                    <button className="btn btn-secondary-glass mt-2" onClick={handleDownloadMarksTemplate}>
+                                        <Download size={16} /> Download Template (.xlsx)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="import-step-card glass-panel">
+                                <div className="step-badge">Step 2</div>
+                                <div>
+                                    <h4>Upload Completed Excel Sheet</h4>
+                                    <p className="sub-text">Select your completed `.xlsx` or `.csv` spreadsheet containing student grades.</p>
+                                    <div className="file-upload-dropzone mt-2">
+                                        <FileUp size={28} className="upload-icon-pulse" />
+                                        <label htmlFor="marks-file-input" className="file-upload-label">
+                                            {excelFile ? excelFile.name : 'Choose Excel File (.xlsx, .csv)'}
+                                        </label>
+                                        <input
+                                            id="marks-file-input"
+                                            type="file"
+                                            accept=".xlsx, .xls, .csv"
+                                            onChange={handleFileUpload}
+                                            style={{ display: 'none' }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {importStatus.error && (
+                                <div className="import-alert error-alert">
+                                    <p>{importStatus.error}</p>
+                                </div>
+                            )}
+
+                            {importStatus.success && (
+                                <div className="import-alert success-alert">
+                                    <p>{importStatus.success}</p>
+                                </div>
+                            )}
+
+                            {parsedMarks.length > 0 && (
+                                <div className="parsed-preview-section">
+                                    <h4>Preview Parsed Marks ({parsedMarks.length} records)</h4>
+                                    <div className="parsed-table-scroll">
+                                        <table className="premium-table mini-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Student</th>
+                                                    <th>Course</th>
+                                                    <th>Type</th>
+                                                    <th className="text-center">Score</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {parsedMarks.slice(0, 5).map((m, idx) => (
+                                                    <tr key={idx}>
+                                                        <td>{m.studentName || m.rollNo || m.studentEmail}</td>
+                                                        <td><span className="course-code-tag">{m.courseCode}</span></td>
+                                                        <td>{m.assessmentType}</td>
+                                                        <td className="text-center"><strong>{m.score} / {m.maxScore}</strong></td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {parsedMarks.length > 5 && (
+                                            <p className="sub-text mt-1">+ {parsedMarks.length - 5} more records ready for import...</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="import-modal-footer">
+                            <button className="btn btn-secondary-glass" onClick={() => setShowImportModal(false)}>
+                                Cancel
+                            </button>
+                            <button
+                                className="export-btn-premium"
+                                onClick={handleSaveImportedMarks}
+                                disabled={parsedMarks.length === 0 || importStatus.loading}
+                            >
+                                <Check size={18} />
+                                {importStatus.loading ? 'Saving Marks...' : 'Confirm & Save Marks'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

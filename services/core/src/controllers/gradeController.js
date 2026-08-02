@@ -123,9 +123,82 @@ const addOrUpdateGrade = async (req, res) => {
     }
 };
 
+// @desc    Bulk add or update grades (Excel import)
+// @route   POST /api/grades/bulk
+// @access  Private (Teacher, Admin)
+const bulkAddOrUpdateGrades = async (req, res) => {
+    try {
+        const User = require('../models/User');
+        const StudentModel = require('../models/Student');
+        const { grades } = req.body;
+
+        if (!Array.isArray(grades) || grades.length === 0) {
+            return res.status(400).json({ message: 'No grade records provided for import' });
+        }
+
+        const results = [];
+        for (const item of grades) {
+            let { courseId, courseCode, studentId, studentEmail, rollNo, assessmentType, score, maxScore, comments } = item;
+            
+            // Resolve Course
+            let courseDoc = null;
+            if (courseId) {
+                courseDoc = await Course.findById(courseId);
+            }
+            if (!courseDoc && courseCode) {
+                courseDoc = await Course.findOne({ code: { $regex: new RegExp(`^${String(courseCode).trim()}$`, 'i') } });
+            }
+            
+            if (!courseDoc) continue;
+
+            // Resolve Student User
+            let userDoc = null;
+            if (studentId) {
+                userDoc = await User.findById(studentId);
+            }
+            if (!userDoc && (rollNo || studentId)) {
+                const sObj = await StudentModel.findOne({ rollNo: String(rollNo || studentId).trim() }).populate('user');
+                if (sObj && sObj.user) userDoc = sObj.user;
+            }
+            if (!userDoc && studentEmail) {
+                userDoc = await User.findOne({ email: { $regex: new RegExp(`^${String(studentEmail).trim()}$`, 'i') } });
+            }
+
+            if (!userDoc) continue;
+
+            let type = assessmentType || 'Final Exam';
+            let numericScore = Number(score);
+            if (isNaN(numericScore)) continue;
+
+            let grade = await Grade.findOne({ course: courseDoc._id, student: userDoc._id, assessmentType: type });
+            if (grade) {
+                grade.score = numericScore;
+                if (maxScore) grade.maxScore = Number(maxScore);
+                if (comments) grade.comments = comments;
+                await grade.save();
+            } else {
+                grade = await Grade.create({
+                    course: courseDoc._id,
+                    student: userDoc._id,
+                    assessmentType: type,
+                    score: numericScore,
+                    maxScore: maxScore || 100,
+                    comments: comments || '',
+                });
+            }
+            results.push(grade);
+        }
+
+        res.status(200).json({ message: `Successfully imported ${results.length} grades`, updatedCount: results.length });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getGrades,
     getStudentGrades,
     getCourseGrades,
     addOrUpdateGrade,
+    bulkAddOrUpdateGrades,
 };

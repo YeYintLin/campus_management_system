@@ -302,7 +302,7 @@ const TeacherDashboard = () => {
 
             {/* ── Quick Actions ── */}
             <div className="quick-actions-bar">
-                <Link to="/grades" className="glass-card quick-action-card">
+                <Link to="/grades?import=true" className="glass-card quick-action-card">
                     <div className="quick-action-icon upload-icon">
                         <Upload size={20} />
                     </div>
