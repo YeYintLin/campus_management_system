@@ -286,3 +286,31 @@
     font-size: 0.86rem;
   }
 }
+
+@keyframes slideInUpMobile {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (max-width: 768px) {
+  .notifications-tray {
+    position: fixed;
+    top: 55px;
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, 0);
+    width: calc(100vw - 2rem);
+    max-width: 360px;
+    z-index: 1000;
+  }
+
+  .notifications-tray.animate-slide-in {
+    animation: slideInUpMobile 180ms ease;
+  }
+}
