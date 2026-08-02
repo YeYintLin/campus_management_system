@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import apiClient from '../api/apiClient';
 import { AuthContext } from '../context/AuthContext';
-import { X } from 'lucide-react';
+import { X, BookOpen, FileText, CheckCircle, Calendar, Award } from 'lucide-react';
 import { getNormalizedUserYear } from '../utils/userYear';
 import './Courses.css';
 
@@ -68,6 +68,7 @@ const Courses = () => {
     const [formData, setFormData] = useState({ ...initialCourseForm });
     const [savingCourse, setSavingCourse] = useState(false);
     const [modalError, setModalError] = useState('');
+    const [selectedSyllabus, setSelectedSyllabus] = useState(null);
 
     const loadCourses = async () => {
         setLoading(true);
@@ -273,7 +274,9 @@ const Courses = () => {
                                 </div>
 
                                 <div className="course-card-footer">
-                                    <button className="btn btn-secondary btn-sm">View Syllabus</button>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => setSelectedSyllabus(course)}>
+                                        View Syllabus
+                                    </button>
                                     {isManageable && (
                                         <button
                                             className="btn btn-primary btn-sm"
@@ -372,6 +375,91 @@ const Courses = () => {
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {/* View Syllabus Modal */}
+            {selectedSyllabus && (
+                <div className="modal-overlay animate-fade-in" onClick={() => setSelectedSyllabus(null)}>
+                    <div className="syllabus-modal glass-panel" onClick={(e) => e.stopPropagation()}>
+                        <div className="syllabus-header">
+                            <div className="syllabus-title-area">
+                                <div className="syllabus-meta-row">
+                                    <span className="course-code-tag">{selectedSyllabus.code}</span>
+                                    <span className="year-badge">{deriveYearTag(selectedSyllabus.code)}</span>
+                                </div>
+                                <h2>{selectedSyllabus.name}</h2>
+                                <p className="subtitle">Instructor: {selectedSyllabus.teacher?.name || 'Faculty Member'} ({selectedSyllabus.teacher?.email || 'TBA'})</p>
+                            </div>
+                            <button className="close-panel-btn" onClick={() => setSelectedSyllabus(null)}><X size={18} /></button>
+                        </div>
+
+                        <div className="syllabus-body">
+                            <div className="syllabus-section">
+                                <h4>Course Overview & Description</h4>
+                                <p className="syllabus-desc">
+                                    {selectedSyllabus.description || 'Comprehensive curriculum covering theoretical foundations, analytical problem-solving, and practical laboratory implementations.'}
+                                </p>
+                            </div>
+
+                            <div className="syllabus-section">
+                                <h4>Grading & Assessment Scheme</h4>
+                                <div className="grading-pills-grid">
+                                    <div className="grading-pill"><span className="pill-label">Final Examination</span><span className="pill-val">40%</span></div>
+                                    <div className="grading-pill"><span className="pill-label">Midterm Exam</span><span className="pill-val">25%</span></div>
+                                    <div className="grading-pill"><span className="pill-label">Lab & Practical Work</span><span className="pill-val">20%</span></div>
+                                    <div className="grading-pill"><span className="pill-label">Quizzes & Assignments</span><span className="pill-val">15%</span></div>
+                                </div>
+                            </div>
+
+                            <div className="syllabus-section">
+                                <h4>16-Week Academic Curriculum</h4>
+                                <div className="modules-timeline">
+                                    <div className="module-item glass-panel">
+                                        <div className="module-week">Weeks 1 – 4</div>
+                                        <div className="module-info">
+                                            <h5>Foundational Theory & Mathematics</h5>
+                                            <p>Core definitions, mathematical modeling, system equations, and initial conditions.</p>
+                                        </div>
+                                    </div>
+                                    <div className="module-item glass-panel">
+                                        <div className="module-week">Weeks 5 – 8</div>
+                                        <div className="module-info">
+                                            <h5>Intermediate Analysis & Laboratory Design</h5>
+                                            <p>Transfer functions, frequency response, system stability, and simulation labs.</p>
+                                        </div>
+                                    </div>
+                                    <div className="module-item glass-panel">
+                                        <div className="module-week">Weeks 9 – 12</div>
+                                        <div className="module-info">
+                                            <h5>Advanced Engineering Applications</h5>
+                                            <p>Digital control, sensor integration, state-space representation, and case studies.</p>
+                                        </div>
+                                    </div>
+                                    <div className="module-item glass-panel">
+                                        <div className="module-week">Weeks 13 – 16</div>
+                                        <div className="module-info">
+                                            <h5>Review, Project & Final Assessment</h5>
+                                            <p>System optimization, team project demonstrations, and comprehensive final evaluation.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="syllabus-section">
+                                <h4>Recommended References</h4>
+                                <ul className="reference-list">
+                                    <li>TU Hmawbi Engineering Department Official Curriculum Guide</li>
+                                    <li>Standard Academic Course Textbook & Lecture Manual</li>
+                                    <li>IEEE & Digital Simulation Guidelines</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div className="syllabus-footer">
+                            <button className="btn btn-secondary-glass" onClick={() => setSelectedSyllabus(null)}>Close</button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
