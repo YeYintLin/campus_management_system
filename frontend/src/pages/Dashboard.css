@@ -82,18 +82,48 @@
 }
 
 .highlight-card {
-  background: linear-gradient(140deg, rgba(var(--primary-rgb), 0.32), rgba(20, 184, 166, 0.24));
-  border-color: rgba(var(--primary-rgb), 0.5);
+  background: linear-gradient(140deg, rgba(var(--primary-rgb), 0.16), rgba(20, 184, 166, 0.18));
+  border: 1px solid rgba(20, 184, 166, 0.35);
 }
 
-.highlight-card h3,
+.highlight-card h3 {
+  font-weight: 800 !important;
+  color: #ffffff;
+}
+
 .highlight-card p {
-  color: #f0fdfa;
+  font-weight: 700 !important;
+  color: #ccfbf1;
 }
 
-.gpa-icon {
-  background: rgba(255, 255, 255, 0.18);
-  color: #f0fdfa;
+.gpa-icon,
+.stat-card .student-gpa-icon,
+.highlight-card .stat-icon {
+  background: linear-gradient(135deg, #0d9488, #0284c7) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35);
+}
+
+:root[data-theme='light'] .highlight-card {
+  background: linear-gradient(140deg, rgba(13, 148, 136, 0.14), rgba(2, 132, 199, 0.12)) !important;
+  border: 1.5px solid rgba(13, 148, 136, 0.38) !important;
+}
+
+:root[data-theme='light'] .highlight-card h3 {
+  color: #0f766e !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .highlight-card p {
+  color: #115e59 !important;
+  font-weight: 700 !important;
+}
+
+:root[data-theme='light'] .highlight-card .stat-icon,
+:root[data-theme='light'] .stat-card .student-gpa-icon {
+  background: linear-gradient(135deg, #0f766e, #0369a1) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(15, 118, 110, 0.35) !important;
 }
 
 .dashboard-content {
