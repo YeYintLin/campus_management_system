@@ -310,8 +310,8 @@ const Attendance = () => {
     }, [isStudent, user._id]);
 
     // Load attendance marking sheet for selected course and date
-    const loadCourseAttendance = useCallback(async (course, date) => {
-        setLoading(true);
+    const loadCourseAttendance = useCallback(async (course, date, silent = false) => {
+        if (!silent) setLoading(true);
         try {
             // Get enrolled students from course object or students list
             const studentsInCourse = course.students || [];
@@ -321,16 +321,17 @@ const Attendance = () => {
             const { data } = await apiClient.get(`/attendance/course/${course._id}?date=${date}`);
             const existingSheet = {};
 
+            // Default all enrolled students to empty (Unsubmitted / No code sent yet)
+            studentsInCourse.forEach(s => {
+                const sId = s._id || s;
+                existingSheet[sId] = '';
+            });
+
+            // Overlay records from DB (students who scanned QR or sent pass code get 'Present')
             if (data && data.length > 0 && data[0].records) {
                 data[0].records.forEach(r => {
                     const studentId = r.student?._id || r.student;
                     if (studentId) existingSheet[studentId] = r.status;
-                });
-            } else {
-                // Default everyone to Present
-                studentsInCourse.forEach(s => {
-                    const sId = s._id || s;
-                    existingSheet[sId] = 'Present';
                 });
             }
 
@@ -338,9 +339,19 @@ const Attendance = () => {
         } catch (err) {
             console.error('Error loading course attendance:', err);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, []);
+
+    // Live polling when a live attendance session is active in marking view
+    useEffect(() => {
+        if (canManageAttendance && view === 'marking' && selectedCourse && activeSession?.code) {
+            const interval = setInterval(() => {
+                loadCourseAttendance(selectedCourse, selectedDate, true);
+            }, 3000);
+            return () => clearInterval(interval);
+        }
+    }, [canManageAttendance, view, selectedCourse, activeSession, selectedDate, loadCourseAttendance]);
 
     const handleCourseSelect = (course) => {
         setSelectedCourse(course);
@@ -359,6 +370,19 @@ const Attendance = () => {
         setAttendanceSheet(prev => ({ ...prev, [studentId]: status }));
     };
 
+    const handleMarkUnsubmittedAbsent = () => {
+        setAttendanceSheet(prev => {
+            const updated = { ...prev };
+            studentRoster.forEach(s => {
+                const sId = s._id || s;
+                if (!updated[sId] || updated[sId] === '') {
+                    updated[sId] = 'Absent';
+                }
+            });
+            return updated;
+        });
+    };
+
     const handleBack = () => {
         setView('courses');
         setSelectedCourse(null);
@@ -371,16 +395,29 @@ const Attendance = () => {
         setMessage('');
 
         try {
-            const recordsPayload = Object.entries(attendanceSheet).map(([studentId, status]) => ({
-                student: studentId,
-                status
-            }));
+            // Build payload: Any student who hasn't submitted code or been marked defaults to 'Absent'
+            const recordsPayload = studentRoster.map(s => {
+                const sId = s._id || s;
+                const currentStatus = attendanceSheet[sId];
+                const finalStatus = currentStatus && currentStatus.trim() !== '' ? currentStatus : 'Absent';
+                return {
+                    student: sId,
+                    status: finalStatus
+                };
+            });
 
             await apiClient.post('/attendance', {
                 course: selectedCourse._id,
                 date: selectedDate,
                 records: recordsPayload
             });
+
+            // Update local sheet state to reflect final saved statuses
+            const updatedSheet = {};
+            recordsPayload.forEach(r => {
+                updatedSheet[r.student] = r.status;
+            });
+            setAttendanceSheet(updatedSheet);
 
             setMessage(`Attendance saved for ${selectedCourse.name} on ${selectedDate}`);
             setTimeout(() => setMessage(''), 4000);
@@ -712,6 +749,15 @@ const Attendance = () => {
                                 onChange={(e) => handleDateChange(e.target.value)}
                             />
                         </div>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={handleMarkUnsubmittedAbsent}
+                            title="Set all unsubmitted students to Absent"
+                            style={{ fontSize: '0.85rem' }}
+                        >
+                            <XCircle size={18} />
+                            <span>Mark Unsubmitted Absent</span>
+                        </button>
                         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                             <Save size={18} />
                             {saving ? 'Saving...' : 'Save Attendance'}
@@ -863,15 +909,18 @@ const Attendance = () => {
                         </div>
                         <div className="attendance-summary">
                             <div className="summary-item">
-                                <span className="label">Present:</span>
+                                <span className="label">Present (Code Sent):</span>
                                 <span className="count text-success">
                                     {Object.values(attendanceSheet).filter(s => s === 'Present').length}
                                 </span>
                             </div>
                             <div className="summary-item">
-                                <span className="label">Late:</span>
+                                <span className="label">Pending (No Code):</span>
                                 <span className="count text-warning" style={{ color: '#eab308' }}>
-                                    {Object.values(attendanceSheet).filter(s => s === 'Late').length}
+                                    {studentRoster.filter(s => {
+                                        const sId = s._id || s;
+                                        return !attendanceSheet[sId] || attendanceSheet[sId] === '';
+                                    }).length}
                                 </span>
                             </div>
                             <div className="summary-item">
@@ -900,7 +949,7 @@ const Attendance = () => {
                                         const sId = student._id || student;
                                         const sName = student.name || 'Student';
                                         const sEmail = student.email || '';
-                                        const currentStatus = attendanceSheet[sId] || 'Present';
+                                        const currentStatus = attendanceSheet[sId] || '';
 
                                         return (
                                             <tr key={sId}>
@@ -912,7 +961,7 @@ const Attendance = () => {
                                                 </td>
                                                 <td className="text-muted font-mono">{sEmail}</td>
                                                 <td>
-                                                    <div className="status-toggles">
+                                                    <div className="status-toggles" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
                                                         <button
                                                             className={`status-btn p-btn ${currentStatus === 'Present' ? 'active' : ''}`}
                                                             onClick={() => handleStatusChange(sId, 'Present')}
@@ -934,6 +983,18 @@ const Attendance = () => {
                                                             <XCircle size={18} />
                                                             <span>Absent</span>
                                                         </button>
+                                                        {(!currentStatus || currentStatus === '') && (
+                                                            <span style={{
+                                                                fontSize: '0.72rem',
+                                                                color: 'var(--text-muted)',
+                                                                background: 'rgba(255,255,255,0.06)',
+                                                                padding: '0.25rem 0.6rem',
+                                                                borderRadius: '6px',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>
+                                                                No Code Sent
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
