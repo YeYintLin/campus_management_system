@@ -180,22 +180,32 @@
 
 .modal-overlay {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  top: 0;
+  left: 272px;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 0.5rem 1rem;
-  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    left: 0;
+    padding: 1rem;
+  }
 }
 
 .modal-content {
   width: 100%;
-  max-height: calc(100vh - 3rem);
+  max-height: 80vh;
   overflow-y: auto;
   border-radius: 16px;
+  margin: auto;
 }
 
 .modal-header,
@@ -246,15 +256,16 @@
 
 /* ── View Syllabus Modal Styles ── */
 .syllabus-modal {
-    width: 90%;
-    max-width: 680px;
-    max-height: 88vh;
+    width: 100%;
+    max-width: 650px;
+    max-height: 82vh;
     border-radius: 20px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);
     border: 1px solid var(--surface-border);
+    margin: auto;
 }
 
 .syllabus-header {
