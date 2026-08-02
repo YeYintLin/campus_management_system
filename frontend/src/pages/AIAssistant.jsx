@@ -4,7 +4,7 @@ import './AIAssistant.css';
 
 const AIAssistant = () => {
     const [messages, setMessages] = useState([
-        { id: 1, text: "Hello! I'm your campus AI assistant. How can I help you today?", sender: 'ai' }
+        { id: 1, text: "Hello! I'm your official TU Hmawbi AI Academic Assistant. Ask me about your average scores, marking schemes, or study materials for your academic year!", sender: 'ai' }
     ]);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -51,10 +51,10 @@ const AIAssistant = () => {
             setMessages(prev => [...prev, aiMsg]);
         } catch (err) {
             console.error('AI Assistant Error:', err);
-            setError("Failed to connect to AI. Please ensure Ollama is running llama3 locally.");
+            setError("Failed to connect to AI. Please ensure Ollama is running locally.");
             const errorMsg = {
                 id: Date.now() + 1,
-                text: "I'm having trouble connecting to my brain right now. Please make sure Ollama is running llama3:latest on your system.",
+                text: "I'm having trouble connecting to my brain right now. Please make sure Ollama is running on your system.",
                 sender: 'ai',
                 isError: true
             };
@@ -69,7 +69,7 @@ const AIAssistant = () => {
             <header className="page-header">
                 <div>
                     <h1>AI Campus Assistant</h1>
-                    <p className="subtitle">Powered by Local LLM (Ollama)</p>
+                    <p className="subtitle">Powered by Context-Aware Local LLM (Ollama)</p>
                 </div>
             </header>
 
@@ -87,7 +87,7 @@ const AIAssistant = () => {
                                 <div className="ai-avatar">AI</div>
                             )}
                             <div className={`message-bubble ${msg.sender}-bubble`}>
-                                <p>{msg.text}</p>
+                                <p style={{ whiteSpace: 'pre-wrap', margin: 0, lineHeight: '1.5' }}>{msg.text}</p>
                             </div>
                         </div>
                     ))}
@@ -107,7 +107,7 @@ const AIAssistant = () => {
                         <input
                             type="text"
                             className="form-input chat-input"
-                            placeholder="Ask me anything..."
+                            placeholder="Ask about average score, marking scheme, thesis files..."
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                         />
