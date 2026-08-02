@@ -190,14 +190,13 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 4.5rem 1.5rem 1.5rem;
+  padding: 1.5rem;
 }
 
 @media (max-width: 768px) {
   .modal-overlay {
-    top: 0;
     left: 0;
-    padding: 4rem 1rem 1rem;
+    padding: 1rem;
   }
 }
 
@@ -206,7 +205,6 @@
   max-height: 80vh;
   overflow-y: auto;
   border-radius: 16px;
-  margin: auto;
 }
 
 .modal-header,
@@ -259,14 +257,13 @@
 .syllabus-modal {
     width: 100%;
     max-width: 650px;
-    max-height: 76vh;
+    max-height: 80vh;
     border-radius: 20px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);
     border: 1px solid var(--surface-border);
-    margin: auto;
 }
 
 .syllabus-header {
