@@ -176,7 +176,7 @@ const Courses = () => {
     });
 
     return (
-        <div className={`courses-page${isModalOpen ? '' : ' animate-fade-in'}`}>
+        <div className={`courses-page${isModalOpen || selectedSyllabus ? '' : ' animate-fade-in'}`}>
             <header className="page-header">
                 <div>
                     <h1>Subjects Directory</h1>
