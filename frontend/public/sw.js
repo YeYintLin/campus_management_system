@@ -52,33 +52,32 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Tier B: API Requests (/api/*) -> Network-Only / Network-First with NO Cache Fallback
+  // Tier B: API Requests (/api/*) -> Network-Only (No SW Interception)
   if (url.pathname.startsWith('/api/') || event.request.method !== 'GET') {
-    return; // Allow browser to perform standard network fetch without SW interception
+    return;
   }
 
-  // Tier A: App Shell Assets -> Cache-First Strategy
+  // Tier A: App Shell & Build Assets -> Network-First with Cache/Index Fallback
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Return cached asset, fetch update in background (stale-while-revalidate for assets)
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open('campus-shell-v1').then((cache) => {
-              cache.put(event.request, networkResponse);
-            });
-          }
-        }).catch(() => {/* ignore background fetch errors */});
-        return cachedResponse;
-      }
-
-      // If not in cache, fetch from network
-      return fetch(event.request).catch(() => {
-        // Fallback for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
+    fetch(event.request)
+      .then((networkResponse) => {
+        // If asset found and status OK, cache copy for offline usage
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open('campus-shell-v1').then((cache) => {
+            cache.put(event.request, responseClone);
+          });
         }
-      });
-    })
+        return networkResponse;
+      })
+      .catch(() => {
+        // If offline or network fails, fallback to cache
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          if (event.request.mode === 'navigate') {
+            return caches.match('/index.html');
+          }
+        });
+      })
   );
 });
