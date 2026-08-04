@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { Edit2, Trash2, X, Calendar, Clock, MapPin, Timer, BookOpen, Plus, LayoutGrid, Users, Upload, CheckCircle, AlertCircle, Camera } from 'lucide-react';
+import { Edit2, Trash2, X, Calendar, Clock, MapPin, Timer, BookOpen, Plus, LayoutGrid, Users, Upload, CheckCircle, AlertCircle, Camera, Sun, Moon } from 'lucide-react';
 import { getNormalizedUserYear } from '../utils/userYear';
 import './Exams.css';
 
@@ -16,13 +16,14 @@ const Exams = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeSeatingExam, setActiveSeatingExam] = useState(null);
     const [seatingViewTab, setSeatingViewTab] = useState('grid'); // 'grid' or 'photo'
+    const [examSessionShift, setExamSessionShift] = useState('morning'); // 'morning' or 'afternoon'
     const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState('');
     const [currentExam, setCurrentExam] = useState(null);
     const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
-        course: '', title: '', date: '', time: '', duration: '', room: '', status: 'Upcoming', year: '1st Year'
+        course: '', title: '', date: '', time: '08:30 AM - 11:30 AM', sessionShift: 'Morning', duration: '3 Hours', room: '', status: 'Upcoming', year: '1st Year'
     });
 
     const fileInputRef = useRef(null);
@@ -87,6 +88,7 @@ const Exams = () => {
                     year: s.year,
                     date: s.date ? new Date(s.date).toLocaleDateString() : 'TBA',
                     time: `${s.startTime || '08:30 AM'} - ${s.endTime || '11:30 AM'}`,
+                    sessionShift: (s.startTime || '').includes('12:') || (s.startTime || '').includes('01:') || (s.startTime || '').includes('02:') ? 'Afternoon' : 'Morning',
                     duration: '3 Hours',
                     room: s.place || 'Hall 3/212-A',
                     seatingPhoto: s.seatingPhoto || '',
@@ -107,6 +109,7 @@ const Exams = () => {
                     year: '6th Year',
                     date: '8/10/2026',
                     time: '08:30 AM - 11:30 AM',
+                    sessionShift: 'Morning',
                     duration: '3 Hours',
                     room: 'Room 1/109',
                     seatProcedure: 'Roll No: VI-EP 1-50, VI-Mech 49-79, VI-MC 1-15',
@@ -120,7 +123,8 @@ const Exams = () => {
                     courseName: 'Humanities & Social Science',
                     year: '6th Year',
                     date: '8/17/2026',
-                    time: '08:30 AM - 11:30 AM',
+                    time: '12:30 PM - 03:30 PM',
+                    sessionShift: 'Afternoon',
                     duration: '3 Hours',
                     room: 'Room 3/212-A',
                     seatProcedure: 'Standard Roll Order (Seats #1-#30)',
@@ -150,8 +154,9 @@ const Exams = () => {
                 course: exam.course || '',
                 title: exam.title || '',
                 date: exam.date || '',
-                time: exam.time || '',
-                duration: exam.duration || '',
+                time: exam.time || '08:30 AM - 11:30 AM',
+                sessionShift: exam.sessionShift || 'Morning',
+                duration: exam.duration || '3 Hours',
                 room: exam.room || '',
                 status: exam.status || 'Upcoming',
                 year: exam.year || '1st Year'
@@ -159,7 +164,7 @@ const Exams = () => {
         } else {
             setCurrentExam(null);
             setFormData({
-                course: '', title: '', date: '', time: '', duration: '2 Hours', room: '', status: 'Upcoming', year: '1st Year'
+                course: '', title: '', date: '', time: '08:30 AM - 11:30 AM', sessionShift: 'Morning', duration: '3 Hours', room: '', status: 'Upcoming', year: '1st Year'
             });
         }
         setIsModalOpen(true);
@@ -357,7 +362,7 @@ const Exams = () => {
                                     </div>
                                     <div className="detail-item">
                                         <Clock size={14} style={{ color: '#818cf8' }} />
-                                        <span><strong>Time:</strong> {exam.time}</span>
+                                        <span><strong>Shift:</strong> {exam.sessionShift === 'Afternoon' ? '🌆 Afternoon (12:30 PM)' : '🌅 Morning (08:30 AM)'}</span>
                                     </div>
                                     <div className="detail-item">
                                         <MapPin size={14} style={{ color: '#f87171' }} />
@@ -372,7 +377,10 @@ const Exams = () => {
 
                             <div className="exam-card-footer" style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 <span className="exam-id" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Invigilator: <strong style={{ color: '#fff' }}>{exam.invigilator || 'Faculty Member'}</strong></span>
-                                <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => setActiveSeatingExam(exam)}>
+                                <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => {
+                                    setActiveSeatingExam(exam);
+                                    setExamSessionShift((exam.sessionShift || 'Morning').toLowerCase());
+                                }}>
                                     <LayoutGrid size={14} />
                                     <span>Seating Plan 🪑</span>
                                 </button>
@@ -390,10 +398,33 @@ const Exams = () => {
                             <div>
                                 <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#fff' }}>Technological University (Hmawbi)</h2>
                                 <p className="modal-subtitle" style={{ margin: '0.2rem 0 0', color: 'var(--text-muted)' }}>
-                                    Official Seating Plan (စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား) — Room 1/109
+                                    Official Seating Plan (စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား) — Room {activeSeatingExam.room || '1/109'}
                                 </p>
                             </div>
                             <button className="close-btn" onClick={() => setActiveSeatingExam(null)}><X size={24} /></button>
+                        </div>
+
+                        {/* MORNING VS AFTERNOON SESSION SHIFT TOGGLE */}
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.65rem 0.85rem', borderRadius: '12px', border: '1px solid var(--surface-border)', marginBottom: '1rem', display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: '600' }}>Exam Shift / Session Time:</div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button
+                                    className={`btn ${examSessionShift === 'morning' ? 'btn-primary' : 'btn-secondary'}`}
+                                    onClick={() => setExamSessionShift('morning')}
+                                    style={{ padding: '0.35rem 0.85rem', fontSize: '0.78rem', borderRadius: '8px' }}
+                                >
+                                    <Sun size={14} style={{ marginRight: '0.3rem' }} />
+                                    <span>Morning Shift (08:30 AM - 11:30 AM)</span>
+                                </button>
+                                <button
+                                    className={`btn ${examSessionShift === 'afternoon' ? 'btn-primary' : 'btn-secondary'}`}
+                                    onClick={() => setExamSessionShift('afternoon')}
+                                    style={{ padding: '0.35rem 0.85rem', fontSize: '0.78rem', borderRadius: '8px' }}
+                                >
+                                    <Moon size={14} style={{ marginRight: '0.3rem' }} />
+                                    <span>Afternoon Shift (12:30 PM - 03:30 PM)</span>
+                                </button>
+                            </div>
                         </div>
 
                         {/* VIEW MODE TABS: GRID VS PAPER PHOTO */}
@@ -417,8 +448,8 @@ const Exams = () => {
                         </div>
 
                         <div style={{ background: 'rgba(99,102,241,0.1)', padding: '0.85rem 1rem', borderRadius: '12px', marginBottom: '1.25rem', border: '1px solid rgba(99,102,241,0.25)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.85rem' }}>
-                            <div>Class: <strong style={{ color: '#fff' }}>VI (Mech, MC, EP)</strong> | Exam: <strong style={{ color: '#4ade80' }}>Mid-Term</strong></div>
-                            <div>Course: <strong style={{ color: '#818cf8' }}>{activeSeatingExam.course} ({activeSeatingExam.title})</strong></div>
+                            <div>Class: <strong style={{ color: '#fff' }}>{activeSeatingExam.year === '1st Year' ? 'I (BE)' : activeSeatingExam.year === '2nd Year' ? 'II (Mech + MC + EP)' : activeSeatingExam.year === '3rd Year' ? 'III (Mech + MC + EP)' : activeSeatingExam.year === '4th Year' ? 'IV (Mech + MC + EP)' : activeSeatingExam.year === '5th Year' ? 'V (Mech + MC + EP)' : 'VI (Mech + MC + EP)'}</strong> | Exam: <strong style={{ color: '#4ade80' }}>{activeSeatingExam.title || 'Mid-Term'}</strong></div>
+                            <div>Shift: <strong style={{ color: '#fbbf24' }}>{examSessionShift === 'afternoon' ? 'Afternoon (12:30 PM - 03:30 PM)' : 'Morning (08:30 AM - 11:30 AM)'}</strong></div>
                         </div>
 
                         {seatingViewTab === 'photo' ? (
@@ -426,7 +457,7 @@ const Exams = () => {
                                 {(activeSeatingExam.seatingPhoto || uploadedPhotoUrl) ? (
                                     <div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                            <span style={{ fontSize: '0.85rem', color: '#4ade80', fontWeight: '600' }}>✓ Official Hand-Written Paper Seating Chart</span>
+                                            <span style={{ fontSize: '0.85rem', color: '#4ade80', fontWeight: '600' }}>✓ Official Hand-Written Paper Seating Chart ({examSessionShift === 'afternoon' ? 'Afternoon' : 'Morning'})</span>
                                             {canManageExams && (
                                                 <label className="btn btn-secondary" style={{ cursor: 'pointer', padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
                                                     <span>Replace Photo</span>
@@ -445,7 +476,7 @@ const Exams = () => {
                                         <Camera size={40} style={{ color: '#818cf8', marginBottom: '0.75rem' }} />
                                         <h3 style={{ margin: '0 0 0.4rem', color: '#fff' }}>No Hand-Written Seating Photo Uploaded Yet</h3>
                                         <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                            Upload a photo of the official hand-written paper seating plan posted on the university notice board.
+                                            Upload a photo of the official hand-written paper seating plan for the {examSessionShift === 'afternoon' ? 'Afternoon' : 'Morning'} shift.
                                         </p>
                                         {canManageExams && (
                                             <label className="btn btn-primary" style={{ cursor: 'pointer', padding: '0.65rem 1.25rem' }}>
@@ -463,10 +494,10 @@ const Exams = () => {
                                 <div style={{ borderBottom: '2px solid rgba(255,255,255,0.2)', paddingBottom: '0.85rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
                                     <div>
                                         <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#38bdf8', fontWeight: '700' }}>နည်းပညာတက္ကသိုလ် (မှော်ဘီ)</h3>
-                                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.9rem', color: '#94a3b8', fontWeight: '600' }}>စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား (Seating Plan Chart)</p>
+                                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.9rem', color: '#94a3b8', fontWeight: '600' }}>စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား ({examSessionShift === 'afternoon' ? 'မွန်းလွဲပိုင်း' : 'နံနက်ပိုင်း'})</p>
                                         <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#cbd5e1', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                                             <span>သင်တန်းအမည်: <strong style={{ color: '#fff' }}>{activeSeatingExam.year === '1st Year' ? 'I (BE)' : activeSeatingExam.year === '2nd Year' ? 'II (Mech + MC + EP)' : activeSeatingExam.year === '3rd Year' ? 'III (Mech + MC + EP)' : activeSeatingExam.year === '4th Year' ? 'IV (Mech + MC + EP)' : activeSeatingExam.year === '5th Year' ? 'V (Mech + MC + EP)' : 'VI (Mech + MC + EP)'}</strong></span>
-                                            <span>စာမေးပွဲအမည်: <strong style={{ color: '#4ade80' }}>{activeSeatingExam.title || 'Mid-Term'}</strong></span>
+                                            <span>အချိန်: <strong style={{ color: '#fbbf24' }}>{examSessionShift === 'afternoon' ? '12:30 PM - 03:30 PM' : '08:30 AM - 11:30 AM'}</strong></span>
                                         </div>
                                     </div>
                                     <div style={{ background: 'rgba(56,189,248,0.15)', padding: '0.4rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.3)', textAlign: 'right' }}>
@@ -484,101 +515,101 @@ const Exams = () => {
                                 {/* HORIZONTAL SCROLL CONTAINER TO PRESERVE EXACT 4-COLUMN PAPER LAYOUT ON MOBILE */}
                                 <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))', gap: '0.75rem', minWidth: '680px' }}>
-                                    {/* COLUMN 1 */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 1</div>
-                                        {[
-                                            ['VI-EP 2', 'VI-Mech 49'],
-                                            ['VI-Mech 50', 'VI-EP 3'],
-                                            ['VI-EP 4', 'VI-Mech 51'],
-                                            ['VI-Mech 52', 'VI-EP 5'],
-                                            ['VI-EP 6', 'VI-Mech 53'],
-                                            ['VI-Mech 54', 'VI-EP 7'],
-                                            ['VI-EP 8', 'VI-Mech 55'],
-                                            ['VI-Mech 56', 'VI-EP 9'],
-                                            ['VI-EP 10', 'VI-Mech 57'],
-                                            ['VI-Mech 58', 'VI-EP 11'],
-                                            ['VI-EP 12', 'VI-Mech 59'],
-                                            ['VI-Mech 61', 'VI-EP 13']
-                                        ].map(([left, right], idx) => (
-                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
-                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
-                                                <div style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                        {/* COLUMN 1 */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                            <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 1</div>
+                                            {[
+                                                ['VI-EP 2', 'VI-Mech 49'],
+                                                ['VI-Mech 50', 'VI-EP 3'],
+                                                ['VI-EP 4', 'VI-Mech 51'],
+                                                ['VI-Mech 52', 'VI-EP 5'],
+                                                ['VI-EP 6', 'VI-Mech 53'],
+                                                ['VI-Mech 54', 'VI-EP 7'],
+                                                ['VI-EP 8', 'VI-Mech 55'],
+                                                ['VI-Mech 56', 'VI-EP 9'],
+                                                ['VI-EP 10', 'VI-Mech 57'],
+                                                ['VI-Mech 58', 'VI-EP 11'],
+                                                ['VI-EP 12', 'VI-Mech 59'],
+                                                ['VI-Mech 61', 'VI-EP 13']
+                                            ].map(([left, right], idx) => (
+                                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
+                                                    <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
+                                                    <div style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                                </div>
+                                            ))}
+                                        </div>
 
-                                    {/* COLUMN 2 */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                                        {[
-                                            ['VI-EP 14', 'VI-Mech 62'],
-                                            ['VI-Mech 63', 'VI-EP 15'],
-                                            ['VI-EP 16', 'VI-Mech 64'],
-                                            ['VI-Mech 65', 'VI-EP 17'],
-                                            ['VI-EP 18', 'VI-Mech 66'],
-                                            ['VI-Mech 67', 'VI-EP 19'],
-                                            ['VI-EP 20', 'VI-Mech 68'],
-                                            ['VI-Mech 69', 'VI-EP 21'],
-                                            ['VI-EP 22', 'VI-Mech 70'],
-                                            ['VI-Mech 71', 'VI-EP 23'],
-                                            ['VI-EP 24', 'VI-Mech 72'],
-                                            ['VI-Mech 73', 'VI-EP 25']
-                                        ].map(([left, right], idx) => (
-                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
-                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
-                                                <div style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                        {/* COLUMN 2 */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                            {[
+                                                ['VI-EP 14', 'VI-Mech 62'],
+                                                ['VI-Mech 63', 'VI-EP 15'],
+                                                ['VI-EP 16', 'VI-Mech 64'],
+                                                ['VI-Mech 65', 'VI-EP 17'],
+                                                ['VI-EP 18', 'VI-Mech 66'],
+                                                ['VI-Mech 67', 'VI-EP 19'],
+                                                ['VI-EP 20', 'VI-Mech 68'],
+                                                ['VI-Mech 69', 'VI-EP 21'],
+                                                ['VI-EP 22', 'VI-Mech 70'],
+                                                ['VI-Mech 71', 'VI-EP 23'],
+                                                ['VI-EP 24', 'VI-Mech 72'],
+                                                ['VI-Mech 73', 'VI-EP 25']
+                                            ].map(([left, right], idx) => (
+                                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
+                                                    <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
+                                                    <div style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                                </div>
+                                            ))}
+                                        </div>
 
-                                    {/* COLUMN 3 */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                                        {[
-                                            ['VI-EP 26', 'VI-Mech 74'],
-                                            ['VI-Mech 75', 'VI-EP 27'],
-                                            ['VI-EP 28', 'VI-EP 76'],
-                                            ['VI-Mech 79', 'VI-EP 29'],
-                                            ['VI-EP 30', 'Ext-2'],
-                                            ['VI-MC 1', 'VI-EP 31'],
-                                            ['VI-EP 32', 'VI-MC 2'],
-                                            ['VI-MC 3', 'VI-EP 33'],
-                                            ['VI-EP 34', 'VI-MC 4'],
-                                            ['VI-MC 5', 'VI-EP 35'],
-                                            ['VI-EP 36', 'VI-MC 6'],
-                                            ['VI-MC 7', 'VI-EP 37']
-                                        ].map(([left, right], idx) => (
-                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
-                                                <div style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
-                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                        {/* COLUMN 3 */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                            {[
+                                                ['VI-EP 26', 'VI-Mech 74'],
+                                                ['VI-Mech 75', 'VI-EP 27'],
+                                                ['VI-EP 28', 'VI-EP 76'],
+                                                ['VI-Mech 79', 'VI-EP 29'],
+                                                ['VI-EP 30', 'Ext-2'],
+                                                ['VI-MC 1', 'VI-EP 31'],
+                                                ['VI-EP 32', 'VI-MC 2'],
+                                                ['VI-MC 3', 'VI-EP 33'],
+                                                ['VI-EP 34', 'VI-MC 4'],
+                                                ['VI-MC 5', 'VI-EP 35'],
+                                                ['VI-EP 36', 'VI-MC 6'],
+                                                ['VI-MC 7', 'VI-EP 37']
+                                            ].map(([left, right], idx) => (
+                                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
+                                                    <div style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
+                                                    <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                                </div>
+                                            ))}
+                                        </div>
 
-                                    {/* COLUMN 4 */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 38</div>
-                                        {[
-                                            ['VI-EP 39', 'VI-MC 8'],
-                                            ['VI-MC 9', 'VI-EP 40'],
-                                            ['VI-EP 41', 'VI-MC 10'],
-                                            ['VI-MC 11', 'VI-EP 42'],
-                                            ['VI-EP 43', 'VI-MC 12'],
-                                            ['VI-MC 13', 'VI-EP 44'],
-                                            ['VI-EP 45', 'VI-MC 14'],
-                                            ['VI-MC 15', 'VI-EP 46'],
-                                            ['VI-EP 47', 'Ext-1']
-                                        ].map(([left, right], idx) => (
-                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
-                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
-                                                <div style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
-                                            </div>
-                                        ))}
-                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 48</div>
-                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 49</div>
-                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 50</div>
+                                        {/* COLUMN 4 */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                            <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 38</div>
+                                            {[
+                                                ['VI-EP 39', 'VI-MC 8'],
+                                                ['VI-MC 9', 'VI-EP 40'],
+                                                ['VI-EP 41', 'VI-MC 10'],
+                                                ['VI-MC 11', 'VI-EP 42'],
+                                                ['VI-EP 43', 'VI-MC 12'],
+                                                ['VI-MC 13', 'VI-EP 44'],
+                                                ['VI-EP 45', 'VI-MC 14'],
+                                                ['VI-MC 15', 'VI-EP 46'],
+                                                ['VI-EP 47', 'Ext-1']
+                                            ].map(([left, right], idx) => (
+                                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
+                                                    <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
+                                                    <div style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                                </div>
+                                            ))}
+                                            <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 48</div>
+                                            <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 49</div>
+                                            <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 50</div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
                                 {/* HANDWRITTEN PAPER SUMMARY BREAKDOWN MATCHING FOOTER OF PHOTO */}
                                 <div style={{ background: 'rgba(0,0,0,0.4)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px border rgba(255,255,255,0.15)', fontSize: '0.83rem', fontFamily: 'monospace' }}>
@@ -643,6 +674,24 @@ const Exams = () => {
                                     </select>
                                 </div>
                                 <div className="form-group">
+                                    <label>Exam Shift / Time</label>
+                                    <select
+                                        className="form-input"
+                                        value={formData.sessionShift}
+                                        onChange={e => {
+                                            const shift = e.target.value;
+                                            setFormData({
+                                                ...formData,
+                                                sessionShift: shift,
+                                                time: shift === 'Afternoon' ? '12:30 PM - 03:30 PM' : '08:30 AM - 11:30 AM'
+                                            });
+                                        }}
+                                    >
+                                        <option value="Morning">🌅 Morning Shift (08:30 AM - 11:30 AM)</option>
+                                        <option value="Afternoon">🌆 Afternoon Shift (12:30 PM - 03:30 PM)</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
                                     <label>Date</label>
                                     <input
                                         type="date"
@@ -653,11 +702,11 @@ const Exams = () => {
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label>Time</label>
+                                    <label>Time String</label>
                                     <input
                                         type="text"
                                         className="form-input"
-                                        placeholder="e.g. 08:30 AM"
+                                        placeholder="e.g. 08:30 AM - 11:30 AM"
                                         value={formData.time}
                                         onChange={e => setFormData({ ...formData, time: e.target.value })}
                                         required
