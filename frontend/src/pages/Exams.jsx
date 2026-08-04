@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { Edit2, Trash2, X, Calendar, Clock, MapPin, Timer, BookOpen, Plus, MoreVertical } from 'lucide-react';
+import { Edit2, Trash2, X, Calendar, Clock, MapPin, Timer, BookOpen, Plus, LayoutGrid, Users } from 'lucide-react';
 import { getNormalizedUserYear } from '../utils/userYear';
 import './Exams.css';
 
@@ -14,6 +14,7 @@ const Exams = () => {
 
     const [exams, setExams] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [activeSeatingExam, setActiveSeatingExam] = useState(null);
     const [currentExam, setCurrentExam] = useState(null);
     const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
     const [loading, setLoading] = useState(true);
@@ -69,10 +70,21 @@ const Exams = () => {
     const handleOpenModal = (exam = null) => {
         if (exam) {
             setCurrentExam(exam);
-            setFormData(exam);
+            setFormData({
+                course: exam.course || '',
+                title: exam.title || '',
+                date: exam.date || '',
+                time: exam.time || '',
+                duration: exam.duration || '',
+                room: exam.room || '',
+                status: exam.status || 'Upcoming',
+                year: exam.year || '1st Year'
+            });
         } else {
             setCurrentExam(null);
-            setFormData({ course: '', title: '', date: '', time: '', duration: '', room: '', status: 'Upcoming', year: '1st Year' });
+            setFormData({
+                course: '', title: '', date: '', time: '', duration: '2 Hours', room: '', status: 'Upcoming', year: '1st Year'
+            });
         }
         setIsModalOpen(true);
     };
@@ -80,11 +92,6 @@ const Exams = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setCurrentExam(null);
-    };
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSave = async (e) => {
@@ -104,23 +111,21 @@ const Exams = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm("Are you sure you want to delete this exam?")) {
-            try {
-                await apiClient.delete(`/exams/${id}`);
-                fetchExams();
-            } catch (err) {
-                console.error(err);
-                alert('Failed to delete exam.');
-            }
+        if (!window.confirm('Are you sure you want to delete this exam?')) return;
+        try {
+            await apiClient.delete(`/exams/${id}`);
+            fetchExams();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to delete exam.');
         }
     };
 
     const getStatusClass = (status) => {
-        switch (status) {
-            case 'Upcoming': return 'status-upcoming';
-            case 'Scheduled': return 'status-scheduled';
-            case 'Published': return 'status-published';
-            case 'Completed': return 'status-completed';
+        switch (status?.toLowerCase()) {
+            case 'upcoming': return 'status-upcoming';
+            case 'completed': return 'status-completed';
+            case 'published': return 'status-published';
             default: return '';
         }
     };
@@ -130,7 +135,7 @@ const Exams = () => {
             <header className="page-header">
                 <div>
                     <h1>Examination Hub</h1>
-                    <p className="subtitle">Manage and schedule upcoming examinations</p>
+                    <p className="subtitle">Official TU Hmawbi Exam Schedules & Seating Plans</p>
                 </div>
                 {canManageExams && (
                     <div className="header-actions">
@@ -226,15 +231,85 @@ const Exams = () => {
                                 </div>
                             </div>
 
-                            <div className="exam-card-footer" style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div className="exam-card-footer" style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 <span className="exam-id" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Invigilator: <strong style={{ color: '#fff' }}>{exam.invigilator || 'Faculty Member'}</strong></span>
-                                <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>3 Hrs Exam</span>
+                                <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => setActiveSeatingExam(exam)}>
+                                    <LayoutGrid size={14} />
+                                    <span>Seating Plan 🪑</span>
+                                </button>
                             </div>
                         </div>
                     ))
                 )}
             </div>
 
+            {/* SEATING PLAN MODAL (MATCHING TU HMAWBI OFFICIAL SEATING PAPER) */}
+            {activeSeatingExam && (
+                <div className="modal-overlay" onClick={() => setActiveSeatingExam(null)}>
+                    <div className="modal-content glass-panel" style={{ maxWidth: '850px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header" style={{ borderBottom: '1px solid var(--surface-border)', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
+                            <div>
+                                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#fff' }}>Technological University (Hmawbi)</h2>
+                                <p className="modal-subtitle" style={{ margin: '0.2rem 0 0', color: 'var(--text-muted)' }}>
+                                    Official Seating Plan Table (စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား) — Room 1/109
+                                </p>
+                            </div>
+                            <button className="close-btn" onClick={() => setActiveSeatingExam(null)}><X size={24} /></button>
+                        </div>
+
+                        <div style={{ background: 'rgba(99,102,241,0.1)', padding: '0.85rem 1rem', borderRadius: '12px', marginBottom: '1.25rem', border: '1px solid rgba(99,102,241,0.25)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.85rem' }}>
+                            <div>Class: <strong style={{ color: '#fff' }}>VI (Mech, MC, EP)</strong> | Exam: <strong style={{ color: '#4ade80' }}>Mid-Term</strong></div>
+                            <div>Course: <strong style={{ color: '#818cf8' }}>{activeSeatingExam.course} ({activeSeatingExam.title})</strong></div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                            {[
+                                { deskId: 1, left: 'VI-EP 1', right: 'VI-EP 38' },
+                                { deskId: 2, left: 'VI-EP 2', right: 'VI-Mech 49' },
+                                { deskId: 3, left: 'VI-EP 14', right: 'VI-Mech 62' },
+                                { deskId: 4, left: 'VI-EP 26', right: 'VI-Mech 74' },
+                                { deskId: 5, left: 'VI-EP 39', right: 'VI-MC 8' },
+                                { deskId: 6, left: 'VI-Mech 50', right: 'VI-EP 3' },
+                                { deskId: 7, left: 'VI-Mech 63', right: 'VI-EP 15' },
+                                { deskId: 8, left: 'VI-Mech 75', right: 'VI-EP 27' },
+                                { deskId: 9, left: 'VI-MC 9', right: 'VI-EP 40' },
+                                { deskId: 10, left: 'VI-EP 4', right: 'VI-Mech 51' },
+                                { deskId: 11, left: 'VI-EP 16', right: 'VI-Mech 64' },
+                                { deskId: 12, left: 'VI-EP 28', right: 'VI-EP 76' },
+                                { deskId: 13, left: 'VI-EP 41', right: 'VI-MC 10' },
+                                { deskId: 14, left: 'VI-Mech 52', right: 'VI-EP 5' },
+                                { deskId: 17, left: 'VI-MC 11', right: 'VI-EP 42' },
+                                { deskId: 18, left: 'VI-MC 13', right: 'VI-EP 44' }
+                            ].map(pair => (
+                                <div key={pair.deskId} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '10px', padding: '0.65rem', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '0.4rem', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '0.2rem' }}>
+                                        Desk Pair #{pair.deskId}
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', fontSize: '0.8rem', fontWeight: '700' }}>
+                                        <div style={{ background: 'rgba(99,102,241,0.15)', padding: '0.35rem 0.2rem', borderRadius: '6px', color: '#818cf8' }}>
+                                            {pair.left}
+                                        </div>
+                                        <div style={{ background: 'rgba(16,185,129,0.15)', padding: '0.35rem 0.2rem', borderRadius: '6px', color: '#4ade80' }}>
+                                            {pair.right}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--surface-border)', fontSize: '0.85rem' }}>
+                            <h4 style={{ margin: '0 0 0.5rem', color: '#fff', fontSize: '0.9rem' }}>Seating Roll Range Summary:</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', color: 'var(--text-muted)' }}>
+                                <div>• <strong>VI.Mech:</strong> Roll 49 to 79 + Ext-1 to Ext-2 = <strong>29 Students</strong></div>
+                                <div>• <strong>VI.EP:</strong> Roll 1 to 50 = <strong>50 Students</strong></div>
+                                <div>• <strong>VI.MC:</strong> Roll 1 to 15 = <strong>15 Students</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* EDIT/CREATE EXAM MODAL */}
             {isModalOpen && (
                 <div className="modal-overlay" onClick={handleCloseModal}>
                     <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
@@ -248,53 +323,98 @@ const Exams = () => {
                         <form onSubmit={handleSave} className="modal-body">
                             <div className="form-grid">
                                 <div className="form-group full-width">
-                                    <label className="form-label">Exam Title</label>
-                                    <input required type="text" name="title" value={formData.title} onChange={handleChange} className="form-input" placeholder="e.g. Midterm Assessment" />
+                                    <label>Course / Subject Code</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g. McE 61028"
+                                        value={formData.course}
+                                        onChange={e => setFormData({ ...formData, course: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="form-group full-width">
+                                    <label>Exam Title</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g. Mid-Term Examination"
+                                        value={formData.title}
+                                        onChange={e => setFormData({ ...formData, title: e.target.value })}
+                                        required
+                                    />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Course Code</label>
-                                    <input required type="text" name="course" value={formData.course} onChange={handleChange} className="form-input" placeholder="e.g. CS101" />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Duration</label>
-                                    <input required type="text" name="duration" value={formData.duration} onChange={handleChange} className="form-input" placeholder="e.g. 2 Hours" />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Date</label>
-                                    <input required type="date" name="date" value={formData.date} onChange={handleChange} className="form-input" />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Time</label>
-                                    <input required type="time" name="time" value={formData.time} onChange={handleChange} className="form-input" />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Location / Room</label>
-                                    <input required type="text" name="room" value={formData.room} onChange={handleChange} className="form-input" placeholder="e.g. Hall A" />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Academic Year</label>
-                                    <select required name="year" value={formData.year} onChange={handleChange} className="form-input">
-                                        <option value="1st Year">1st Year</option>
-                                        <option value="2nd Year">2nd Year</option>
-                                        <option value="3rd Year">3rd Year</option>
-                                        <option value="4th Year">4th Year</option>
-                                        <option value="5th Year">5th Year</option>
-                                        <option value="6th Year">6th Year</option>
+                                    <label>Year</label>
+                                    <select
+                                        className="form-input"
+                                        value={formData.year}
+                                        onChange={e => setFormData({ ...formData, year: e.target.value })}
+                                    >
+                                        {['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'].map(y => (
+                                            <option key={y} value={y}>{y}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Status</label>
-                                    <select required name="status" value={formData.status} onChange={handleChange} className="form-input">
+                                    <label>Date</label>
+                                    <input
+                                        type="date"
+                                        className="form-input"
+                                        value={formData.date}
+                                        onChange={e => setFormData({ ...formData, date: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Time</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g. 08:30 AM"
+                                        value={formData.time}
+                                        onChange={e => setFormData({ ...formData, time: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Duration</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g. 3 Hours"
+                                        value={formData.duration}
+                                        onChange={e => setFormData({ ...formData, duration: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Room / Exam Hall</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g. Hall 1/109"
+                                        value={formData.room}
+                                        onChange={e => setFormData({ ...formData, room: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Status</label>
+                                    <select
+                                        className="form-input"
+                                        value={formData.status}
+                                        onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                    >
                                         <option value="Upcoming">Upcoming</option>
-                                        <option value="Scheduled">Scheduled</option>
                                         <option value="Published">Published</option>
                                         <option value="Completed">Completed</option>
                                     </select>
                                 </div>
                             </div>
                             <div className="modal-footer">
-                                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Discard</button>
-                                <button type="submit" className="btn btn-primary">{currentExam ? 'Update Exam' : 'Schedule Exam'}</button>
+                                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
+                                <button type="submit" className="btn btn-primary">Save Exam</button>
                             </div>
                         </form>
                     </div>
