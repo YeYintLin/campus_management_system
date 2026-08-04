@@ -306,8 +306,25 @@
     box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
 }
 
+/* Container Display Switches */
+.desktop-schedule-container {
+    display: block;
+}
+
+.mobile-schedule-container {
+    display: none;
+}
+
 /* ── Mobile Responsive Timetable Styles ── */
 @media (max-width: 768px) {
+    .desktop-schedule-container {
+        display: none;
+    }
+
+    .mobile-schedule-container {
+        display: block;
+    }
+
     .timetable-page {
         padding-left: 0;
         padding-right: 0;

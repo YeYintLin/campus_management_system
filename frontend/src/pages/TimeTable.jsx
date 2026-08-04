@@ -1,19 +1,19 @@
 import React, { useCallback, useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, FileText } from 'lucide-react';
+import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Coffee } from 'lucide-react';
 import { getNormalizedUserYear } from '../utils/userYear';
 import { exportAcademicMatrixExcel, exportDateScheduleExcel, exportExamScheduleExcel } from '../utils/excelExporter';
 import './TimeTable.css';
 
 const TU_HMAWBI_PERIODS = [
-    { period: 1, label: 'Period 1', time: '09:00 - 09:50 AM', startMin: 540, endMin: 590, slotKey: '09:00 AM' },
-    { period: 2, label: 'Period 2', time: '10:00 - 10:50 AM', startMin: 600, endMin: 650, slotKey: '10:00 AM' },
-    { period: 3, label: 'Period 3', time: '11:00 - 11:50 AM', startMin: 660, endMin: 710, slotKey: '11:00 AM' },
-    { period: 'LUNCH', label: 'LUNCH BREAK', time: '12:00 - 01:00 PM', isLunch: true },
-    { period: 4, label: 'Period 4', time: '01:00 - 01:50 PM', startMin: 780, endMin: 830, slotKey: '01:00 PM' },
-    { period: 5, label: 'Period 5', time: '02:00 - 02:50 PM', startMin: 840, endMin: 890, slotKey: '02:00 PM' },
-    { period: 6, label: 'Period 6', time: '03:00 - 03:50 PM', startMin: 900, endMin: 950, slotKey: '03:00 PM' }
+    { period: 1, label: 'Period 1', time: '09:00 - 09:50 AM', slotKey: '09:00 AM' },
+    { period: 2, label: 'Period 2', time: '10:00 - 10:50 AM', slotKey: '10:00 AM' },
+    { period: 3, label: 'Period 3', time: '11:00 - 11:50 AM', slotKey: '11:00 AM' },
+    { period: 'LUNCH', label: 'Lunch Break', time: '12:00 - 01:00 PM', isLunch: true },
+    { period: 4, label: 'Period 4', time: '01:00 - 01:50 PM', slotKey: '01:00 PM' },
+    { period: 5, label: 'Period 5', time: '02:00 - 02:50 PM', slotKey: '02:00 PM' },
+    { period: 6, label: 'Period 6', time: '03:00 - 03:50 PM', slotKey: '03:00 PM' }
 ];
 
 const TimeTable = () => {
@@ -27,15 +27,12 @@ const TimeTable = () => {
     const [selectedSemester, setSelectedSemester] = useState('Semester 1');
     const [selectedCategory, setSelectedCategory] = useState('Academic'); // 'Academic', 'Practical', 'Tutorial', 'Exam'
     const [selectedMajor, setSelectedMajor] = useState('MC');
+    const [selectedMobileDay, setSelectedMobileDay] = useState('Monday');
 
     const [schedules, setSchedules] = useState({});
     const [dateSessions, setDateSessions] = useState([]);
     const [classSectionInfo, setClassSectionInfo] = useState({ familyTeacher: 'Daw Thin Yu Maw', majorRoom: '3/212-A' });
     const [loading, setLoading] = useState(true);
-
-    const [isEditingMode, setIsEditingMode] = useState(false);
-    const [editingCell, setEditingCell] = useState(null);
-    const [tempCellData, setTempCellData] = useState({ course: '', room: '', type: 'Lecture', sessionLabel: 'Lecture' });
 
     // Excel import state
     const fileInputRef = useRef(null);
@@ -142,6 +139,14 @@ const TimeTable = () => {
         }
     };
 
+    const getTypeClass = (type = '') => {
+        const t = type.toLowerCase();
+        if (t.includes('lab')) return 'tier-lab';
+        if (t.includes('seminar')) return 'tier-seminar';
+        if (t.includes('tutorial')) return 'tier-tutorial';
+        return 'tier-lecture';
+    };
+
     return (
         <div className="timetable-page animate-fade-in">
             <input
@@ -154,19 +159,19 @@ const TimeTable = () => {
 
             <header className="page-header">
                 <div>
-                    <h1>Technological University (Hmawbi) Timetable</h1>
-                    <p className="subtitle">Official Academic, Practical, Tutorial & Examination Schedules</p>
+                    <h1>Timetable</h1>
+                    <p className="subtitle">Manage and track your weekly academic schedule</p>
                 </div>
                 <div className="header-actions">
                     {canManageTimetable && (
                         <>
-                            <button className="btn btn-secondary-glass" onClick={handleExportOfficialExcel} title="Export Official TU Hmawbi Excel File">
+                            <button className="btn btn-secondary" onClick={handleExportOfficialExcel} title="Export Official TU Hmawbi Excel File">
                                 <Download size={18} />
-                                Export Official Excel
+                                Export Excel
                             </button>
                             <button className="btn btn-primary" onClick={handleFileUploadClick} disabled={importing}>
                                 <Upload size={18} />
-                                {importing ? 'Parsing...' : 'Import Excel Sheet'}
+                                {importing ? 'Parsing...' : 'Import Excel'}
                             </button>
                         </>
                     )}
@@ -187,14 +192,13 @@ const TimeTable = () => {
                 </div>
             )}
 
-            {/* 4 Category Tabs */}
-            <div className="glass-panel" style={{ padding: '0.6rem 1rem', borderRadius: '16px', marginBottom: '1rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {/* Category Filter Pills */}
+            <div className="year-filter-bar glass-panel" style={{ marginBottom: '1rem' }}>
                 {timetableCategories.map(cat => (
                     <button
                         key={cat.id}
-                        className={`btn ${selectedCategory === cat.id ? 'btn-primary' : 'btn-secondary-glass'}`}
+                        className={`year-tag ${selectedCategory === cat.id ? 'active' : ''}`}
                         onClick={() => setSelectedCategory(cat.id)}
-                        style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem', fontWeight: '700', borderRadius: '12px' }}
                         title={cat.desc}
                     >
                         {cat.label}
@@ -202,17 +206,18 @@ const TimeTable = () => {
                 ))}
             </div>
 
-            {/* Filters: Year, Semester & Major */}
-            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-                <div className="year-filter-bar glass-panel" style={{ margin: 0 }}>
-                    {years.map(year => (
-                        <button key={year} className={`year-tag ${selectedYear === year ? 'active' : ''}`} onClick={() => setSelectedYear(year)}>
-                            {year}
-                        </button>
-                    ))}
-                </div>
+            {/* Academic Year Pills */}
+            <div className="year-filter-bar glass-panel">
+                {years.map(year => (
+                    <button key={year} className={`year-tag ${selectedYear === year ? 'active' : ''}`} onClick={() => setSelectedYear(year)}>
+                        {year}
+                    </button>
+                ))}
+            </div>
 
-                <div className="year-filter-bar semester-filter-bar glass-panel" style={{ margin: 0 }}>
+            {/* Semester & Major Filters */}
+            <div className="year-filter-bar semester-filter-bar glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
                     {semesters.map(sem => (
                         <button key={sem} className={`year-tag ${selectedSemester === sem ? 'active' : ''}`} onClick={() => setSelectedSemester(sem)}>
                             {sem}
@@ -220,131 +225,204 @@ const TimeTable = () => {
                     ))}
                 </div>
 
-                <select className="form-input" style={{ width: 'auto', background: 'rgba(255,255,255,0.05)', color: '#fff', borderRadius: '12px' }} value={selectedMajor} onChange={e => setSelectedMajor(e.target.value)}>
-                    {majors.map(m => <option key={m} value={m} style={{ background: '#1e293b' }}>Dept: {m}</option>)}
-                </select>
-            </div>
-
-            {/* Official Schedule Header Card */}
-            <div className="glass-panel" style={{ padding: '1.25rem', borderRadius: '16px', marginBottom: '1.25rem', borderLeft: '4px solid #6366f1' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                        <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#fff' }}>
-                            Technological University (Hmawbi) — {selectedYear} ({selectedSemester})
-                        </h3>
-                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            Department of {selectedMajor} Engineering | Family Teacher: <strong style={{ color: '#818cf8' }}>{classSectionInfo.familyTeacher}</strong> | Major Room: <strong style={{ color: '#4ade80' }}>{classSectionInfo.majorRoom}</strong>
-                        </p>
-                    </div>
-                    <span className="badge badge-primary" style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}>
-                        {selectedCategory} View
-                    </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Dept:</span>
+                    <select
+                        className="form-input"
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', background: 'rgba(0,0,0,0.3)', color: '#fff', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                        value={selectedMajor}
+                        onChange={e => setSelectedMajor(e.target.value)}
+                    >
+                        {majors.map(m => <option key={m} value={m} style={{ background: '#1e293b' }}>{m}</option>)}
+                    </select>
                 </div>
             </div>
 
-            {/* MAIN SCHEDULE VIEW */}
-            <div className="glass-panel timetable-wrapper" style={{ padding: '1.25rem', borderRadius: '20px' }}>
-                {loading ? (
-                    <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        <p>Loading {selectedCategory} timetable...</p>
-                    </div>
-                ) : selectedCategory === 'Academic' ? (
-                    /* 6-PERIOD ACADEMIC MATRIX GRID */
-                    <div className="table-container">
-                        <table className="timetable-grid">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: '120px' }}>Day</th>
-                                    {TU_HMAWBI_PERIODS.map((p, idx) => (
-                                        <th key={idx} style={{ background: p.isLunch ? 'rgba(239,68,68,0.1)' : 'transparent', color: p.isLunch ? '#f87171' : 'inherit' }}>
-                                            <div>{p.label}</div>
-                                            <div style={{ fontSize: '0.75rem', fontWeight: '400', opacity: 0.8 }}>{p.time}</div>
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {days.map(day => (
-                                    <tr key={day}>
-                                        <td className="day-cell"><strong>{day}</strong></td>
-                                        {TU_HMAWBI_PERIODS.map((p, pIdx) => {
-                                            if (p.isLunch) {
+            {/* Class Section Info Bar */}
+            <div className="glass-panel" style={{ padding: '0.85rem 1.25rem', borderRadius: '12px', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Technological University (Hmawbi) — <strong style={{ color: '#fff' }}>{selectedYear} ({selectedSemester})</strong> | Dept: <strong style={{ color: '#818cf8' }}>{selectedMajor}</strong>
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    Family Teacher: <span style={{ color: '#4ade80', fontWeight: '600' }}>{classSectionInfo.familyTeacher}</span> | Room: <span style={{ color: '#6366f1', fontWeight: '600' }}>{classSectionInfo.majorRoom}</span>
+                </div>
+            </div>
+
+            {/* DESKTOP MATRIX / TABLE VIEW */}
+            <div className="desktop-schedule-container">
+                <div className="glass-panel timetable-wrapper">
+                    {loading ? (
+                        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <p>Loading schedule...</p>
+                        </div>
+                    ) : selectedCategory === 'Academic' ? (
+                        <div className="table-container">
+                            <table className="timetable-grid">
+                                <thead>
+                                    <tr>
+                                        <th className="sticky-col" style={{ minWidth: '110px' }}>Day</th>
+                                        {TU_HMAWBI_PERIODS.map((p, idx) => (
+                                            <th key={idx} style={{ background: p.isLunch ? 'rgba(239,68,68,0.06)' : 'transparent', color: p.isLunch ? '#f87171' : 'inherit' }}>
+                                                <div>{p.label}</div>
+                                                <div style={{ fontSize: '0.72rem', textTransform: 'none', opacity: 0.7, marginTop: '0.2rem' }}>{p.time}</div>
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {days.map(day => (
+                                        <tr key={day}>
+                                            <td className="time-column sticky-col">{day}</td>
+                                            {TU_HMAWBI_PERIODS.map((p, pIdx) => {
+                                                if (p.isLunch) {
+                                                    return (
+                                                        <td key={pIdx} style={{ background: 'rgba(239,68,68,0.03)', textAlign: 'center', verticalAlign: 'middle', borderRight: '1px solid var(--surface-border)', borderBottom: '1px solid var(--surface-border)' }}>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem', color: 'rgba(248,113,113,0.7)', fontSize: '0.75rem', fontWeight: '700' }}>
+                                                                <Coffee size={14} />
+                                                                <span>Lunch</span>
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                }
+
+                                                const session = schedules[day]?.[p.slotKey];
                                                 return (
-                                                    <td key={pIdx} style={{ background: 'rgba(239,68,68,0.06)', color: '#f87171', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: '700', textAlign: 'center', letterSpacing: '0.05em' }}>
-                                                        LUNCH BREAK<br /><span style={{ fontSize: '0.7rem', fontWeight: '400' }}>12:00 to 1:00 pm</span>
+                                                    <td key={pIdx} className="schedule-td">
+                                                        {session ? (
+                                                            <div className={`session-block ${getTypeClass(session.type)} hover-glow`}>
+                                                                <div className="session-top">
+                                                                    <span className="course-name">{session.course}</span>
+                                                                </div>
+                                                                <div className="session-bottom">
+                                                                    <MapPin size={12} />
+                                                                    <span>{session.room}</span>
+                                                                </div>
+                                                                <div className="type-tag">{session.sessionLabel || session.type}</div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="empty-slot">
+                                                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.15)' }}>-</span>
+                                                            </div>
+                                                        )}
                                                     </td>
                                                 );
-                                            }
-
-                                            const session = schedules[day]?.[p.slotKey];
-                                            return (
-                                                <td key={pIdx} className="slot-cell">
-                                                    {session ? (
-                                                        <div className="session-block glass-panel hover-glow" style={{ padding: '0.6rem', borderRadius: '10px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)' }}>
-                                                            <div style={{ fontWeight: '700', fontSize: '0.9rem', color: '#818cf8' }}>{session.course}</div>
-                                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                                <MapPin size={10} /> <span>{session.room}</span>
-                                                            </div>
-                                                            <span style={{ display: 'inline-block', marginTop: '0.3rem', fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: '4px', background: 'rgba(255,255,255,0.08)', color: '#fff' }}>
-                                                                {session.sessionLabel}
-                                                            </span>
-                                                        </div>
-                                                    ) : (
-                                                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>- Free -</div>
-                                                    )}
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    /* DATE-BASED SCHEDULE TABLE (Practical / Tutorial / Exam) */
-                    <div>
-                        {dateSessions.length === 0 ? (
-                            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                <p>No {selectedCategory} sessions scheduled for {selectedYear} ({selectedSemester}).</p>
-                            </div>
-                        ) : (
-                            <div className="table-container">
-                                <table className="timetable-grid" style={{ width: '100%', textAlign: 'left' }}>
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="table-container" style={{ padding: '1rem' }}>
+                            {dateSessions.length === 0 ? (
+                                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                    <p>No {selectedCategory} sessions scheduled.</p>
+                                </div>
+                            ) : (
+                                <table className="attendance-table" style={{ width: '100%' }}>
                                     <thead>
                                         <tr>
                                             <th>Year</th>
                                             <th>Subject Code</th>
                                             <th>{selectedCategory} Title</th>
                                             <th>Teacher</th>
-                                            <th>Student (Group)</th>
+                                            <th>Group</th>
                                             <th>Date</th>
                                             <th>Time</th>
                                             <th>Place</th>
-                                            <th>Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {dateSessions.map((s, idx) => (
                                             <tr key={s._id || idx}>
-                                                <td><span className="badge badge-primary">{s.year}</span></td>
-                                                <td><strong style={{ color: '#818cf8' }}>{s.courseCode}</strong></td>
+                                                <td><span className="year-tag active" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>{s.year}</span></td>
+                                                <td><strong style={{ color: 'var(--primary-color)' }}>{s.courseCode}</strong></td>
                                                 <td><strong style={{ color: '#fff' }}>{s.title || s.courseName}</strong></td>
-                                                <td style={{ color: 'var(--text-muted)' }}>{s.teacher || 'Faculty Member'}</td>
-                                                <td><span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'rgba(255,255,255,0.06)' }}>{s.groupTag}</span></td>
-                                                <td style={{ color: '#4ade80', fontWeight: '600' }}>{new Date(s.date).toLocaleDateString()}</td>
+                                                <td style={{ color: 'var(--text-muted)' }}>{s.teacher || 'Faculty'}</td>
+                                                <td><span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'rgba(255,255,255,0.06)' }}>{s.groupTag}</span></td>
+                                                <td style={{ color: 'var(--success)', fontWeight: '600' }}>{new Date(s.date).toLocaleDateString()}</td>
                                                 <td style={{ fontSize: '0.85rem' }}>{s.startTime} - {s.endTime}</td>
                                                 <td><span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--text-muted)' }}><MapPin size={12} />{s.place}</span></td>
-                                                <td>
-                                                    <span className={`badge ${s.status === 'Published' ? 'badge-success' : 'badge-secondary'}`} style={{ fontSize: '0.75rem' }}>
-                                                        {s.status}
-                                                    </span>
-                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* MOBILE TIMELINE CARD VIEW (Active on phones <= 768px) */}
+            <div className="mobile-schedule-container">
+                {selectedCategory === 'Academic' ? (
+                    <div>
+                        {/* Mobile Day Selector Bar */}
+                        <div className="year-filter-bar glass-panel" style={{ marginBottom: '1rem' }}>
+                            {days.map(d => (
+                                <button key={d} className={`year-tag ${selectedMobileDay === d ? 'active' : ''}`} onClick={() => setSelectedMobileDay(d)}>
+                                    {d}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Mobile Period Timeline Cards for selectedDay */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                            {TU_HMAWBI_PERIODS.map((p, idx) => {
+                                if (p.isLunch) {
+                                    return (
+                                        <div key={idx} className="glass-panel" style={{ padding: '0.75rem 1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                            <Coffee size={18} style={{ color: '#f87171' }} />
+                                            <div>
+                                                <span style={{ fontWeight: '700', fontSize: '0.85rem', color: '#f87171' }}>LUNCH BREAK</span>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>12:00 to 1:00 PM</span>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+
+                                const session = schedules[selectedMobileDay]?.[p.slotKey];
+                                return (
+                                    <div key={idx} className="glass-panel" style={{ padding: '1rem', borderRadius: '14px', borderLeft: session ? '4px solid #6366f1' : '1px solid var(--surface-border)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                {p.label} ({p.time})
+                                            </span>
+                                            {session && <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>{session.sessionLabel}</span>}
+                                        </div>
+                                        {session ? (
+                                            <div>
+                                                <h4 style={{ margin: '0 0 0.3rem', fontSize: '1.05rem', color: '#fff' }}>{session.course}</h4>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                                                    <MapPin size={12} />
+                                                    <span>Room: {session.room}</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p style={{ margin: 0, fontSize: '0.82rem', color: 'rgba(255,255,255,0.3)', italic: 'true' }}>Free Period</p>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ) : (
+                    /* Mobile Date-based list */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                        {dateSessions.map((s, idx) => (
+                            <div key={idx} className="glass-panel" style={{ padding: '1rem', borderRadius: '14px', borderLeft: '4px solid #10b981' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                                    <span className="badge badge-primary" style={{ fontSize: '0.75rem' }}>{s.courseCode}</span>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: '700' }}>{new Date(s.date).toLocaleDateString()}</span>
+                                </div>
+                                <h4 style={{ margin: '0 0 0.4rem', fontSize: '1rem', color: '#fff' }}>{s.title || s.courseName}</h4>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                    <div>Time: {s.startTime} - {s.endTime}</div>
+                                    <div>Place: {s.place} | Group: {s.groupTag}</div>
+                                    <div>Teacher: {s.teacher || 'Faculty Member'}</div>
+                                </div>
                             </div>
-                        )}
+                        ))}
                     </div>
                 )}
             </div>
