@@ -12,6 +12,7 @@ const Exams = () => {
     const isStudent = roleStr === 'student';
     const studentYear = getNormalizedUserYear(user);
 
+    const [mainTab, setMainTab] = useState('schedule'); // 'schedule' or 'seating'
     const [exams, setExams] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeSeatingExam, setActiveSeatingExam] = useState(null);
@@ -261,7 +262,7 @@ const Exams = () => {
             <header className="page-header">
                 <div>
                     <h1>Examination Hub</h1>
-                    <p className="subtitle">Official TU Hmawbi Exam Schedules & Seating Plans</p>
+                    <p className="subtitle">Official TU Hmawbi Exam Schedules & Master Seating Plans</p>
                 </div>
                 {canManageExams && (
                     <div className="header-actions">
@@ -291,6 +292,26 @@ const Exams = () => {
                 </div>
             )}
 
+            {/* SEPARATE MAIN SECTION TABS */}
+            <div style={{ display: 'flex', gap: '0.85rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+                <button
+                    className={`btn ${mainTab === 'schedule' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setMainTab('schedule')}
+                    style={{ padding: '0.55rem 1.25rem', fontSize: '0.9rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                    <Calendar size={18} />
+                    <span>📅 Exam Schedule (All Subjects)</span>
+                </button>
+                <button
+                    className={`btn ${mainTab === 'seating' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setMainTab('seating')}
+                    style={{ padding: '0.55rem 1.25rem', fontSize: '0.9rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                    <LayoutGrid size={18} />
+                    <span>🪑 Master Room Seating Plan</span>
+                </button>
+            </div>
+
             <div className="year-filter-bar glass-panel">
                 {years.map(year => (
                     <button
@@ -309,88 +330,314 @@ const Exams = () => {
                 </div>
             )}
 
-            <div className="exams-grid">
-                {loading ? (
-                    <div className="empty-state-full glass-panel" style={{ gridColumn: '1 / -1' }}>
-                        <p>Loading exams...</p>
-                    </div>
-                ) : exams.length === 0 ? (
-                    <div className="empty-state-full glass-panel" style={{ gridColumn: '1 / -1' }}>
-                        <p>No exams currently scheduled for {isStudent ? studentYear : selectedYear}.</p>
-                        {canManageExams && (
-                            <button className="btn btn-primary" onClick={() => handleOpenModal()}>+ Schedule One Now</button>
-                        )}
-                    </div>
-                ) : (
-                    exams.filter(exam => {
-                        const targetYear = isStudent ? studentYear : selectedYear;
-                        return targetYear === 'All' || exam.year === targetYear || exam.year === 'All';
-                    }).map(exam => (
-                        <div key={exam._id} className="exam-card glass-panel hover-glow">
-                            <div className="exam-card-header">
-                                <div className="exam-course">
-                                    <span className="course-code">{exam.course}</span>
-                                    <span className="badge badge-year">{exam.year}</span>
-                                    <span className={`status-badge ${getStatusClass(exam.status)}`}>
-                                        {exam.status}
-                                    </span>
+            {mainTab === 'schedule' ? (
+                /* EXAM SCHEDULE SECTION (ALL SUBJECTS FOR THAT YEAR) */
+                <div className="exams-grid">
+                    {loading ? (
+                        <div className="empty-state-full glass-panel" style={{ gridColumn: '1 / -1' }}>
+                            <p>Loading exam schedule...</p>
+                        </div>
+                    ) : exams.length === 0 ? (
+                        <div className="empty-state-full glass-panel" style={{ gridColumn: '1 / -1' }}>
+                            <p>No exams currently scheduled for {isStudent ? studentYear : selectedYear}.</p>
+                            {canManageExams && (
+                                <button className="btn btn-primary" onClick={() => handleOpenModal()}>+ Schedule One Now</button>
+                            )}
+                        </div>
+                    ) : (
+                        exams.filter(exam => {
+                            const targetYear = isStudent ? studentYear : selectedYear;
+                            return targetYear === 'All' || exam.year === targetYear || exam.year === 'All';
+                        }).map(exam => (
+                            <div key={exam._id} className="exam-card glass-panel hover-glow">
+                                <div className="exam-card-header">
+                                    <div className="exam-course">
+                                        <span className="course-code">{exam.course}</span>
+                                        <span className="badge badge-year">{exam.year}</span>
+                                        <span className={`status-badge ${getStatusClass(exam.status)}`}>
+                                            {exam.status}
+                                        </span>
+                                    </div>
+                                    <div className="exam-actions">
+                                        {canManageExams && (
+                                            <>
+                                                <button className="icon-btn" onClick={() => handleOpenModal(exam)} title="Edit">
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button className="icon-btn delete" onClick={() => handleDelete(exam._id)} title="Delete">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="exam-actions">
+
+                                <div className="exam-card-body">
+                                    <h3 className="exam-title" style={{ margin: '0 0 0.4rem', fontSize: '1.1rem', color: '#fff' }}>{exam.title}</h3>
+                                    {exam.courseName && (
+                                        <p style={{ margin: '0 0 0.85rem', fontSize: '0.85rem', color: '#818cf8', fontWeight: '600' }}>{exam.courseName}</p>
+                                    )}
+
+                                    <div className="exam-details" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.65rem' }}>
+                                        <div className="detail-item">
+                                            <Calendar size={14} style={{ color: '#4ade80' }} />
+                                            <span><strong>Date:</strong> {exam.date}</span>
+                                        </div>
+                                        <div className="detail-item">
+                                            <Clock size={14} style={{ color: '#818cf8' }} />
+                                            <span><strong>Shift:</strong> {exam.sessionShift === 'Afternoon' ? '🌆 Afternoon (12:30 PM)' : '🌅 Morning (08:30 AM)'}</span>
+                                        </div>
+                                        <div className="detail-item">
+                                            <MapPin size={14} style={{ color: '#f87171' }} />
+                                            <span><strong>Room:</strong> {exam.room}</span>
+                                        </div>
+                                        <div className="detail-item" style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.04)', padding: '0.4rem 0.65rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                            <BookOpen size={14} style={{ color: '#fbbf24' }} />
+                                            <span><strong>Seat Procedure:</strong> {exam.seatProcedure || 'Standard Roll Order (#1-#30)'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="exam-card-footer" style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                    <span className="exam-id" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Invigilator: <strong style={{ color: '#fff' }}>{exam.invigilator || 'Faculty Member'}</strong></span>
+                                    <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => {
+                                        setActiveSeatingExam(exam);
+                                        setExamSessionShift((exam.sessionShift || 'Morning').toLowerCase());
+                                    }}>
+                                        <LayoutGrid size={14} />
+                                        <span>View Seating Plan 🪑</span>
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            ) : (
+                /* MASTER SEATING PLAN SECTION (SEPARATE FROM INDIVIDUAL SUBJECT CARDS) */
+                <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--surface-border)', paddingBottom: '1rem' }}>
+                        <div>
+                            <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#fff' }}>Official Master Room Seating Plan</h2>
+                            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                Applicable to all examination subjects for <strong>{isStudent ? studentYear : selectedYear}</strong>
+                            </p>
+                        </div>
+
+                        {/* MORNING VS AFTERNOON SHIFT SELECTOR */}
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                                className={`btn ${examSessionShift === 'morning' ? 'btn-primary' : 'btn-secondary'}`}
+                                onClick={() => setExamSessionShift('morning')}
+                                style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem', borderRadius: '8px' }}
+                            >
+                                <Sun size={14} style={{ marginRight: '0.3rem' }} />
+                                <span>Morning Shift (08:30 AM)</span>
+                            </button>
+                            <button
+                                className={`btn ${examSessionShift === 'afternoon' ? 'btn-primary' : 'btn-secondary'}`}
+                                onClick={() => setExamSessionShift('afternoon')}
+                                style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem', borderRadius: '8px' }}
+                            >
+                                <Moon size={14} style={{ marginRight: '0.3rem' }} />
+                                <span>Afternoon Shift (12:30 PM)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* VIEW MODE TABS: GRID VS PAPER PHOTO */}
+                    <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                        <button
+                            className={`btn ${seatingViewTab === 'grid' ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setSeatingViewTab('grid')}
+                            style={{ padding: '0.45rem 1.15rem', fontSize: '0.85rem', borderRadius: '10px' }}
+                        >
+                            <LayoutGrid size={16} style={{ marginRight: '0.4rem' }} />
+                            <span>Paired Desk Grid</span>
+                        </button>
+                        <button
+                            className={`btn ${seatingViewTab === 'photo' ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setSeatingViewTab('photo')}
+                            style={{ padding: '0.45rem 1.15rem', fontSize: '0.85rem', borderRadius: '10px' }}
+                        >
+                            <Camera size={16} style={{ marginRight: '0.4rem' }} />
+                            <span>Hand-Written Paper Photo 📷</span>
+                        </button>
+                    </div>
+
+                    {seatingViewTab === 'photo' ? (
+                        <div>
+                            {uploadedPhotoUrl ? (
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                        <span style={{ fontSize: '0.85rem', color: '#4ade80', fontWeight: '600' }}>✓ Official Hand-Written Paper Seating Chart ({examSessionShift === 'afternoon' ? 'Afternoon' : 'Morning'})</span>
+                                        {canManageExams && (
+                                            <label className="btn btn-secondary" style={{ cursor: 'pointer', padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+                                                <span>Replace Photo</span>
+                                                <input type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleSeatingPhotoUpload} />
+                                            </label>
+                                        )}
+                                    </div>
+                                    <img
+                                        src={uploadedPhotoUrl}
+                                        alt="Official Hand-written Exam Seating Chart"
+                                        style={{ width: '100%', maxHeight: '600px', objectFit: 'contain', borderRadius: '12px', border: '1px solid var(--surface-border)', background: '#000' }}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="glass-panel" style={{ padding: '3rem 1.5rem', textAlign: 'center', borderRadius: '16px' }}>
+                                    <Camera size={40} style={{ color: '#818cf8', marginBottom: '0.75rem' }} />
+                                    <h3 style={{ margin: '0 0 0.4rem', color: '#fff' }}>No Hand-Written Seating Photo Uploaded Yet</h3>
+                                    <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                        Upload a photo of the official hand-written paper seating plan for the {examSessionShift === 'afternoon' ? 'Afternoon' : 'Morning'} shift.
+                                    </p>
                                     {canManageExams && (
-                                        <>
-                                            <button className="icon-btn" onClick={() => handleOpenModal(exam)} title="Edit">
-                                                <Edit2 size={16} />
-                                            </button>
-                                            <button className="icon-btn delete" onClick={() => handleDelete(exam._id)} title="Delete">
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </>
+                                        <label className="btn btn-primary" style={{ cursor: 'pointer', padding: '0.65rem 1.25rem' }}>
+                                            <Upload size={16} style={{ marginRight: '0.4rem' }} />
+                                            <span>Upload Paper Seating Chart Photo</span>
+                                            <input type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleSeatingPhotoUpload} />
+                                        </label>
                                     )}
                                 </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '14px', padding: '1.25rem', color: '#f0f6fc', fontFamily: "'Inter', sans-serif" }}>
+                            {/* OFFICIAL PAPER DOCUMENT HEADER */}
+                            <div style={{ borderBottom: '2px solid rgba(255,255,255,0.2)', paddingBottom: '0.85rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#38bdf8', fontWeight: '700' }}>နည်းပညာတက္ကသိုလ် (မှော်ဘီ)</h3>
+                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.9rem', color: '#94a3b8', fontWeight: '600' }}>စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား ({examSessionShift === 'afternoon' ? 'မွန်းလွဲပိုင်း' : 'နံနက်ပိုင်း'})</p>
+                                    <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#cbd5e1', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                        <span>သင်တန်းအမည်: <strong style={{ color: '#fff' }}>{selectedYear === '1st Year' ? 'I (BE)' : selectedYear === '2nd Year' ? 'II (Mech + MC + EP)' : selectedYear === '3rd Year' ? 'III (Mech + MC + EP)' : selectedYear === '4th Year' ? 'IV (Mech + MC + EP)' : selectedYear === '5th Year' ? 'V (Mech + MC + EP)' : 'VI (Mech + MC + EP)'}</strong></span>
+                                        <span>အချိန်: <strong style={{ color: '#fbbf24' }}>{examSessionShift === 'afternoon' ? '12:30 PM - 03:30 PM' : '08:30 AM - 11:30 AM'}</strong></span>
+                                    </div>
+                                </div>
+                                <div style={{ background: 'rgba(56,189,248,0.15)', padding: '0.4rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.3)', textAlign: 'right' }}>
+                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Room / Hall</div>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#38bdf8' }}>Room 1 / 109</div>
+                                </div>
                             </div>
 
-                            <div className="exam-card-body">
-                                <h3 className="exam-title" style={{ margin: '0 0 0.4rem', fontSize: '1.1rem', color: '#fff' }}>{exam.title}</h3>
-                                {exam.courseName && (
-                                    <p style={{ margin: '0 0 0.85rem', fontSize: '0.85rem', color: '#818cf8', fontWeight: '600' }}>{exam.courseName}</p>
-                                )}
+                            {/* MOBILE HORIZONTAL SCROLL HELP BANNER */}
+                            <div style={{ background: 'rgba(56,189,248,0.1)', padding: '0.4rem 0.75rem', borderRadius: '8px', border: '1px dashed rgba(56,189,248,0.3)', marginBottom: '0.85rem', fontSize: '0.78rem', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span>👈 👉 Swipe left/right to view all 4 Exam Hall Columns side-by-side</span>
+                                <span style={{ fontWeight: '700', fontSize: '0.7rem', background: '#38bdf8', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>4 Columns</span>
+                            </div>
 
-                                <div className="exam-details" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.65rem' }}>
-                                    <div className="detail-item">
-                                        <Calendar size={14} style={{ color: '#4ade80' }} />
-                                        <span><strong>Date:</strong> {exam.date}</span>
+                            {/* HORIZONTAL SCROLL CONTAINER TO PRESERVE EXACT 4-COLUMN PAPER LAYOUT ON MOBILE */}
+                            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))', gap: '0.75rem', minWidth: '680px' }}>
+                                    {/* COLUMN 1 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 1</div>
+                                        {[
+                                            ['VI-EP 2', 'VI-Mech 49'],
+                                            ['VI-Mech 50', 'VI-EP 3'],
+                                            ['VI-EP 4', 'VI-Mech 51'],
+                                            ['VI-Mech 52', 'VI-EP 5'],
+                                            ['VI-EP 6', 'VI-Mech 53'],
+                                            ['VI-Mech 54', 'VI-EP 7'],
+                                            ['VI-EP 8', 'VI-Mech 55'],
+                                            ['VI-Mech 56', 'VI-EP 9'],
+                                            ['VI-EP 10', 'VI-Mech 57'],
+                                            ['VI-Mech 58', 'VI-EP 11'],
+                                            ['VI-EP 12', 'VI-Mech 59'],
+                                            ['VI-Mech 61', 'VI-EP 13']
+                                        ].map(([left, right], idx) => (
+                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
+                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
+                                                <div style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <div className="detail-item">
-                                        <Clock size={14} style={{ color: '#818cf8' }} />
-                                        <span><strong>Shift:</strong> {exam.sessionShift === 'Afternoon' ? '🌆 Afternoon (12:30 PM)' : '🌅 Morning (08:30 AM)'}</span>
+
+                                    {/* COLUMN 2 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                        {[
+                                            ['VI-EP 14', 'VI-Mech 62'],
+                                            ['VI-Mech 63', 'VI-EP 15'],
+                                            ['VI-EP 16', 'VI-Mech 64'],
+                                            ['VI-Mech 65', 'VI-EP 17'],
+                                            ['VI-EP 18', 'VI-Mech 66'],
+                                            ['VI-Mech 67', 'VI-EP 19'],
+                                            ['VI-EP 20', 'VI-Mech 68'],
+                                            ['VI-Mech 69', 'VI-EP 21'],
+                                            ['VI-EP 22', 'VI-Mech 70'],
+                                            ['VI-Mech 71', 'VI-EP 23'],
+                                            ['VI-EP 24', 'VI-Mech 72'],
+                                            ['VI-Mech 73', 'VI-EP 25']
+                                        ].map(([left, right], idx) => (
+                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
+                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
+                                                <div style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <div className="detail-item">
-                                        <MapPin size={14} style={{ color: '#f87171' }} />
-                                        <span><strong>Room:</strong> {exam.room}</span>
+
+                                    {/* COLUMN 3 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                        {[
+                                            ['VI-EP 26', 'VI-Mech 74'],
+                                            ['VI-Mech 75', 'VI-EP 27'],
+                                            ['VI-EP 28', 'VI-EP 76'],
+                                            ['VI-Mech 79', 'VI-EP 29'],
+                                            ['VI-EP 30', 'Ext-2'],
+                                            ['VI-MC 1', 'VI-EP 31'],
+                                            ['VI-EP 32', 'VI-MC 2'],
+                                            ['VI-MC 3', 'VI-EP 33'],
+                                            ['VI-EP 34', 'VI-MC 4'],
+                                            ['VI-MC 5', 'VI-EP 35'],
+                                            ['VI-EP 36', 'VI-MC 6'],
+                                            ['VI-MC 7', 'VI-EP 37']
+                                        ].map(([left, right], idx) => (
+                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
+                                                <div style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
+                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <div className="detail-item" style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.04)', padding: '0.4rem 0.65rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                        <BookOpen size={14} style={{ color: '#fbbf24' }} />
-                                        <span><strong>Seat Procedure:</strong> {exam.seatProcedure || 'Standard Roll Order (#1-#30)'}</span>
+
+                                    {/* COLUMN 4 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 38</div>
+                                        {[
+                                            ['VI-EP 39', 'VI-MC 8'],
+                                            ['VI-MC 9', 'VI-EP 40'],
+                                            ['VI-EP 41', 'VI-MC 10'],
+                                            ['VI-MC 11', 'VI-EP 42'],
+                                            ['VI-EP 43', 'VI-MC 12'],
+                                            ['VI-MC 13', 'VI-EP 44'],
+                                            ['VI-EP 45', 'VI-MC 14'],
+                                            ['VI-MC 15', 'VI-EP 46'],
+                                            ['VI-EP 47', 'Ext-1']
+                                        ].map(([left, right], idx) => (
+                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
+                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
+                                                <div style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                            </div>
+                                        ))}
+                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 48</div>
+                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 49</div>
+                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 50</div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="exam-card-footer" style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                <span className="exam-id" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Invigilator: <strong style={{ color: '#fff' }}>{exam.invigilator || 'Faculty Member'}</strong></span>
-                                <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => {
-                                    setActiveSeatingExam(exam);
-                                    setExamSessionShift((exam.sessionShift || 'Morning').toLowerCase());
-                                }}>
-                                    <LayoutGrid size={14} />
-                                    <span>Seating Plan 🪑</span>
-                                </button>
+                            {/* HANDWRITTEN PAPER SUMMARY BREAKDOWN MATCHING FOOTER OF PHOTO */}
+                            <div style={{ background: 'rgba(0,0,0,0.4)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px border rgba(255,255,255,0.15)', fontSize: '0.83rem', fontFamily: 'monospace' }}>
+                                <div style={{ color: '#38bdf8', fontWeight: '700', marginBottom: '0.3rem' }}>✍️ Official Paper Roll Count Breakdown (ထိုင်ခုံစာရင်း ချုပ်):</div>
+                                <div style={{ color: '#e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                    <div>• VI.Mech. 49 to 79 + Ext-1 to Ext-2 = <strong>29 Students</strong> (60,77,78,Ext-1 etc.)</div>
+                                    <div>• VI.EP. 1 to 50 = <strong>50 Students</strong></div>
+                                    <div>• VI.MC. 1 to 15 = <strong>15 Students</strong></div>
+                                </div>
                             </div>
                         </div>
-                    ))
-                )}
-            </div>
+                    )}
+                </div>
+            )}
 
-            {/* SEATING PLAN MODAL (MATCHING TU HMAWBI OFFICIAL SEATING PAPER) */}
+            {/* SEATING PLAN MODAL (WHEN CLICKED FROM EXAM CARD) */}
             {activeSeatingExam && (
                 <div className="modal-overlay" onClick={() => setActiveSeatingExam(null)}>
                     <div className="modal-content glass-panel" style={{ maxWidth: '850px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
@@ -398,7 +645,7 @@ const Exams = () => {
                             <div>
                                 <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#fff' }}>Technological University (Hmawbi)</h2>
                                 <p className="modal-subtitle" style={{ margin: '0.2rem 0 0', color: 'var(--text-muted)' }}>
-                                    Official Seating Plan (စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား) — Room {activeSeatingExam.room || '1/109'}
+                                    Official Seating Plan — Room {activeSeatingExam.room || '1/109'}
                                 </p>
                             </div>
                             <button className="close-btn" onClick={() => setActiveSeatingExam(null)}><X size={24} /></button>
@@ -448,7 +695,7 @@ const Exams = () => {
                         </div>
 
                         <div style={{ background: 'rgba(99,102,241,0.1)', padding: '0.85rem 1rem', borderRadius: '12px', marginBottom: '1.25rem', border: '1px solid rgba(99,102,241,0.25)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.85rem' }}>
-                            <div>Class: <strong style={{ color: '#fff' }}>{activeSeatingExam.year === '1st Year' ? 'I (BE)' : activeSeatingExam.year === '2nd Year' ? 'II (Mech + MC + EP)' : activeSeatingExam.year === '3rd Year' ? 'III (Mech + MC + EP)' : activeSeatingExam.year === '4th Year' ? 'IV (Mech + MC + EP)' : activeSeatingExam.year === '5th Year' ? 'V (Mech + MC + EP)' : 'VI (Mech + MC + EP)'}</strong> | Exam: <strong style={{ color: '#4ade80' }}>{activeSeatingExam.title || 'Mid-Term'}</strong></div>
+                            <div>Course: <strong style={{ color: '#fff' }}>{activeSeatingExam.course} ({activeSeatingExam.title})</strong></div>
                             <div>Shift: <strong style={{ color: '#fbbf24' }}>{examSessionShift === 'afternoon' ? 'Afternoon (12:30 PM - 03:30 PM)' : 'Morning (08:30 AM - 11:30 AM)'}</strong></div>
                         </div>
 
