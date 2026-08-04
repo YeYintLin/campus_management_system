@@ -1,7 +1,7 @@
-import React, { useCallback, useState, useEffect, useContext } from 'react';
+import React, { useCallback, useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { Edit2, Trash2, X, Calendar, Clock, MapPin, Timer, BookOpen, Plus, LayoutGrid, Users } from 'lucide-react';
+import { Edit2, Trash2, X, Calendar, Clock, MapPin, Timer, BookOpen, Plus, LayoutGrid, Users, Upload, CheckCircle, AlertCircle } from 'lucide-react';
 import { getNormalizedUserYear } from '../utils/userYear';
 import './Exams.css';
 
@@ -22,6 +22,15 @@ const Exams = () => {
     const [formData, setFormData] = useState({
         course: '', title: '', date: '', time: '', duration: '', room: '', status: 'Upcoming', year: '1st Year'
     });
+
+    const fileInputRef = useRef(null);
+    const [importing, setImporting] = useState(false);
+    const [importSuccess, setImportSuccess] = useState('');
+    const [importError, setImportError] = useState('');
+
+    const handleFileUploadClick = () => {
+        if (fileInputRef.current) fileInputRef.current.click();
+    };
 
     const years = isStudent
         ? [studentYear]
@@ -121,17 +130,47 @@ const Exams = () => {
         }
     };
 
-    const getStatusClass = (status) => {
-        switch (status?.toLowerCase()) {
-            case 'upcoming': return 'status-upcoming';
-            case 'completed': return 'status-completed';
-            case 'published': return 'status-published';
-            default: return '';
+    const handleExcelUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setImporting(true);
+        setImportError('');
+        setImportSuccess('');
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('year', selectedYear !== 'All' ? selectedYear : '6th Year');
+        formData.append('semester', 'Semester 1');
+        formData.append('major', 'MC');
+        formData.append('sessionType', 'Exam');
+
+        try {
+            const { data } = await apiClient.post('/sessions/batch-import', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setImportSuccess(data.message || 'Imported Exam Schedule & Seating Plan successfully!');
+            fetchExams();
+            setTimeout(() => setImportSuccess(''), 5000);
+        } catch (err) {
+            console.error('Import failed:', err);
+            setImportError(err.response?.data?.message || 'Failed to import Excel file.');
+        } finally {
+            setImporting(false);
+            e.target.value = '';
         }
     };
 
     return (
         <div className="exams-page animate-fade-in">
+            <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept=".xlsx, .xls"
+                onChange={handleExcelUpload}
+            />
+
             <header className="page-header">
                 <div>
                     <h1>Examination Hub</h1>
@@ -139,6 +178,10 @@ const Exams = () => {
                 </div>
                 {canManageExams && (
                     <div className="header-actions">
+                        <button className="btn btn-secondary" onClick={handleFileUploadClick} disabled={importing}>
+                            <Upload size={18} />
+                            {importing ? 'Parsing...' : 'Import Seating / Exam Excel'}
+                        </button>
                         <button className="btn btn-primary" onClick={() => handleOpenModal()}>
                             <Plus size={18} />
                             Schedule Exam
@@ -146,6 +189,20 @@ const Exams = () => {
                     </div>
                 )}
             </header>
+
+            {importSuccess && (
+                <div className="alert alert-success" style={{ marginBottom: '1rem', background: 'rgba(34,197,94,0.15)', color: '#4ade80', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <CheckCircle size={18} />
+                    <span>{importSuccess}</span>
+                </div>
+            )}
+
+            {importError && (
+                <div className="alert alert-danger" style={{ marginBottom: '1rem', background: 'rgba(239,68,68,0.15)', color: '#f87171', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <AlertCircle size={18} />
+                    <span>{importError}</span>
+                </div>
+            )}
 
             <div className="year-filter-bar glass-panel">
                 {years.map(year => (

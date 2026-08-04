@@ -97,6 +97,16 @@ const scheduledSessionSchema = new mongoose.Schema(
             ref: 'ClassSection',
             required: false,
         },
+        seatingPairs: [{
+            deskId: Number,
+            left: String,
+            right: String
+        }],
+        seatingSummary: [{
+            major: String,
+            range: String,
+            count: Number
+        }],
     },
     { timestamps: true }
 );
