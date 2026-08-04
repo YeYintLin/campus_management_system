@@ -68,6 +68,15 @@ const batchImportSessions = async (req, res) => {
             }));
 
             await Timetable.bulkWrite(bulkOps);
+            
+            const Notification = require('../models/Notification');
+            await Notification.create({
+                user: null,
+                type: 'timetable',
+                message: `📖 Academic Timetable Updated: ${year} (${semester}) ${major} lecture matrix has been uploaded!`,
+                link: '/timetable'
+            });
+
             return res.json({
                 message: `Successfully imported ${parsedMatrix.length} Academic matrix slots for ${year} ${semester} (${major})`,
                 count: parsedMatrix.length
@@ -115,6 +124,33 @@ const batchImportSessions = async (req, res) => {
             }));
 
             await ScheduledSession.bulkWrite(bulkOps);
+
+            const Notification = require('../models/Notification');
+            let notifType = 'system';
+            let notifMsg = '';
+            let notifLink = '/timetable';
+
+            if (sessionType === 'Exam') {
+                notifType = 'exam';
+                notifMsg = `📝 Exam Schedule Published: ${year} (${semester}) ${major} exam dates have been uploaded! Check your Exam Schedule now.`;
+                notifLink = '/exams';
+            } else if (sessionType === 'Practical') {
+                notifType = 'practical';
+                notifMsg = `🔬 Practical Timetable Uploaded: ${year} (${semester}) ${major} practical experiment sessions are now scheduled!`;
+                notifLink = '/timetable';
+            } else if (sessionType === 'Tutorial') {
+                notifType = 'tutorial';
+                notifMsg = `✍️ Tutorial Timetable Uploaded: ${year} (${semester}) ${major} tutorial sessions are now scheduled!`;
+                notifLink = '/timetable';
+            }
+
+            await Notification.create({
+                user: null,
+                type: notifType,
+                message: notifMsg,
+                link: notifLink
+            });
+
             return res.json({
                 message: `Successfully imported ${parsedSessions.length} ${sessionType} sessions for ${year} ${semester} (${major})`,
                 count: parsedSessions.length
