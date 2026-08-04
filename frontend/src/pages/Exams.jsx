@@ -475,8 +475,15 @@ const Exams = () => {
                                     </div>
                                 </div>
 
-                                {/* 4-COLUMN PAPER DESK GRID REPLICATING PHOTO LINE FOR LINE */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                                {/* MOBILE HORIZONTAL SCROLL HELP BANNER */}
+                                <div style={{ background: 'rgba(56,189,248,0.1)', padding: '0.4rem 0.75rem', borderRadius: '8px', border: '1px dashed rgba(56,189,248,0.3)', marginBottom: '0.85rem', fontSize: '0.78rem', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span>👈 👉 Swipe left/right to view all 4 Exam Hall Columns side-by-side</span>
+                                    <span style={{ fontWeight: '700', fontSize: '0.7rem', background: '#38bdf8', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>4 Columns</span>
+                                </div>
+
+                                {/* HORIZONTAL SCROLL CONTAINER TO PRESERVE EXACT 4-COLUMN PAPER LAYOUT ON MOBILE */}
+                                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))', gap: '0.75rem', minWidth: '680px' }}>
                                     {/* COLUMN 1 */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
                                         <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 1</div>
@@ -571,6 +578,7 @@ const Exams = () => {
                                         <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 50</div>
                                     </div>
                                 </div>
+                            </div>
 
                                 {/* HANDWRITTEN PAPER SUMMARY BREAKDOWN MATCHING FOOTER OF PHOTO */}
                                 <div style={{ background: 'rgba(0,0,0,0.4)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px border rgba(255,255,255,0.15)', fontSize: '0.83rem', fontFamily: 'monospace' }}>
