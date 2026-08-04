@@ -60,10 +60,8 @@
 }
 
 .timetable-grid th.sticky-col {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+  vertical-align: middle;
+  text-align: center;
 }
 
 .time-column {
