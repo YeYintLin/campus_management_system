@@ -35,18 +35,48 @@ const TeacherDashboard = () => {
                     apiClient.get('/sessions', { params: { sessionType: 'Exam' } }),
                     apiClient.get('/notifications'),
                 ]);
-                if (statsRes.status === 'fulfilled') setStats(statsRes.data);
-                if (riskRes.status === 'fulfilled') setAtRiskStudents(Array.isArray(riskRes.data) ? riskRes.data : []);
-                if (attRes.status === 'fulfilled') setAttendance(Array.isArray(attRes.data) ? attRes.data : []);
+                if (statsRes.status === 'fulfilled') setStats(statsRes.value.data);
+                if (riskRes.status === 'fulfilled') setAtRiskStudents(Array.isArray(riskRes.value.data) ? riskRes.value.data : []);
+                if (attRes.status === 'fulfilled') setAttendance(Array.isArray(attRes.value.data) ? attRes.value.data : []);
+
+                let examSessionsData = [];
                 if (examsRes.status === 'fulfilled') {
-                    const examData = Array.isArray(examsRes.value?.data) ? examsRes.value.data : [];
-                    const upcoming = examData.filter(ex => {
-                        const d = new Date(ex.date);
-                        return !isNaN(d.getTime()) && d >= new Date();
-                    }).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
-                    setUpcomingExams(upcoming);
+                    examSessionsData = Array.isArray(examsRes.value?.data) ? examsRes.value.data : [];
+                    const now = new Date();
+                    now.setHours(0, 0, 0, 0);
+                    const futureExams = examSessionsData
+                        .filter(ex => {
+                            const d = new Date(ex.date);
+                            return !isNaN(d.getTime()) && d >= now;
+                        })
+                        .sort((a, b) => new Date(a.date) - new Date(b.date));
+                    setUpcomingExams(futureExams.length > 0 ? futureExams.slice(0, 5) : examSessionsData.slice(0, 3));
                 }
-                if (notifRes.status === 'fulfilled') setNotifications(Array.isArray(notifRes.value?.data) ? notifRes.value.data.slice(0, 5) : []);
+
+                // Combine backend notifications with client-generated exam reminders
+                let backendNotifs = [];
+                if (notifRes.status === 'fulfilled') {
+                    backendNotifs = Array.isArray(notifRes.value?.data) ? notifRes.value.data : [];
+                }
+                const examReminders = examSessionsData
+                    .filter(s => {
+                        const d = new Date(s.date);
+                        return !isNaN(d.getTime()) && d >= new Date(new Date().setHours(0, 0, 0, 0));
+                    })
+                    .slice(0, 5)
+                    .map(s => {
+                        const daysLeft = Math.max(1, Math.ceil((new Date(s.date).getTime() - Date.now()) / (1000 * 3600 * 24)));
+                        return {
+                            _id: `exam-notif-${s._id}`,
+                            type: 'exam',
+                            message: `📝 Upcoming Exam (${daysLeft} day${daysLeft > 1 ? 's' : ''} away): [${s.courseCode}] ${s.title || s.courseName || ''} on ${new Date(s.date).toLocaleDateString()} (${s.startTime || '08:30 AM'}) at ${s.place || 'Hall'}.`,
+                            createdAt: s.createdAt || new Date().toISOString(),
+                            read: false
+                        };
+                    });
+                const existingIds = new Set(backendNotifs.map(n => n._id));
+                const mergedNotifs = [...backendNotifs, ...examReminders.filter(r => !existingIds.has(r._id))];
+                setNotifications(mergedNotifs.slice(0, 5));
             } catch (err) {
                 console.error('Failed to fetch teacher dashboard data:', err);
                 setError('Failed to load dashboard data.');

@@ -47,10 +47,44 @@ const StudentDashboard = () => {
                 ]);
 
                 if (statsRes.status === 'fulfilled') setStats(statsRes.value.data);
-                if (examsRes.status === 'fulfilled') setExams(Array.isArray(examsRes.value.data) ? examsRes.value.data : []);
+
+                let examSessionsData = [];
+                if (examsRes.status === 'fulfilled') {
+                    examSessionsData = Array.isArray(examsRes.value.data) ? examsRes.value.data : [];
+                    setExams(examSessionsData);
+                }
+
                 if (gradesRes.status === 'fulfilled') setGrades(Array.isArray(gradesRes.value.data) ? gradesRes.value.data : []);
                 if (attendanceRes.status === 'fulfilled') setAttendance(Array.isArray(attendanceRes.value.data) ? attendanceRes.value.data : []);
-                if (notifRes.status === 'fulfilled') setNotifications(Array.isArray(notifRes.value.data) ? notifRes.value.data.slice(0, 5) : []);
+
+                // Combine backend notifications with client-generated exam reminders
+                let backendNotifs = [];
+                if (notifRes.status === 'fulfilled') {
+                    backendNotifs = Array.isArray(notifRes.value.data) ? notifRes.value.data : [];
+                }
+
+                // Generate exam reminder notifications from session data (so they show even before VPS backend update)
+                const examReminders = examSessionsData
+                    .filter(s => {
+                        const d = new Date(s.date);
+                        return !isNaN(d.getTime()) && d >= new Date(new Date().setHours(0, 0, 0, 0));
+                    })
+                    .slice(0, 5)
+                    .map(s => {
+                        const daysLeft = Math.max(1, Math.ceil((new Date(s.date).getTime() - Date.now()) / (1000 * 3600 * 24)));
+                        return {
+                            _id: `exam-notif-${s._id}`,
+                            type: 'exam',
+                            message: `📝 Upcoming Exam (${daysLeft} day${daysLeft > 1 ? 's' : ''} away): [${s.courseCode}] ${s.title || s.courseName || ''} on ${new Date(s.date).toLocaleDateString()} (${s.startTime || '08:30 AM'}) at ${s.place || 'Hall'}.`,
+                            createdAt: s.createdAt || new Date().toISOString(),
+                            read: false
+                        };
+                    });
+
+                // Merge: backend notifs first, then exam reminders (avoid duplicates)
+                const existingIds = new Set(backendNotifs.map(n => n._id));
+                const mergedNotifs = [...backendNotifs, ...examReminders.filter(r => !existingIds.has(r._id))];
+                setNotifications(mergedNotifs.slice(0, 5));
             } catch (err) {
                 console.error('Failed to fetch student dashboard data:', err);
             } finally {
@@ -77,15 +111,21 @@ const StudentDashboard = () => {
         }));
     }, [attendance]);
 
-    // Upcoming exams
+    // Upcoming exams — show all exams with future dates, or if none, show most recent ones
     const upcomingExams = useMemo(() => {
-        return exams
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const futureExams = exams
             .filter(ex => {
                 const examDate = new Date(ex.date);
-                return !isNaN(examDate.getTime()) && examDate >= new Date();
+                return !isNaN(examDate.getTime()) && examDate >= now;
             })
-            .sort((a, b) => new Date(a.date) - new Date(b.date))
-            .slice(0, 3);
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+        // If no future exams found, just show latest ones so count isn't always 0
+        if (futureExams.length === 0 && exams.length > 0) {
+            return exams.slice(0, 3);
+        }
+        return futureExams.slice(0, 5);
     }, [exams]);
 
     // Latest grades from dashboard stats
@@ -307,8 +347,8 @@ const StudentDashboard = () => {
                                     <span className="day">{new Date(ex.date).getDate()}</span>
                                 </div>
                                 <div className="item-info">
-                                    <h4>{ex.title}</h4>
-                                    <p>{ex.course} • {ex.time} • {ex.room}</p>
+                                    <h4>{ex.title || ex.courseName || ex.courseCode || 'Examination'}</h4>
+                                    <p>{ex.courseCode || ex.course || ''} • {ex.startTime || ex.time || ''} • {ex.place || ex.room || ''}</p>
                                 </div>
                             </div>
                         )) : (
