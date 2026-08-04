@@ -98,7 +98,39 @@ const Exams = () => {
                 console.warn('Sessions endpoint:', e.message);
             }
 
-            setExams([...sessionExams, ...dbExams]);
+            const defaultDemoExams = [
+                {
+                    _id: 'demo-exam-1',
+                    title: 'Mid-Term Examination',
+                    course: 'McE 61028',
+                    courseName: 'Mechatronics System Design',
+                    year: '6th Year',
+                    date: '8/10/2026',
+                    time: '08:30 AM - 11:30 AM',
+                    duration: '3 Hours',
+                    room: 'Room 1/109',
+                    seatProcedure: 'Roll No: VI-EP 1-50, VI-Mech 49-79, VI-MC 1-15',
+                    invigilator: 'Daw Thin Yu Maw',
+                    status: 'Published'
+                },
+                {
+                    _id: 'demo-exam-2',
+                    title: 'Final Examination',
+                    course: 'HSS 61011',
+                    courseName: 'Humanities & Social Science',
+                    year: '6th Year',
+                    date: '8/17/2026',
+                    time: '08:30 AM - 11:30 AM',
+                    duration: '3 Hours',
+                    room: 'Room 3/212-A',
+                    seatProcedure: 'Standard Roll Order (Seats #1-#30)',
+                    invigilator: 'Daw Thin Yu Maw',
+                    status: 'Upcoming'
+                }
+            ];
+
+            const combinedExams = [...sessionExams, ...dbExams];
+            setExams(combinedExams.length > 0 ? combinedExams : defaultDemoExams);
         } catch (err) {
             console.error(err);
             setError('Failed to fetch exams.');
