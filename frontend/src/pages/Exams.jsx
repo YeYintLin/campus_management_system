@@ -30,10 +30,26 @@ const Exams = () => {
         setLoading(true);
         try {
             const targetYear = isStudent ? studentYear : selectedYear;
-            const { data } = await apiClient.get('/exams', {
-                params: { year: targetYear !== 'All' ? targetYear : undefined }
-            });
-            setExams(data);
+            const params = { year: targetYear !== 'All' ? targetYear : undefined };
+
+            const [examsRes, sessionsRes] = await Promise.all([
+                apiClient.get('/exams', { params }),
+                apiClient.get('/sessions', { params: { ...params, sessionType: 'Exam' } })
+            ]);
+
+            const dbExams = Array.isArray(examsRes.data) ? examsRes.data : [];
+            const sessionExams = Array.isArray(sessionsRes.data) ? sessionsRes.data.map(s => ({
+                _id: s._id,
+                title: s.title || `${s.examType || 'Mid-Term'} Exam`,
+                course: { code: s.courseCode, name: s.courseName },
+                year: s.year,
+                date: s.date,
+                time: `${s.startTime || '08:30 AM'} - ${s.endTime || '11:30 AM'}`,
+                room: s.place || 'Main Exam Hall',
+                status: s.status === 'Published' ? 'Published' : 'Upcoming'
+            })) : [];
+
+            setExams([...sessionExams, ...dbExams]);
         } catch (err) {
             console.error(err);
             setError('Failed to fetch exams.');
