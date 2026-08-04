@@ -59,4 +59,14 @@ const teacher = (req, res, next) => {
     }
 };
 
-module.exports = { protect, admin, teacher };
+const authorize = (...roles) => {
+    return (req, res, next) => {
+        if (req.user && roles.includes(req.user.role)) {
+            next();
+        } else {
+            res.status(403).json({ message: `Not authorized. Requires one of: ${roles.join(', ')}` });
+        }
+    };
+};
+
+module.exports = { protect, admin, teacher, authorize };
