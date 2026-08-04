@@ -188,12 +188,18 @@ const Exams = () => {
 
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this exam?')) return;
+
+        // Remove card instantly from UI state
+        setExams(prev => prev.filter(e => e._id !== id));
+
+        if (id.toString().startsWith('demo-')) {
+            return;
+        }
+
         try {
-            await apiClient.delete(`/exams/${id}`);
-            fetchExams();
+            await apiClient.delete(`/exams/${id}`).catch(() => apiClient.delete(`/sessions/${id}`));
         } catch (err) {
-            console.error(err);
-            alert('Failed to delete exam.');
+            console.error('Delete error:', err);
         }
     };
 
