@@ -29,6 +29,25 @@ const batchImportSessions = async (req, res) => {
         // 2. Parse Excel file via server-side parser
         const { parsedMatrix, parsedSessions } = parseTUHmawbiExcel(req.file.buffer, sessionType);
 
+        // 3. Find-or-create subject courses cleanly (deduplicating subject folders)
+        const Course = require('../models/Course');
+        const itemsToProcess = sessionType === 'Academic' ? (parsedMatrix || []) : (parsedSessions || []);
+        for (const item of itemsToProcess) {
+            const cCode = (item.courseCode || '').trim();
+            if (cCode) {
+                const existingCourse = await Course.findOne({ code: cCode });
+                if (!existingCourse) {
+                    await Course.create({
+                        code: cCode,
+                        name: item.courseName || cCode,
+                        department: major,
+                        year,
+                        semester
+                    });
+                }
+            }
+        }
+
         // In-memory validation pass before DB writes
         if (sessionType === 'Academic') {
             if (!parsedMatrix || parsedMatrix.length === 0) {

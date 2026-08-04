@@ -66,8 +66,20 @@ const Files = () => {
                     }));
 
                     setFolders(prev => {
-                        const existingNames = new Set(prev.map(f => f.name));
-                        const uniqueNew = subjectFolders.filter(f => !existingNames.has(f.name));
+                        const existingIdentifiers = new Set(
+                            prev.flatMap(f => [
+                                f.name.toUpperCase().trim(),
+                                (f.code || '').toUpperCase().trim(),
+                                f.name.split(' - ')[0].toUpperCase().trim()
+                            ]).filter(Boolean)
+                        );
+
+                        const uniqueNew = subjectFolders.filter(sf => {
+                            const sfCode = sf.code.toUpperCase().trim();
+                            const sfName = sf.name.toUpperCase().trim();
+                            return !existingIdentifiers.has(sfCode) && !existingIdentifiers.has(sfName);
+                        });
+
                         return [...prev, ...uniqueNew];
                     });
                 }
