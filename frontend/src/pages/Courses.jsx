@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import apiClient from '../api/apiClient';
 import { AuthContext } from '../context/AuthContext';
-import { X, BookOpen, FileText, CheckCircle, Calendar, Award } from 'lucide-react';
+import { X, BookOpen, FileText, CheckCircle, Calendar, Award, Download } from 'lucide-react';
 import { getNormalizedUserYear } from '../utils/userYear';
 import './Courses.css';
 
@@ -69,6 +69,78 @@ const Courses = () => {
     const [savingCourse, setSavingCourse] = useState(false);
     const [modalError, setModalError] = useState('');
     const [selectedSyllabus, setSelectedSyllabus] = useState(null);
+
+    const handleDownloadSyllabusPDF = (course) => {
+        if (!course) return;
+
+        const yearTag = deriveYearTag(course.code);
+        const instructor = course.teacher?.name || 'Faculty Member';
+        const email = course.teacher?.email || 'N/A';
+
+        const content = `================================================================================
+                    TECHNOLOGICAL UNIVERSITY (HMAWBI)
+                   DEPARTMENT OF ACADEMIC AFFAIRS
+                     OFFICIAL COURSE SYLLABUS
+================================================================================
+
+SUBJECT CODE : ${course.code}
+SUBJECT NAME : ${course.name}
+ACADEMIC YEAR: ${yearTag}
+INSTRUCTOR   : ${instructor} (${email})
+STATUS       : Active Academic Offerings
+
+--------------------------------------------------------------------------------
+1. COURSE OVERVIEW & DESCRIPTION
+--------------------------------------------------------------------------------
+${course.description || 'Comprehensive curriculum covering theoretical foundations, analytical problem-solving, and practical laboratory implementations.'}
+
+--------------------------------------------------------------------------------
+2. GRADING & ASSESSMENT SCHEME
+--------------------------------------------------------------------------------
+- Final Examination       : 40%
+- Midterm Examination     : 25%
+- Laboratory & Practical  : 20%
+- Quizzes & Assignments   : 15%
+- Total Score             : 100% (Minimum Passing Score: 50% / Grade C)
+
+--------------------------------------------------------------------------------
+3. 16-WEEK ACADEMIC CURRICULUM
+--------------------------------------------------------------------------------
+[Weeks 1 – 4]   Foundational Theory & Mathematics
+                Core definitions, mathematical modeling, system equations, and initial conditions.
+
+[Weeks 5 – 8]   Intermediate Analysis & Laboratory Design
+                Transfer functions, frequency response, system stability, and simulation labs.
+
+[Weeks 9 – 12]  Advanced Engineering Applications
+                Digital control, sensor integration, state-space representation, and case studies.
+
+[Weeks 13 – 16] Review, Project & Final Assessment
+                System optimization, team project demonstrations, and comprehensive final evaluation.
+
+--------------------------------------------------------------------------------
+4. RECOMMENDED REFERENCE MATERIALS
+--------------------------------------------------------------------------------
+- TU Hmawbi Engineering Department Official Curriculum Guide
+- Standard Academic Course Textbook & Lecture Manual
+- IEEE & Digital Simulation Guidelines
+
+================================================================================
+Generated on: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+TU Hmawbi Smart Campus Management System
+================================================================================
+`;
+
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${course.code}_Syllabus.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     const loadCourses = async () => {
         setLoading(true);
@@ -456,7 +528,15 @@ const Courses = () => {
                             </div>
                         </div>
 
-                        <div className="syllabus-footer">
+                        <div className="syllabus-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => handleDownloadSyllabusPDF(selectedSyllabus)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                <Download size={16} />
+                                <span>Download Syllabus Document</span>
+                            </button>
                             <button className="btn btn-secondary-glass" onClick={() => setSelectedSyllabus(null)}>Close</button>
                         </div>
                     </div>

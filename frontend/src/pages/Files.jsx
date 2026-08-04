@@ -21,6 +21,19 @@ const initialFolders = [
     { name: 'Reference Books', description: 'Recommended textbooks and academic journals', iconColor: '#10b981' },
 ];
 
+const deriveYearTag = (code = '') => {
+    const digits = code.match(/\d+/);
+    if (!digits) return '1st Year';
+    const firstDigit = digits[0][0];
+    if (firstDigit === '1') return '1st Year';
+    if (firstDigit === '2') return '2nd Year';
+    if (firstDigit === '3') return '3rd Year';
+    if (firstDigit === '4') return '4th Year';
+    if (firstDigit === '5') return '5th Year';
+    if (firstDigit === '6') return '6th Year';
+    return '1st Year';
+};
+
 const Files = () => {
     const { user } = useContext(AuthContext);
     const fileInputRef = useRef(null);
@@ -37,6 +50,34 @@ const Files = () => {
     const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
     const [viewMode, setViewMode] = useState('folders'); // 'folders' or 'files'
     const [selectedFolder, setSelectedFolder] = useState(null);
+
+    // Dynamic Subject Folders auto-generated from Courses
+    useEffect(() => {
+        const fetchSubjectFolders = async () => {
+            try {
+                const { data: coursesData } = await apiClient.get('/courses');
+                if (Array.isArray(coursesData)) {
+                    const subjectFolders = coursesData.map(c => ({
+                        name: `${c.code} - ${c.name}`,
+                        code: c.code,
+                        year: deriveYearTag(c.code),
+                        description: `Syllabus, reference materials & study files for ${c.code}`,
+                        iconColor: '#6366f1'
+                    }));
+
+                    setFolders(prev => {
+                        const existingNames = new Set(prev.map(f => f.name));
+                        const uniqueNew = subjectFolders.filter(f => !existingNames.has(f.name));
+                        return [...prev, ...uniqueNew];
+                    });
+                }
+            } catch (err) {
+                console.error('Error fetching subject folders:', err);
+            }
+        };
+
+        fetchSubjectFolders();
+    }, []);
 
     const years = isStudent
         ? [studentYear]
