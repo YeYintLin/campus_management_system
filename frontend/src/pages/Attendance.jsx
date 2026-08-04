@@ -309,6 +309,42 @@ const Attendance = () => {
         fetchStudentAttendance();
     }, [isStudent, user._id]);
 
+    // Compute Subject-by-Subject Attendance breakdown for Student View
+    const perSubjectAttendance = useMemo(() => {
+        if (!studentAttendanceLogs || studentAttendanceLogs.length === 0) return [];
+        
+        const subjectMap = {};
+        studentAttendanceLogs.forEach(log => {
+            const courseCode = log.courseCode || log.course?.code || log.course || 'Subject';
+            const courseName = log.courseName || log.course?.name || courseCode;
+            const key = courseCode;
+
+            if (!subjectMap[key]) {
+                subjectMap[key] = {
+                    code: courseCode,
+                    name: courseName,
+                    total: 0,
+                    present: 0,
+                    late: 0,
+                    absent: 0
+                };
+            }
+
+            const record = log.records?.[0];
+            const status = record?.status || 'Present';
+            subjectMap[key].total += 1;
+            if (status === 'Present') subjectMap[key].present += 1;
+            else if (status === 'Late') subjectMap[key].late += 1;
+            else if (status === 'Absent') subjectMap[key].absent += 1;
+        });
+
+        return Object.values(subjectMap).map(subj => {
+            const attended = subj.present + subj.late;
+            const percentage = subj.total > 0 ? Math.round((attended / subj.total) * 100) : 100;
+            return { ...subj, percentage };
+        });
+    }, [studentAttendanceLogs]);
+
     // Load attendance marking sheet for selected course and date
     const loadCourseAttendance = useCallback(async (course, date, silent = false) => {
         if (!silent) setLoading(true);
@@ -675,6 +711,61 @@ const Attendance = () => {
                         </div>
                         <h2 style={{ fontSize: '2rem', marginTop: '0.5rem', color: '#ef4444' }}>{studentStats.absent}</h2>
                     </div>
+                </div>
+
+                {/* ── Per-Subject Attendance Breakdown Card Grid ── */}
+                <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '16px', marginBottom: '1.5rem' }}>
+                    <h3 style={{ margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <BookOpen size={20} className="text-primary" />
+                        <span>Subject-by-Subject Attendance Breakdown</span>
+                    </h3>
+
+                    {perSubjectAttendance.length > 0 ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+                            {perSubjectAttendance.map(subj => (
+                                <div key={subj.code} style={{
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid var(--surface-border)',
+                                    borderRadius: '12px',
+                                    padding: '1rem 1.15rem'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                        <div>
+                                            <span className="badge badge-primary" style={{ fontSize: '0.75rem', fontWeight: '700' }}>{subj.code}</span>
+                                            <h4 style={{ margin: '0.2rem 0 0', fontSize: '0.95rem', color: '#fff' }}>{subj.name}</h4>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <span style={{
+                                                fontSize: '1.25rem',
+                                                fontWeight: '800',
+                                                color: subj.percentage >= 75 ? '#4ade80' : subj.percentage >= 60 ? '#fbbf24' : '#f87171'
+                                            }}>
+                                                {subj.percentage}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Progress Bar */}
+                                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '999px', overflow: 'hidden', margin: '0.6rem 0 0.4rem' }}>
+                                        <div style={{
+                                            width: `${subj.percentage}%`,
+                                            height: '100%',
+                                            background: subj.percentage >= 75 ? 'linear-gradient(90deg, #22c55e, #10b981)' : subj.percentage >= 60 ? '#f59e0b' : '#ef4444',
+                                            borderRadius: '999px',
+                                            transition: 'width 0.4s ease'
+                                        }} />
+                                    </div>
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        <span>{subj.present + subj.late} / {subj.total} Sessions Attended</span>
+                                        <span>{subj.absent} Absent</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-muted" style={{ margin: 0 }}>No subject attendance data recorded yet.</p>
+                    )}
                 </div>
 
                 <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '12px' }}>
