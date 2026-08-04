@@ -30,12 +30,30 @@ const Attendance = () => {
 
     // State for Active Live Session (Zero-Tap / Code / QR)
     const [activeSession, setActiveSession] = useState(null);
+    const [secondsLeft, setSecondsLeft] = useState(0);
     const [inputCode, setInputCode] = useState('');
     const [codeSubmitting, setCodeSubmitting] = useState(false);
     const [codeMessage, setCodeMessage] = useState('');
     const [codeSuccess, setCodeSuccess] = useState(false);
     const [startingSession, setStartingSession] = useState(false);
     const [showQRModal, setShowQRModal] = useState(false); // Teacher QR enlarged view
+
+    // Live 20-second Countdown Timer
+    useEffect(() => {
+        if (!activeSession?.expiresAt) {
+            setSecondsLeft(0);
+            return;
+        }
+
+        const updateTimer = () => {
+            const diff = Math.max(0, Math.ceil((new Date(activeSession.expiresAt).getTime() - Date.now()) / 1000));
+            setSecondsLeft(diff);
+        };
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+        return () => clearInterval(interval);
+    }, [activeSession]);
 
     // QR Verification & Scanner State (Student View)
     const [verifyingQR, setVerifyingQR] = useState(false);
@@ -213,17 +231,17 @@ const Attendance = () => {
         }
     };
 
-    // Teacher/Admin manually starts a live session
+    // Teacher/Admin manually starts a 20-second live session
     const handleStartLiveSession = async (course) => {
         setStartingSession(true);
         try {
             const { data } = await apiClient.post('/attendance/create-session', {
                 courseId: course.code || course._id,
                 courseName: course.title || course.name || course.code,
-                durationMinutes: 5
+                durationSeconds: 20
             });
             setActiveSession(data);
-            setMessage(`⚡ Live session started for ${course.name || course.code}! 4-Digit Code: ${data.code}`);
+            setMessage(`⚡ 20-Second Live session started for ${course.name || course.code}! Code: ${data.code}. Students have 20 seconds to submit!`);
         } catch (err) {
             console.error('Failed to start live session:', err);
             setMessage('Failed to start live session');
@@ -592,15 +610,23 @@ const Attendance = () => {
                         border: '1px solid rgba(99,102,241,0.3)',
                         boxShadow: '0 8px 24px rgba(99,102,241,0.2)'
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                            <Zap size={22} style={{ color: '#818cf8', animation: 'pulse 1.5s infinite' }} />
-                            <div>
-                                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff' }}>
-                                    Live Attendance Active: <span style={{ color: '#a78bfa' }}>{activeSession.courseName || activeSession.courseId}</span>
-                                </h3>
-                                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                    Scan the class QR code with your camera or enter the 4-digit passcode
-                                </p>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <Zap size={22} style={{ color: '#818cf8', animation: 'pulse 1.5s infinite' }} />
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff' }}>
+                                        Live Attendance Active: <span style={{ color: '#a78bfa' }}>{activeSession.courseName || activeSession.courseId}</span>
+                                    </h3>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', color: secondsLeft > 0 ? '#f59e0b' : '#f87171', fontWeight: '600' }}>
+                                        {secondsLeft > 0 ? 'Scan QR or enter 4-digit code within 20s or you will be marked Absent!' : '⚠️ 20-second window closed! Unsubmitted students marked Absent.'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div style={{ background: secondsLeft <= 5 ? 'rgba(239,68,68,0.2)' : 'rgba(99,102,241,0.2)', border: `1px solid ${secondsLeft <= 5 ? '#ef4444' : '#6366f1'}`, padding: '0.4rem 0.85rem', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <Clock size={16} style={{ color: secondsLeft <= 5 ? '#f87171' : '#818cf8' }} />
+                                <span style={{ fontSize: '0.95rem', fontWeight: '800', color: secondsLeft <= 5 ? '#f87171' : '#fff' }}>
+                                    {secondsLeft}s Left
+                                </span>
                             </div>
                         </div>
 
@@ -892,13 +918,20 @@ const Attendance = () => {
                                     <Zap size={18} style={{ color: '#14b8a6' }} />
                                     <span>Active Session: <span style={{ color: '#2dd4bf' }}>{activeSession.courseName || activeSession.courseId}</span></span>
                                 </h3>
-                                <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                    Project this QR code or share code with students
+                                <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: secondsLeft > 0 ? '#2dd4bf' : '#f87171', fontWeight: '600' }}>
+                                    {secondsLeft > 0 ? 'Project this QR / Passcode. Unsubmitted students automatically marked Absent in 20s!' : '⚠️ 20-second window closed! Unsubmitted students marked Absent.'}
                                 </p>
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <div style={{ background: secondsLeft <= 5 ? 'rgba(239,68,68,0.2)' : 'rgba(20,184,166,0.2)', border: `1px solid ${secondsLeft <= 5 ? '#ef4444' : '#14b8a6'}`, padding: '0.45rem 0.85rem', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <Clock size={16} style={{ color: secondsLeft <= 5 ? '#f87171' : '#2dd4bf' }} />
+                                <span style={{ fontSize: '0.95rem', fontWeight: '800', color: secondsLeft <= 5 ? '#f87171' : '#fff' }}>
+                                    {secondsLeft}s Left
+                                </span>
+                            </div>
+
                             <button
                                 className="btn btn-secondary"
                                 onClick={() => setShowQRModal(true)}
@@ -976,7 +1009,7 @@ const Attendance = () => {
                                     }}
                                 >
                                     <Zap size={16} />
-                                    <span>Start 5-Min Live Session</span>
+                                    <span>Start 20-Sec Live Session</span>
                                 </button>
                             </div>
                         ))

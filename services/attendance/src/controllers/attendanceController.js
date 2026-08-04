@@ -53,7 +53,7 @@ const getActiveSession = async (req, res) => {
 // ─────────────────────────────────────────────
 const createSession = async (req, res) => {
     try {
-        const { courseId, courseName, durationMinutes = 5 } = req.body;
+        const { courseId, courseName, durationSeconds = 20 } = req.body;
 
         if (!courseId) {
             return res.status(400).json({ message: 'courseId is required' });
@@ -69,7 +69,8 @@ const createSession = async (req, res) => {
         const crypto = require('crypto');
         const code = Math.floor(1000 + Math.random() * 9000).toString();
         const qrToken = crypto.randomBytes(16).toString('hex');
-        const expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000);
+        const seconds = Number(durationSeconds) || 20;
+        const expiresAt = new Date(Date.now() + seconds * 1000);
 
         const session = await AttendanceSession.create({
             courseId,

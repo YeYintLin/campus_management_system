@@ -40,6 +40,10 @@ const attendanceSessionSchema = new mongoose.Schema(
             type: String,
             default: 'auto-cron',
         },
+        finalized: {
+            type: Boolean,
+            default: false,
+        },
     },
     { timestamps: true }
 );
