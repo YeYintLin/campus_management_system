@@ -458,48 +458,127 @@ const Exams = () => {
                                 )}
                             </div>
                         ) : (
-                            <div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.85rem', marginBottom: '1.5rem' }}>
-                                    {[
-                                        { deskId: 1, left: 'VI-EP 1', right: 'VI-EP 38' },
-                                        { deskId: 2, left: 'VI-EP 2', right: 'VI-Mech 49' },
-                                        { deskId: 3, left: 'VI-EP 14', right: 'VI-Mech 62' },
-                                        { deskId: 4, left: 'VI-EP 26', right: 'VI-Mech 74' },
-                                        { deskId: 5, left: 'VI-EP 39', right: 'VI-MC 8' },
-                                        { deskId: 6, left: 'VI-Mech 50', right: 'VI-EP 3' },
-                                        { deskId: 7, left: 'VI-Mech 63', right: 'VI-EP 15' },
-                                        { deskId: 8, left: 'VI-Mech 75', right: 'VI-EP 27' },
-                                        { deskId: 9, left: 'VI-MC 9', right: 'VI-EP 40' },
-                                        { deskId: 10, left: 'VI-EP 4', right: 'VI-Mech 51' },
-                                        { deskId: 11, left: 'VI-EP 16', right: 'VI-Mech 64' },
-                                        { deskId: 12, left: 'VI-EP 28', right: 'VI-EP 76' },
-                                        { deskId: 13, left: 'VI-EP 41', right: 'VI-MC 10' },
-                                        { deskId: 14, left: 'VI-Mech 52', right: 'VI-EP 5' },
-                                        { deskId: 17, left: 'VI-MC 11', right: 'VI-EP 42' },
-                                        { deskId: 18, left: 'VI-MC 13', right: 'VI-EP 44' }
-                                    ].map(pair => (
-                                        <div key={pair.deskId} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '10px', padding: '0.65rem', textAlign: 'center' }}>
-                                            <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '0.4rem', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '0.2rem' }}>
-                                                Desk Pair #{pair.deskId}
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', fontSize: '0.8rem', fontWeight: '700' }}>
-                                                <div style={{ background: 'rgba(99,102,241,0.15)', padding: '0.35rem 0.2rem', borderRadius: '6px', color: '#818cf8' }}>
-                                                    {pair.left}
-                                                </div>
-                                                <div style={{ background: 'rgba(16,185,129,0.15)', padding: '0.35rem 0.2rem', borderRadius: '6px', color: '#4ade80' }}>
-                                                    {pair.right}
-                                                </div>
-                                            </div>
+                            <div style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '14px', padding: '1.25rem', color: '#f0f6fc', fontFamily: "'Inter', sans-serif" }}>
+                                {/* OFFICIAL PAPER DOCUMENT HEADER */}
+                                <div style={{ borderBottom: '2px solid rgba(255,255,255,0.2)', paddingBottom: '0.85rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#38bdf8', fontWeight: '700' }}>နည်းပညာတက္ကသိုလ် (မှော်ဘီ)</h3>
+                                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.9rem', color: '#94a3b8', fontWeight: '600' }}>စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား (Seating Plan Chart)</p>
+                                        <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#cbd5e1', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                            <span>သင်တန်းအမည်: <strong style={{ color: '#fff' }}>VI (Mech + MC + EP)</strong></span>
+                                            <span>စာမေးပွဲအမည်: <strong style={{ color: '#4ade80' }}>Mid-Term</strong></span>
                                         </div>
-                                    ))}
+                                    </div>
+                                    <div style={{ background: 'rgba(56,189,248,0.15)', padding: '0.4rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.3)', textAlign: 'right' }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Room / Page</div>
+                                        <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#38bdf8' }}>1 / 109</div>
+                                    </div>
                                 </div>
 
-                                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--surface-border)', fontSize: '0.85rem' }}>
-                                    <h4 style={{ margin: '0 0 0.5rem', color: '#fff', fontSize: '0.9rem' }}>Seating Roll Range Summary:</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', color: 'var(--text-muted)' }}>
-                                        <div>• <strong>VI.Mech:</strong> Roll 49 to 79 + Ext-1 to Ext-2 = <strong>29 Students</strong></div>
-                                        <div>• <strong>VI.EP:</strong> Roll 1 to 50 = <strong>50 Students</strong></div>
-                                        <div>• <strong>VI.MC:</strong> Roll 1 to 15 = <strong>15 Students</strong></div>
+                                {/* 4-COLUMN PAPER DESK GRID REPLICATING PHOTO LINE FOR LINE */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                                    {/* COLUMN 1 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 1</div>
+                                        {[
+                                            ['VI-EP 2', 'VI-Mech 49'],
+                                            ['VI-Mech 50', 'VI-EP 3'],
+                                            ['VI-EP 4', 'VI-Mech 51'],
+                                            ['VI-Mech 52', 'VI-EP 5'],
+                                            ['VI-EP 6', 'VI-Mech 53'],
+                                            ['VI-Mech 54', 'VI-EP 7'],
+                                            ['VI-EP 8', 'VI-Mech 55'],
+                                            ['VI-Mech 56', 'VI-EP 9'],
+                                            ['VI-EP 10', 'VI-Mech 57'],
+                                            ['VI-Mech 58', 'VI-EP 11'],
+                                            ['VI-EP 12', 'VI-Mech 59'],
+                                            ['VI-Mech 61', 'VI-EP 13']
+                                        ].map(([left, right], idx) => (
+                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
+                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
+                                                <div style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* COLUMN 2 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                        {[
+                                            ['VI-EP 14', 'VI-Mech 62'],
+                                            ['VI-Mech 63', 'VI-EP 15'],
+                                            ['VI-EP 16', 'VI-Mech 64'],
+                                            ['VI-Mech 65', 'VI-EP 17'],
+                                            ['VI-EP 18', 'VI-Mech 66'],
+                                            ['VI-Mech 67', 'VI-EP 19'],
+                                            ['VI-EP 20', 'VI-Mech 68'],
+                                            ['VI-Mech 69', 'VI-EP 21'],
+                                            ['VI-EP 22', 'VI-Mech 70'],
+                                            ['VI-Mech 71', 'VI-EP 23'],
+                                            ['VI-EP 24', 'VI-Mech 72'],
+                                            ['VI-Mech 73', 'VI-EP 25']
+                                        ].map(([left, right], idx) => (
+                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
+                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
+                                                <div style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* COLUMN 3 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                        {[
+                                            ['VI-EP 26', 'VI-Mech 74'],
+                                            ['VI-Mech 75', 'VI-EP 27'],
+                                            ['VI-EP 28', 'VI-EP 76'],
+                                            ['VI-Mech 79', 'VI-EP 29'],
+                                            ['VI-EP 30', 'Ext-2'],
+                                            ['VI-MC 1', 'VI-EP 31'],
+                                            ['VI-EP 32', 'VI-MC 2'],
+                                            ['VI-MC 3', 'VI-EP 33'],
+                                            ['VI-EP 34', 'VI-MC 4'],
+                                            ['VI-MC 5', 'VI-EP 35'],
+                                            ['VI-EP 36', 'VI-MC 6'],
+                                            ['VI-MC 7', 'VI-EP 37']
+                                        ].map(([left, right], idx) => (
+                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
+                                                <div style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
+                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* COLUMN 4 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 38</div>
+                                        {[
+                                            ['VI-EP 39', 'VI-MC 8'],
+                                            ['VI-MC 9', 'VI-EP 40'],
+                                            ['VI-EP 41', 'VI-MC 10'],
+                                            ['VI-MC 11', 'VI-EP 42'],
+                                            ['VI-EP 43', 'VI-MC 12'],
+                                            ['VI-MC 13', 'VI-EP 44'],
+                                            ['VI-EP 45', 'VI-MC 14'],
+                                            ['VI-MC 15', 'VI-EP 46'],
+                                            ['VI-EP 47', 'Ext-1']
+                                        ].map(([left, right], idx) => (
+                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
+                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
+                                                <div style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                            </div>
+                                        ))}
+                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 48</div>
+                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 49</div>
+                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 50</div>
+                                    </div>
+                                </div>
+
+                                {/* HANDWRITTEN PAPER SUMMARY BREAKDOWN MATCHING FOOTER OF PHOTO */}
+                                <div style={{ background: 'rgba(0,0,0,0.4)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px border rgba(255,255,255,0.15)', fontSize: '0.83rem', fontFamily: 'monospace' }}>
+                                    <div style={{ color: '#38bdf8', fontWeight: '700', marginBottom: '0.3rem' }}>✍️ Official Paper Roll Count Breakdown (ထိုင်ခုံစာရင်း ချုပ်):</div>
+                                    <div style={{ color: '#e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                        <div>• VI.Mech. 49 to 79 + Ext-1 to Ext-2 = <strong>29 Students</strong> (60,77,78,Ext-1 etc.)</div>
+                                        <div>• VI.EP. 1 to 50 = <strong>50 Students</strong></div>
+                                        <div>• VI.MC. 1 to 15 = <strong>15 Students</strong></div>
                                     </div>
                                 </div>
                             </div>
