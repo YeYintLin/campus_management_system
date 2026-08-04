@@ -37,6 +37,11 @@ const timetableSchema = new mongoose.Schema(
             enum: ['Lecture', 'Lab', 'Seminar', 'Tutorial', 'Project'],
             default: 'Lecture',
         },
+        category: {
+            type: String,
+            enum: ['Academic', 'Practical', 'Tutorial'],
+            default: 'Academic',
+        },
     },
     {
         timestamps: true,

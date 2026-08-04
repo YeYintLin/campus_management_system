@@ -7,12 +7,13 @@ const User = require('../models/User');
 // @access  Private
 const getTimetable = async (req, res) => {
     try {
-        const { year, semester } = req.query;
+        const { year, semester, category } = req.query;
         const { role, _id: userId } = req.user;
         let query = {};
 
         if (year) query.year = year;
         if (semester) query.semester = semester;
+        if (category) query.category = category;
 
         if (role === 'Teacher') {
             // Teacher: filter by courses taught by teacher
@@ -43,12 +44,12 @@ const getTimetable = async (req, res) => {
 // @access  Private (Admin/Teacher)
 const saveTimetableSlot = async (req, res) => {
     try {
-        const { year, semester, day, time, course, room, type } = req.body;
+        const { year, semester, day, time, course, room, type, category = 'Academic' } = req.body;
 
         // Upsert logic: if a slot exists for this year/semester/day/time, update it. Otherwise create.
         const slot = await Timetable.findOneAndUpdate(
             { year, semester, day, time },
-            { course, room, type },
+            { course, room, type, category },
             { new: true, upsert: true, runValidators: true }
         );
 
@@ -105,7 +106,8 @@ const saveBatchTimetableSlots = async (req, res) => {
                     $set: {
                         course: slot.course,
                         room: slot.room || 'Room 101',
-                        type: slot.type || 'Lecture'
+                        type: slot.type || 'Lecture',
+                        category: slot.category || (slot.type === 'Lab' ? 'Practical' : slot.type === 'Tutorial' ? 'Tutorial' : 'Academic')
                     }
                 },
                 upsert: true

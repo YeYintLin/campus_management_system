@@ -67,12 +67,44 @@ const TimeTable = () => {
 
     const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : '1st Year');
     const [selectedSemester, setSelectedSemester] = useState('Semester 1');
+    const [selectedCategory, setSelectedCategory] = useState('Academic'); // 'Academic', 'Practical', 'Tutorial'
     const [schedules, setSchedules] = useState({});
     const [loading, setLoading] = useState(true);
     
     const [isEditingMode, setIsEditingMode] = useState(false);
     const [editingCell, setEditingCell] = useState(null);
-    const [tempCellData, setTempCellData] = useState({ course: '', room: '', type: 'Lecture' });
+    const [tempCellData, setTempCellData] = useState({ course: '', room: '', type: 'Lecture', category: 'Academic' });
+
+    // Category options matching University Rules
+    const timetableCategories = [
+        { id: 'Academic', label: '📖 Academic Timetable', desc: 'Main Theory & Lecture Schedule' },
+        { id: 'Practical', label: '🔬 Practical Timetable', desc: 'Laboratory & Experiment Sessions' },
+        { id: 'Tutorial', label: '✍️ Tutorial Timetable', desc: 'Recitation & Problem Solving' },
+    ];
+
+    // Subject Session Rules Helper according to University Specs
+    const getValidTypesForCourse = (courseCode = '') => {
+        const upper = (courseCode || '').toUpperCase().trim();
+        if (!upper) return ['Lecture', 'Lab', 'Tutorial', 'Seminar', 'Project'];
+
+        // Myanmar: Academic (Lecture) only
+        if (upper.includes('MYAN') || upper.includes('MM')) {
+            return ['Lecture'];
+        }
+
+        // English & Maths: Academic (Lecture) + Tutorial (no Practical)
+        if (upper.includes('ENG') || upper.includes('MTH') || upper.includes('MATH')) {
+            return ['Lecture', 'Tutorial'];
+        }
+
+        // Chemistry & Physics: Academic (Lecture) + Practical (Lab) + Tutorial
+        if (upper.includes('CHM') || upper.includes('CHEM') || upper.includes('PHY') || upper.includes('PHYS')) {
+            return ['Lecture', 'Lab', 'Tutorial'];
+        }
+
+        // Major Subjects (McE, EIE, CS, etc.): Academic + Practical + Tutorial
+        return ['Lecture', 'Lab', 'Tutorial', 'Seminar', 'Project'];
+    };
 
     // Excel import state
     const fileInputRef = useRef(null);
@@ -103,7 +135,7 @@ const TimeTable = () => {
         setLoading(true);
         try {
             const { data } = await apiClient.get('/timetable', {
-                params: { year: selectedYear, semester: selectedSemester }
+                params: { year: selectedYear, semester: selectedSemester, category: selectedCategory }
             });
             
             const scheduleMap = {};
@@ -130,7 +162,7 @@ const TimeTable = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedSemester, selectedYear]);
+    }, [selectedSemester, selectedYear, selectedCategory]);
 
     useEffect(() => {
         fetchTimetable();
@@ -411,6 +443,21 @@ const TimeTable = () => {
                 </div>
             )}
 
+            {/* ── University 3 Timetable Category Tabs (Academic / Practical / Tutorial) ── */}
+            <div className="glass-panel" style={{ padding: '0.6rem 1rem', borderRadius: '16px', marginBottom: '1rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                {timetableCategories.map(cat => (
+                    <button
+                        key={cat.id}
+                        className={`btn ${selectedCategory === cat.id ? 'btn-primary' : 'btn-secondary-glass'}`}
+                        onClick={() => { setSelectedCategory(cat.id); setEditingCell(null); }}
+                        style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem', fontWeight: '700', borderRadius: '12px' }}
+                        title={cat.desc}
+                    >
+                        {cat.label}
+                    </button>
+                ))}
+            </div>
+
             <div className="year-filter-bar glass-panel">
                 {years.map(year => (
                     <button
@@ -496,11 +543,9 @@ const TimeTable = () => {
                                                                 value={tempCellData.type}
                                                                 onChange={(e) => setTempCellData({ ...tempCellData, type: e.target.value })}
                                                             >
-                                                                <option value="Lecture">Lecture</option>
-                                                                <option value="Lab">Lab</option>
-                                                                <option value="Seminar">Seminar</option>
-                                                                <option value="Tutorial">Tutorial</option>
-                                                                <option value="Project">Project</option>
+                                                                {getValidTypesForCourse(tempCellData.course).map(t => (
+                                                                    <option key={t} value={t}>{t}</option>
+                                                                ))}
                                                             </select>
                                                             <div className="editor-btns">
                                                                 <button className="mini-btn success" onClick={handleSaveCell}>Done</button>
