@@ -465,13 +465,13 @@ const Exams = () => {
                                         <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#38bdf8', fontWeight: '700' }}>နည်းပညာတက္ကသိုလ် (မှော်ဘီ)</h3>
                                         <p style={{ margin: '0.2rem 0 0', fontSize: '0.9rem', color: '#94a3b8', fontWeight: '600' }}>စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား (Seating Plan Chart)</p>
                                         <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#cbd5e1', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                                            <span>သင်တန်းအမည်: <strong style={{ color: '#fff' }}>VI (Mech + MC + EP)</strong></span>
-                                            <span>စာမေးပွဲအမည်: <strong style={{ color: '#4ade80' }}>Mid-Term</strong></span>
+                                            <span>သင်တန်းအမည်: <strong style={{ color: '#fff' }}>{activeSeatingExam.year === '1st Year' ? 'I (BE)' : activeSeatingExam.year === '2nd Year' ? 'II (Mech + MC + EP)' : activeSeatingExam.year === '3rd Year' ? 'III (Mech + MC + EP)' : activeSeatingExam.year === '4th Year' ? 'IV (Mech + MC + EP)' : activeSeatingExam.year === '5th Year' ? 'V (Mech + MC + EP)' : 'VI (Mech + MC + EP)'}</strong></span>
+                                            <span>စာမေးပွဲအမည်: <strong style={{ color: '#4ade80' }}>{activeSeatingExam.title || 'Mid-Term'}</strong></span>
                                         </div>
                                     </div>
                                     <div style={{ background: 'rgba(56,189,248,0.15)', padding: '0.4rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.3)', textAlign: 'right' }}>
-                                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Room / Page</div>
-                                        <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#38bdf8' }}>1 / 109</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Room / Hall</div>
+                                        <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#38bdf8' }}>{activeSeatingExam.room || '1 / 109'}</div>
                                     </div>
                                 </div>
 
