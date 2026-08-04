@@ -236,7 +236,11 @@ const Files = () => {
         const matchesSearch = f.name.toLowerCase().includes(searchTerm.toLowerCase());
         const folderFiles = files.filter(file => file.category === f.name);
         const targetYear = isStudent ? studentYear : selectedYear;
-        const hasYearMatch = targetYear === 'All' || folderFiles.some(file => file.year === targetYear || file.year === 'All');
+        const hasYearMatch = targetYear === 'All' ||
+            f.year === targetYear ||
+            f.year === 'All' ||
+            !f.year ||
+            folderFiles.some(file => file.year === targetYear || file.year === 'All');
         return matchesSearch && hasYearMatch;
     });
 
