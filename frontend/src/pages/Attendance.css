@@ -225,6 +225,7 @@
 .status-btn.active.p-btn { background: rgba(16, 185, 129, 0.15); color: var(--success); border-color: rgba(16, 185, 129, 0.3); }
 .status-btn.active.l-btn { background: rgba(245, 158, 11, 0.15); color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
 .status-btn.active.a-btn { background: rgba(239, 68, 68, 0.15); color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
+
 /* Year Filter Bar */
 .year-filter-bar {
     display: flex;
@@ -264,6 +265,7 @@
     box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
 }
 
+/* Mobile Responsive Adjustments */
 @media (max-width: 768px) {
     .attendance-page {
         padding-left: 0;
@@ -279,9 +281,6 @@
         display: none;
     }
 
-    /* ── DESIGN TOKEN SCALES (MOBILE) ── */
-
-    /* Cards: Unified surface family */
     .glass-panel {
         border-radius: 20px !important;
         padding: 1.25rem !important;
@@ -289,6 +288,7 @@
         background: rgba(12, 21, 40, 0.82) !important;
         border: 1px solid rgba(255, 255, 255, 0.12) !important;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+        overflow: hidden !important;
     }
 
     :root[data-theme='light'] .glass-panel {
@@ -297,7 +297,6 @@
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06) !important;
     }
 
-    /* Touch Target Min Height: 48px */
     .btn,
     .form-input,
     button[type="submit"],
@@ -308,7 +307,6 @@
         border-radius: 12px !important;
     }
 
-    /* Headings & Eyebrows */
     .page-header {
         margin-bottom: 1.25rem !important;
     }
@@ -323,20 +321,43 @@
         font-size: 0.82rem !important;
     }
 
-    /* Stat grid spacing */
     .attendance-summary-cards {
         gap: 0.85rem !important;
         margin-bottom: 1.25rem !important;
     }
 
-    .attendance-summary-cards .glass-panel {
-        margin-bottom: 0 !important;
+    /* Table & Mobile Responsive Fit */
+    .table-responsive {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
 
-    /* Table & Empty States */
+    .attendance-table {
+        width: 100% !important;
+        table-layout: fixed !important;
+    }
+
     .attendance-table th,
     .attendance-table td {
-        padding: 0.85rem 1rem !important;
-        font-size: 0.82rem !important;
+        padding: 0.75rem 0.4rem !important;
+        font-size: 0.8rem !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+
+    .attendance-table th:first-child,
+    .attendance-table td:first-child {
+        width: 30% !important;
+    }
+
+    .attendance-table th:nth-child(2),
+    .attendance-table td:nth-child(2) {
+        width: 45% !important;
+    }
+
+    .attendance-table th:nth-child(3),
+    .attendance-table td:nth-child(3) {
+        width: 25% !important;
     }
 }

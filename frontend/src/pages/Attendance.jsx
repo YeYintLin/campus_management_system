@@ -812,10 +812,11 @@ const Attendance = () => {
                                     {studentAttendanceLogs.map(log => {
                                         const myRecord = log.records?.[0];
                                         const status = myRecord?.status || 'Present';
+                                        const displayCode = log.courseCode || log.course?.code || (typeof log.course === 'string' && log.course.length < 15 ? log.course : 'General Course');
                                         return (
                                             <tr key={log._id}>
                                                 <td>{new Date(log.date).toLocaleDateString()}</td>
-                                                <td><span className="font-mono">{log.course || 'Course'}</span></td>
+                                                <td><span className="font-mono" style={{ wordBreak: 'break-all' }}>{displayCode}</span></td>
                                                 <td className="text-center">
                                                     <span className={`badge ${status === 'Present' ? 'badge-success' : status === 'Late' ? 'badge-warning' : 'badge-danger'}`}>
                                                         {status}
