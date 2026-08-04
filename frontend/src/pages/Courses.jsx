@@ -69,6 +69,7 @@ const Courses = () => {
     const [savingCourse, setSavingCourse] = useState(false);
     const [modalError, setModalError] = useState('');
     const [selectedSyllabus, setSelectedSyllabus] = useState(null);
+    const [downloadConfirmCourse, setDownloadConfirmCourse] = useState(null);
 
     const handleDownloadSyllabusPDF = (course) => {
         if (!course) return;
@@ -531,13 +532,118 @@ TU Hmawbi Smart Campus Management System
                         <div className="syllabus-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <button
                                 className="btn btn-primary"
-                                onClick={() => handleDownloadSyllabusPDF(selectedSyllabus)}
+                                onClick={() => setDownloadConfirmCourse(selectedSyllabus)}
                                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                             >
                                 <Download size={16} />
                                 <span>Download Syllabus Document</span>
                             </button>
                             <button className="btn btn-secondary-glass" onClick={() => setSelectedSyllabus(null)}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Download Confirmation & File Details Preview Modal */}
+            {downloadConfirmCourse && (
+                <div className="modal-overlay animate-fade-in" style={{ zIndex: 1100 }} onClick={() => setDownloadConfirmCourse(null)}>
+                    <div className="glass-panel" style={{
+                        width: '90%',
+                        maxWidth: '520px',
+                        padding: '1.75rem',
+                        borderRadius: '20px',
+                        background: 'var(--surface-color, #1e293b)',
+                        border: '1px solid var(--surface-border, rgba(255,255,255,0.1))',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+                    }} onClick={(e) => e.stopPropagation()}>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ background: 'rgba(99,102,241,0.15)', padding: '0.6rem', borderRadius: '12px', color: '#6366f1' }}>
+                                    <FileText size={24} />
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Download Syllabus File</h3>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Confirm file details before saving to device</p>
+                                </div>
+                            </div>
+                            <button className="close-btn" type="button" onClick={() => setDownloadConfirmCourse(null)}><X size={18} /></button>
+                        </div>
+
+                        {/* File Metadata Preview Box */}
+                        <div style={{
+                            background: 'rgba(0,0,0,0.25)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: '14px',
+                            padding: '1.25rem',
+                            marginBottom: '1.25rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.75rem'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.6rem' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>File Name:</span>
+                                <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#818cf8', fontFamily: 'monospace' }}>
+                                    {downloadConfirmCourse.code}_Official_Syllabus.txt
+                                </span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.6rem' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Subject & Year:</span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#fff' }}>
+                                    {downloadConfirmCourse.name} ({deriveYearTag(downloadConfirmCourse.code)})
+                                </span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.6rem' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Course Instructor:</span>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                    {downloadConfirmCourse.teacher?.name || 'Faculty Member'}
+                                </span>
+                            </div>
+
+                            <div>
+                                <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Included Document Sections:
+                                </span>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginTop: '0.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#4ade80' }}>
+                                        <CheckCircle size={14} /> <span>16-Week Outline</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#4ade80' }}>
+                                        <CheckCircle size={14} /> <span>Grading Scheme (40/25/20/15)</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#4ade80' }}>
+                                        <CheckCircle size={14} /> <span>Official Textbook List</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#4ade80' }}>
+                                        <CheckCircle size={14} /> <span>Verified Academic Seal</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Action Buttons */}
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary-glass"
+                                onClick={() => setDownloadConfirmCourse(null)}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={() => {
+                                    handleDownloadSyllabusPDF(downloadConfirmCourse);
+                                    setDownloadConfirmCourse(null);
+                                }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.25rem' }}
+                            >
+                                <Download size={16} />
+                                <span>Confirm & Download</span>
+                            </button>
                         </div>
                     </div>
                 </div>
