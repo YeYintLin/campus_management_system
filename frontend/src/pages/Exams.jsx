@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { Edit2, Trash2, X, Calendar, Clock, MapPin, Timer, BookOpen, Plus, LayoutGrid, Users, Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import { Edit2, Trash2, X, Calendar, Clock, MapPin, Timer, BookOpen, Plus, LayoutGrid, Users, Upload, CheckCircle, AlertCircle, Camera } from 'lucide-react';
 import { getNormalizedUserYear } from '../utils/userYear';
 import './Exams.css';
 
@@ -15,6 +15,8 @@ const Exams = () => {
     const [exams, setExams] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeSeatingExam, setActiveSeatingExam] = useState(null);
+    const [seatingViewTab, setSeatingViewTab] = useState('grid'); // 'grid' or 'photo'
+    const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState('');
     const [currentExam, setCurrentExam] = useState(null);
     const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
     const [loading, setLoading] = useState(true);
@@ -30,6 +32,28 @@ const Exams = () => {
 
     const handleFileUploadClick = () => {
         if (fileInputRef.current) fileInputRef.current.click();
+    };
+
+    const handleSeatingPhotoUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const { data: photoUrl } = await apiClient.post('/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setUploadedPhotoUrl(photoUrl);
+            if (activeSeatingExam) {
+                activeSeatingExam.seatingPhoto = photoUrl;
+            }
+            alert('Official hand-written paper seating plan photo uploaded successfully!');
+        } catch (err) {
+            console.error('Photo upload failed:', err);
+            alert('Failed to upload seating photo.');
+        }
     };
 
     const years = isStudent
@@ -65,6 +89,7 @@ const Exams = () => {
                     time: `${s.startTime || '08:30 AM'} - ${s.endTime || '11:30 AM'}`,
                     duration: '3 Hours',
                     room: s.place || 'Hall 3/212-A',
+                    seatingPhoto: s.seatingPhoto || '',
                     seatProcedure: s.groupTag ? `Group ${s.groupTag} (Seats #${idx * 30 + 1} - #${(idx + 1) * 30})` : `Roll No: ${s.major || 'MC'}-1 to ${s.major || 'MC'}-30`,
                     invigilator: s.teacher || 'Faculty Member',
                     status: s.status === 'Published' ? 'Published' : 'Upcoming'
@@ -137,6 +162,15 @@ const Exams = () => {
         } catch (err) {
             console.error(err);
             alert('Failed to delete exam.');
+        }
+    };
+
+    const getStatusClass = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'upcoming': return 'status-upcoming';
+            case 'completed': return 'status-completed';
+            case 'published': return 'status-published';
+            default: return '';
         }
     };
 
@@ -314,14 +348,34 @@ const Exams = () => {
             {activeSeatingExam && (
                 <div className="modal-overlay" onClick={() => setActiveSeatingExam(null)}>
                     <div className="modal-content glass-panel" style={{ maxWidth: '850px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-                        <div className="modal-header" style={{ borderBottom: '1px solid var(--surface-border)', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
+                        <div className="modal-header" style={{ borderBottom: '1px solid var(--surface-border)', paddingBottom: '1rem', marginBottom: '1rem' }}>
                             <div>
                                 <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#fff' }}>Technological University (Hmawbi)</h2>
                                 <p className="modal-subtitle" style={{ margin: '0.2rem 0 0', color: 'var(--text-muted)' }}>
-                                    Official Seating Plan Table (စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား) — Room 1/109
+                                    Official Seating Plan (စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား) — Room 1/109
                                 </p>
                             </div>
                             <button className="close-btn" onClick={() => setActiveSeatingExam(null)}><X size={24} /></button>
+                        </div>
+
+                        {/* VIEW MODE TABS: GRID VS PAPER PHOTO */}
+                        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                            <button
+                                className={`btn ${seatingViewTab === 'grid' ? 'btn-primary' : 'btn-secondary'}`}
+                                onClick={() => setSeatingViewTab('grid')}
+                                style={{ padding: '0.45rem 1.15rem', fontSize: '0.85rem', borderRadius: '10px' }}
+                            >
+                                <LayoutGrid size={16} style={{ marginRight: '0.4rem' }} />
+                                <span>Paired Desk Grid</span>
+                            </button>
+                            <button
+                                className={`btn ${seatingViewTab === 'photo' ? 'btn-primary' : 'btn-secondary'}`}
+                                onClick={() => setSeatingViewTab('photo')}
+                                style={{ padding: '0.45rem 1.15rem', fontSize: '0.85rem', borderRadius: '10px' }}
+                            >
+                                <Camera size={16} style={{ marginRight: '0.4rem' }} />
+                                <span>Hand-Written Paper Photo 📷</span>
+                            </button>
                         </div>
 
                         <div style={{ background: 'rgba(99,102,241,0.1)', padding: '0.85rem 1rem', borderRadius: '12px', marginBottom: '1.25rem', border: '1px solid rgba(99,102,241,0.25)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.85rem' }}>
@@ -329,49 +383,89 @@ const Exams = () => {
                             <div>Course: <strong style={{ color: '#818cf8' }}>{activeSeatingExam.course} ({activeSeatingExam.title})</strong></div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.85rem', marginBottom: '1.5rem' }}>
-                            {[
-                                { deskId: 1, left: 'VI-EP 1', right: 'VI-EP 38' },
-                                { deskId: 2, left: 'VI-EP 2', right: 'VI-Mech 49' },
-                                { deskId: 3, left: 'VI-EP 14', right: 'VI-Mech 62' },
-                                { deskId: 4, left: 'VI-EP 26', right: 'VI-Mech 74' },
-                                { deskId: 5, left: 'VI-EP 39', right: 'VI-MC 8' },
-                                { deskId: 6, left: 'VI-Mech 50', right: 'VI-EP 3' },
-                                { deskId: 7, left: 'VI-Mech 63', right: 'VI-EP 15' },
-                                { deskId: 8, left: 'VI-Mech 75', right: 'VI-EP 27' },
-                                { deskId: 9, left: 'VI-MC 9', right: 'VI-EP 40' },
-                                { deskId: 10, left: 'VI-EP 4', right: 'VI-Mech 51' },
-                                { deskId: 11, left: 'VI-EP 16', right: 'VI-Mech 64' },
-                                { deskId: 12, left: 'VI-EP 28', right: 'VI-EP 76' },
-                                { deskId: 13, left: 'VI-EP 41', right: 'VI-MC 10' },
-                                { deskId: 14, left: 'VI-Mech 52', right: 'VI-EP 5' },
-                                { deskId: 17, left: 'VI-MC 11', right: 'VI-EP 42' },
-                                { deskId: 18, left: 'VI-MC 13', right: 'VI-EP 44' }
-                            ].map(pair => (
-                                <div key={pair.deskId} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '10px', padding: '0.65rem', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '0.4rem', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '0.2rem' }}>
-                                        Desk Pair #{pair.deskId}
+                        {seatingViewTab === 'photo' ? (
+                            <div>
+                                {(activeSeatingExam.seatingPhoto || uploadedPhotoUrl) ? (
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                            <span style={{ fontSize: '0.85rem', color: '#4ade80', fontWeight: '600' }}>✓ Official Hand-Written Paper Seating Chart</span>
+                                            {canManageExams && (
+                                                <label className="btn btn-secondary" style={{ cursor: 'pointer', padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+                                                    <span>Replace Photo</span>
+                                                    <input type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleSeatingPhotoUpload} />
+                                                </label>
+                                            )}
+                                        </div>
+                                        <img
+                                            src={activeSeatingExam.seatingPhoto || uploadedPhotoUrl}
+                                            alt="Official Hand-written Exam Seating Chart"
+                                            style={{ width: '100%', maxHeight: '600px', objectFit: 'contain', borderRadius: '12px', border: '1px solid var(--surface-border)', background: '#000' }}
+                                        />
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', fontSize: '0.8rem', fontWeight: '700' }}>
-                                        <div style={{ background: 'rgba(99,102,241,0.15)', padding: '0.35rem 0.2rem', borderRadius: '6px', color: '#818cf8' }}>
-                                            {pair.left}
+                                ) : (
+                                    <div className="glass-panel" style={{ padding: '3rem 1.5rem', textAlign: 'center', borderRadius: '16px' }}>
+                                        <Camera size={40} style={{ color: '#818cf8', marginBottom: '0.75rem' }} />
+                                        <h3 style={{ margin: '0 0 0.4rem', color: '#fff' }}>No Hand-Written Seating Photo Uploaded Yet</h3>
+                                        <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                            Upload a photo of the official hand-written paper seating plan posted on the university notice board.
+                                        </p>
+                                        {canManageExams && (
+                                            <label className="btn btn-primary" style={{ cursor: 'pointer', padding: '0.65rem 1.25rem' }}>
+                                                <Upload size={16} style={{ marginRight: '0.4rem' }} />
+                                                <span>Upload Paper Seating Chart Photo</span>
+                                                <input type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleSeatingPhotoUpload} />
+                                            </label>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                                    {[
+                                        { deskId: 1, left: 'VI-EP 1', right: 'VI-EP 38' },
+                                        { deskId: 2, left: 'VI-EP 2', right: 'VI-Mech 49' },
+                                        { deskId: 3, left: 'VI-EP 14', right: 'VI-Mech 62' },
+                                        { deskId: 4, left: 'VI-EP 26', right: 'VI-Mech 74' },
+                                        { deskId: 5, left: 'VI-EP 39', right: 'VI-MC 8' },
+                                        { deskId: 6, left: 'VI-Mech 50', right: 'VI-EP 3' },
+                                        { deskId: 7, left: 'VI-Mech 63', right: 'VI-EP 15' },
+                                        { deskId: 8, left: 'VI-Mech 75', right: 'VI-EP 27' },
+                                        { deskId: 9, left: 'VI-MC 9', right: 'VI-EP 40' },
+                                        { deskId: 10, left: 'VI-EP 4', right: 'VI-Mech 51' },
+                                        { deskId: 11, left: 'VI-EP 16', right: 'VI-Mech 64' },
+                                        { deskId: 12, left: 'VI-EP 28', right: 'VI-EP 76' },
+                                        { deskId: 13, left: 'VI-EP 41', right: 'VI-MC 10' },
+                                        { deskId: 14, left: 'VI-Mech 52', right: 'VI-EP 5' },
+                                        { deskId: 17, left: 'VI-MC 11', right: 'VI-EP 42' },
+                                        { deskId: 18, left: 'VI-MC 13', right: 'VI-EP 44' }
+                                    ].map(pair => (
+                                        <div key={pair.deskId} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', borderRadius: '10px', padding: '0.65rem', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '0.4rem', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '0.2rem' }}>
+                                                Desk Pair #{pair.deskId}
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', fontSize: '0.8rem', fontWeight: '700' }}>
+                                                <div style={{ background: 'rgba(99,102,241,0.15)', padding: '0.35rem 0.2rem', borderRadius: '6px', color: '#818cf8' }}>
+                                                    {pair.left}
+                                                </div>
+                                                <div style={{ background: 'rgba(16,185,129,0.15)', padding: '0.35rem 0.2rem', borderRadius: '6px', color: '#4ade80' }}>
+                                                    {pair.right}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div style={{ background: 'rgba(16,185,129,0.15)', padding: '0.35rem 0.2rem', borderRadius: '6px', color: '#4ade80' }}>
-                                            {pair.right}
-                                        </div>
+                                    ))}
+                                </div>
+
+                                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--surface-border)', fontSize: '0.85rem' }}>
+                                    <h4 style={{ margin: '0 0 0.5rem', color: '#fff', fontSize: '0.9rem' }}>Seating Roll Range Summary:</h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', color: 'var(--text-muted)' }}>
+                                        <div>• <strong>VI.Mech:</strong> Roll 49 to 79 + Ext-1 to Ext-2 = <strong>29 Students</strong></div>
+                                        <div>• <strong>VI.EP:</strong> Roll 1 to 50 = <strong>50 Students</strong></div>
+                                        <div>• <strong>VI.MC:</strong> Roll 1 to 15 = <strong>15 Students</strong></div>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-
-                        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--surface-border)', fontSize: '0.85rem' }}>
-                            <h4 style={{ margin: '0 0 0.5rem', color: '#fff', fontSize: '0.9rem' }}>Seating Roll Range Summary:</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', color: 'var(--text-muted)' }}>
-                                <div>• <strong>VI.Mech:</strong> Roll 49 to 79 + Ext-1 to Ext-2 = <strong>29 Students</strong></div>
-                                <div>• <strong>VI.EP:</strong> Roll 1 to 50 = <strong>50 Students</strong></div>
-                                <div>• <strong>VI.MC:</strong> Roll 1 to 15 = <strong>15 Students</strong></div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             )}

@@ -97,6 +97,10 @@ const scheduledSessionSchema = new mongoose.Schema(
             ref: 'ClassSection',
             required: false,
         },
+        seatingPhoto: {
+            type: String,
+            trim: true,
+        },
         seatingPairs: [{
             deskId: Number,
             left: String,
