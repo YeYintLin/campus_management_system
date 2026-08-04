@@ -23,11 +23,19 @@ const TimeTable = () => {
     const isStudent = roleStr === 'student';
     const studentYear = getNormalizedUserYear(user);
 
+    const getCurrentWeekday = () => {
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const today = dayNames[new Date().getDay()];
+        return (today === 'Saturday' || today === 'Sunday') ? 'Monday' : today;
+    };
+
+    const actualToday = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
+
     const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : '6th Year');
     const [selectedSemester, setSelectedSemester] = useState('Semester 1');
     const [selectedCategory, setSelectedCategory] = useState('Academic'); // 'Academic', 'Practical', 'Tutorial', 'Exam'
     const [selectedMajor, setSelectedMajor] = useState('MC');
-    const [selectedMobileDay, setSelectedMobileDay] = useState('Monday');
+    const [selectedMobileDay, setSelectedMobileDay] = useState(getCurrentWeekday);
 
     const [schedules, setSchedules] = useState({});
     const [dateSessions, setDateSessions] = useState([]);
@@ -358,12 +366,19 @@ const TimeTable = () => {
                 {selectedCategory === 'Academic' ? (
                     <div>
                         {/* Mobile Day Selector Bar */}
-                        <div className="year-filter-bar glass-panel" style={{ marginBottom: '1rem' }}>
-                            {days.map(d => (
-                                <button key={d} className={`year-tag ${selectedMobileDay === d ? 'active' : ''}`} onClick={() => setSelectedMobileDay(d)}>
-                                    {d}
-                                </button>
-                            ))}
+                        <div className="year-filter-bar glass-panel" style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {(actualToday === 'Saturday' || actualToday === 'Sunday') && (
+                                <div style={{ fontSize: '0.75rem', color: '#4ade80', fontWeight: '600', padding: '0.2rem 0.5rem', background: 'rgba(34,197,94,0.1)', borderRadius: '6px' }}>
+                                    🎉 Today is {actualToday} (Weekend) — Showing Monday's Schedule
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto' }}>
+                                {days.map(d => (
+                                    <button key={d} className={`year-tag ${selectedMobileDay === d ? 'active' : ''}`} onClick={() => setSelectedMobileDay(d)}>
+                                        {d}{actualToday === d ? ' • Today' : ''}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
                         {/* Mobile Period Timeline Cards for selectedDay */}
