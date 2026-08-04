@@ -140,6 +140,19 @@ const getSessions = async (req, res) => {
         if (sessionType) filter.sessionType = sessionType;
         if (status) filter.status = status;
 
+        if (req.user?.role === 'Teacher') {
+            const User = require('../models/User');
+            const userDoc = await User.findById(req.user._id).select('department');
+            const dept = (userDoc?.department || '').toUpperCase().trim();
+            const isMinorTeacher = ['MATH', 'MTH', 'ENGLISH', 'ENG', 'MYANMAR', 'MM', 'CHEM', 'CHM', 'PHYS', 'PHY'].some(m => dept.includes(m));
+
+            if (!isMinorTeacher) {
+                // Major department teacher (e.g. Mechatronics / MC): restricted to their own department
+                const teacherMajor = (dept.includes('MC') || dept.includes('MECHA')) ? 'MC' : (major || 'MC');
+                filter.major = teacherMajor;
+            }
+        }
+
         const sessions = await ScheduledSession.find(filter)
             .populate('course', 'name code')
             .populate('classSection', 'familyTeacher majorRoom')

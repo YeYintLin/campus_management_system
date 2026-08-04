@@ -16,10 +16,15 @@ const getTimetable = async (req, res) => {
         if (category) query.category = category;
 
         if (role === 'Teacher') {
-            // Teacher: filter by courses taught by teacher
-            const myCourses = await Course.find({ teacher: userId }).select('code');
-            const myCourseCodes = myCourses.map(c => c.code);
-            query.course = { $in: myCourseCodes };
+            const userDoc = await User.findById(userId).select('department');
+            const dept = (userDoc?.department || '').toUpperCase().trim();
+            const isMinorTeacher = ['MATH', 'MTH', 'ENGLISH', 'ENG', 'MYANMAR', 'MM', 'CHEM', 'CHM', 'PHYS', 'PHY'].some(m => dept.includes(m));
+
+            if (!isMinorTeacher) {
+                // Major department teacher (e.g. Mechatronics / MC): restricted to their own major department
+                const teacherMajor = (dept.includes('MC') || dept.includes('MECHA')) ? 'MC' : (req.query.major || 'MC');
+                query.major = teacherMajor;
+            }
         } else if (role === 'Student') {
             // Student: filter by student's year if not explicitly provided
             if (!year) {
