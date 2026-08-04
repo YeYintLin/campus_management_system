@@ -38,14 +38,18 @@ const Exams = () => {
             ]);
 
             const dbExams = Array.isArray(examsRes.data) ? examsRes.data : [];
-            const sessionExams = Array.isArray(sessionsRes.data) ? sessionsRes.data.map(s => ({
+            const sessionExams = Array.isArray(sessionsRes.data) ? sessionsRes.data.map((s, idx) => ({
                 _id: s._id,
-                title: s.title || `${s.examType || 'Mid-Term'} Exam`,
-                course: { code: s.courseCode, name: s.courseName },
+                title: s.title || `${s.examType || 'Mid-Term'} Examination`,
+                course: s.courseCode || 'SUBJ',
+                courseName: s.courseName || '',
                 year: s.year,
-                date: s.date,
+                date: s.date ? new Date(s.date).toLocaleDateString() : 'TBA',
                 time: `${s.startTime || '08:30 AM'} - ${s.endTime || '11:30 AM'}`,
-                room: s.place || 'Main Exam Hall',
+                duration: '3 Hours',
+                room: s.place || 'Hall 3/212-A',
+                seatProcedure: s.groupTag ? `Group ${s.groupTag} (Seats #${idx * 30 + 1} - #${(idx + 1) * 30})` : `Roll No: ${s.major || 'MC'}-1 to ${s.major || 'MC'}-30`,
+                invigilator: s.teacher || 'Faculty Member',
                 status: s.status === 'Published' ? 'Published' : 'Upcoming'
             })) : [];
 
@@ -197,31 +201,34 @@ const Exams = () => {
                             </div>
 
                             <div className="exam-card-body">
-                                <h3 className="exam-title">{exam.title}</h3>
+                                <h3 className="exam-title" style={{ margin: '0 0 0.4rem', fontSize: '1.1rem', color: '#fff' }}>{exam.title}</h3>
+                                {exam.courseName && (
+                                    <p style={{ margin: '0 0 0.85rem', fontSize: '0.85rem', color: '#818cf8', fontWeight: '600' }}>{exam.courseName}</p>
+                                )}
 
-                                <div className="exam-details">
+                                <div className="exam-details" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.65rem' }}>
                                     <div className="detail-item">
-                                        <Calendar size={14} />
-                                        <span>{exam.date}</span>
+                                        <Calendar size={14} style={{ color: '#4ade80' }} />
+                                        <span><strong>Date:</strong> {exam.date}</span>
                                     </div>
                                     <div className="detail-item">
-                                        <Clock size={14} />
-                                        <span>{exam.time}</span>
+                                        <Clock size={14} style={{ color: '#818cf8' }} />
+                                        <span><strong>Time:</strong> {exam.time}</span>
                                     </div>
                                     <div className="detail-item">
-                                        <Timer size={14} />
-                                        <span>{exam.duration}</span>
+                                        <MapPin size={14} style={{ color: '#f87171' }} />
+                                        <span><strong>Room:</strong> {exam.room}</span>
                                     </div>
-                                    <div className="detail-item">
-                                        <MapPin size={14} />
-                                        <span>{exam.room}</span>
+                                    <div className="detail-item" style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.04)', padding: '0.4rem 0.65rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                        <BookOpen size={14} style={{ color: '#fbbf24' }} />
+                                        <span><strong>Seat Procedure:</strong> {exam.seatProcedure || 'Standard Roll Order (#1-#30)'}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="exam-card-footer">
-                                <span className="exam-id">ID: {exam._id.slice(-6).toUpperCase()}</span>
-                                <button className="btn btn-link">Details</button>
+                            <div className="exam-card-footer" style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span className="exam-id" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Invigilator: <strong style={{ color: '#fff' }}>{exam.invigilator || 'Faculty Member'}</strong></span>
+                                <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>3 Hrs Exam</span>
                             </div>
                         </div>
                     ))
