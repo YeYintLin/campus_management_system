@@ -38,30 +38,40 @@ const Exams = () => {
 
     const fetchExams = useCallback(async () => {
         setLoading(true);
+        setError('');
         try {
             const targetYear = isStudent ? studentYear : selectedYear;
             const params = { year: targetYear !== 'All' ? targetYear : undefined };
 
-            const [examsRes, sessionsRes] = await Promise.all([
-                apiClient.get('/exams', { params }),
-                apiClient.get('/sessions', { params: { ...params, sessionType: 'Exam' } })
-            ]);
+            let dbExams = [];
+            let sessionExams = [];
 
-            const dbExams = Array.isArray(examsRes.data) ? examsRes.data : [];
-            const sessionExams = Array.isArray(sessionsRes.data) ? sessionsRes.data.map((s, idx) => ({
-                _id: s._id,
-                title: s.title || `${s.examType || 'Mid-Term'} Examination`,
-                course: s.courseCode || 'SUBJ',
-                courseName: s.courseName || '',
-                year: s.year,
-                date: s.date ? new Date(s.date).toLocaleDateString() : 'TBA',
-                time: `${s.startTime || '08:30 AM'} - ${s.endTime || '11:30 AM'}`,
-                duration: '3 Hours',
-                room: s.place || 'Hall 3/212-A',
-                seatProcedure: s.groupTag ? `Group ${s.groupTag} (Seats #${idx * 30 + 1} - #${(idx + 1) * 30})` : `Roll No: ${s.major || 'MC'}-1 to ${s.major || 'MC'}-30`,
-                invigilator: s.teacher || 'Faculty Member',
-                status: s.status === 'Published' ? 'Published' : 'Upcoming'
-            })) : [];
+            try {
+                const examsRes = await apiClient.get('/exams', { params });
+                dbExams = Array.isArray(examsRes.data) ? examsRes.data : [];
+            } catch (e) {
+                console.warn('Exams endpoint:', e.message);
+            }
+
+            try {
+                const sessionsRes = await apiClient.get('/sessions', { params: { ...params, sessionType: 'Exam' } });
+                sessionExams = Array.isArray(sessionsRes.data) ? sessionsRes.data.map((s, idx) => ({
+                    _id: s._id,
+                    title: s.title || `${s.examType || 'Mid-Term'} Examination`,
+                    course: s.courseCode || 'SUBJ',
+                    courseName: s.courseName || '',
+                    year: s.year,
+                    date: s.date ? new Date(s.date).toLocaleDateString() : 'TBA',
+                    time: `${s.startTime || '08:30 AM'} - ${s.endTime || '11:30 AM'}`,
+                    duration: '3 Hours',
+                    room: s.place || 'Hall 3/212-A',
+                    seatProcedure: s.groupTag ? `Group ${s.groupTag} (Seats #${idx * 30 + 1} - #${(idx + 1) * 30})` : `Roll No: ${s.major || 'MC'}-1 to ${s.major || 'MC'}-30`,
+                    invigilator: s.teacher || 'Faculty Member',
+                    status: s.status === 'Published' ? 'Published' : 'Upcoming'
+                })) : [];
+            } catch (e) {
+                console.warn('Sessions endpoint:', e.message);
+            }
 
             setExams([...sessionExams, ...dbExams]);
         } catch (err) {

@@ -195,13 +195,14 @@ const getSessions = async (req, res) => {
         if (sessionType) filter.sessionType = sessionType;
         if (status) filter.status = status;
 
-        if (req.user?.role === 'Teacher') {
+        if (req.user) {
             const User = require('../models/User');
-            const userDoc = await User.findById(req.user._id).select('department');
+            const userId = req.user._id || req.user.id;
+            const userDoc = userId ? await User.findById(userId).select('department') : null;
             const dept = (userDoc?.department || '').toUpperCase().trim();
             const isMinorTeacher = ['MATH', 'MTH', 'ENGLISH', 'ENG', 'MYANMAR', 'MM', 'CHEM', 'CHM', 'PHYS', 'PHY'].some(m => dept.includes(m));
 
-            if (!isMinorTeacher) {
+            if (req.user.role === 'Teacher' && !isMinorTeacher) {
                 // Major department teacher (e.g. Mechatronics / MC): restricted to their own department
                 const teacherMajor = (dept.includes('MC') || dept.includes('MECHA')) ? 'MC' : (major || 'MC');
                 filter.major = teacherMajor;
