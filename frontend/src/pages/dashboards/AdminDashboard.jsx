@@ -6,7 +6,7 @@ import {
     ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar
 } from 'recharts';
 import {
-    AlertTriangle, ArrowRight, Award, Bell, BookOpen,
+    AlertTriangle, ArrowRight, Award, Bell, BookOpen, Calendar,
     CheckCircle2, Clock, FileText, TrendingUp, UserRoundCheck, Users
 } from 'lucide-react';
 import apiClient from '../../api/apiClient';
@@ -117,11 +117,11 @@ const AdminDashboard = () => {
 
                 <div className="glass-card stat-card">
                     <div className="stat-icon admin-notif-icon">
-                        <Bell size={22} />
+                        <Calendar size={22} />
                     </div>
                     <div className="stat-info">
-                        <h3>{stats?.notificationsSentToday ?? 0}</h3>
-                        <p>Notifications Today</p>
+                        <h3>{stats?.upcomingExams ?? 0}</h3>
+                        <p>Upcoming Exams</p>
                     </div>
                 </div>
 

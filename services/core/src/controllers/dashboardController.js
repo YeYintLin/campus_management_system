@@ -4,6 +4,7 @@ const Course = require('../models/Course');
 const Grade = require('../models/Grade');
 const Timetable = require('../models/Timetable');
 const Notification = require('../models/Notification');
+const ScheduledSession = require('../models/ScheduledSession');
 const axios = require('axios');
 
 const AcademicConfig = require('../models/AcademicConfig');
@@ -292,6 +293,13 @@ const getDashboardStats = async (req, res) => {
             stats.notificationsSentToday = notificationsSentToday;
             stats.recentNotifications = notifications;
 
+            // Upcoming exams count
+            const upcomingExamCount = await ScheduledSession.countDocuments({
+                sessionType: 'Exam',
+                date: { $gte: new Date() }
+            });
+            stats.upcomingExams = upcomingExamCount;
+
         } else if (roleNorm === 'teacher') {
             // ── Teacher stats ──
             const myCourses = await Course.find({ teacher: userId });
@@ -344,6 +352,13 @@ const getDashboardStats = async (req, res) => {
             stats.pendingGrading = pendingGrading;
             stats.todaySchedule = scheduleWithNames;
 
+            // Upcoming exams count
+            const upcomingExamCount = await ScheduledSession.countDocuments({
+                sessionType: 'Exam',
+                date: { $gte: new Date() }
+            });
+            stats.upcomingExams = upcomingExamCount;
+
         } else {
             // ── Student stats ──
             const [courses, grades, notifications] = await Promise.all([
@@ -380,6 +395,13 @@ const getDashboardStats = async (req, res) => {
                 percent: (g.maxScore || 100) > 0 ? Math.round(((g.score || 0) / (g.maxScore || 100)) * 100) : 0,
             }));
             stats.recentNotifications = Array.isArray(notifications) ? notifications : [];
+
+            // Upcoming exams count
+            const upcomingExamCount = await ScheduledSession.countDocuments({
+                sessionType: 'Exam',
+                date: { $gte: new Date() }
+            });
+            stats.upcomingExams = upcomingExamCount;
         }
 
         stats.role = role;

@@ -18,12 +18,12 @@ const getNotifications = async (req, res) => {
         const next7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
         const upcomingSessions = await ScheduledSession.find({
-            sessionType: { $in: ['Practical', 'Tutorial'] },
+            sessionType: { $in: ['Practical', 'Tutorial', 'Exam'] },
             date: { $gte: now, $lte: next7Days }
-        }).sort({ date: 1 }).limit(10);
+        }).sort({ date: 1 }).limit(15);
 
         const reminderNotifications = upcomingSessions.map(s => {
-            const icon = s.sessionType === 'Practical' ? '🔬' : '✍️';
+            const icon = s.sessionType === 'Practical' ? '🔬' : s.sessionType === 'Exam' ? '📝' : '✍️';
             const dateStr = s.date ? new Date(s.date).toLocaleDateString() : '';
             const diffMs = new Date(s.date).getTime() - now.getTime();
             const daysLeft = Math.max(1, Math.ceil(diffMs / (1000 * 3600 * 24)));
@@ -31,7 +31,7 @@ const getNotifications = async (req, res) => {
                 _id: `reminder-${s._id}`,
                 type: s.sessionType.toLowerCase(),
                 message: `${icon} Upcoming ${s.sessionType} (${daysLeft} day${daysLeft > 1 ? 's' : ''} away): [${s.courseCode}] ${s.title || s.courseName || ''} on ${dateStr} (${s.startTime || '08:30 AM'}) at ${s.place || 'Lab'}.`,
-                link: '/timetable',
+                link: s.sessionType === 'Exam' ? '/exams' : '/timetable',
                 read: false,
                 createdAt: s.createdAt || now
             };

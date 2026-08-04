@@ -6,7 +6,7 @@ import {
     ResponsiveContainer
 } from 'recharts';
 import {
-    AlertTriangle, ArrowRight, BookOpen, CheckCircle2,
+    AlertTriangle, ArrowRight, Bell, BookOpen, Calendar, CheckCircle2,
     Clock, ClipboardList, FileSpreadsheet, Upload, Users
 } from 'lucide-react';
 import apiClient from '../../api/apiClient';
@@ -19,6 +19,8 @@ const TeacherDashboard = () => {
     const [stats, setStats] = useState(null);
     const [atRiskStudents, setAtRiskStudents] = useState([]);
     const [attendance, setAttendance] = useState([]);
+    const [upcomingExams, setUpcomingExams] = useState([]);
+    const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -26,14 +28,25 @@ const TeacherDashboard = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const [statsRes, riskRes, attRes] = await Promise.all([
+                const [statsRes, riskRes, attRes, examsRes, notifRes] = await Promise.allSettled([
                     apiClient.get('/dashboard/stats'),
                     apiClient.get('/dashboard/at-risk', { params: { scope: 'own' } }),
                     apiClient.get('/attendance'),
+                    apiClient.get('/sessions', { params: { sessionType: 'Exam' } }),
+                    apiClient.get('/notifications'),
                 ]);
-                setStats(statsRes.data);
-                setAtRiskStudents(Array.isArray(riskRes.data) ? riskRes.data : []);
-                setAttendance(Array.isArray(attRes.data) ? attRes.data : []);
+                if (statsRes.status === 'fulfilled') setStats(statsRes.data);
+                if (riskRes.status === 'fulfilled') setAtRiskStudents(Array.isArray(riskRes.data) ? riskRes.data : []);
+                if (attRes.status === 'fulfilled') setAttendance(Array.isArray(attRes.data) ? attRes.data : []);
+                if (examsRes.status === 'fulfilled') {
+                    const examData = Array.isArray(examsRes.value?.data) ? examsRes.value.data : [];
+                    const upcoming = examData.filter(ex => {
+                        const d = new Date(ex.date);
+                        return !isNaN(d.getTime()) && d >= new Date();
+                    }).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
+                    setUpcomingExams(upcoming);
+                }
+                if (notifRes.status === 'fulfilled') setNotifications(Array.isArray(notifRes.value?.data) ? notifRes.value.data.slice(0, 5) : []);
             } catch (err) {
                 console.error('Failed to fetch teacher dashboard data:', err);
                 setError('Failed to load dashboard data.');
@@ -114,11 +127,11 @@ const TeacherDashboard = () => {
 
                 <div className="glass-card stat-card">
                     <div className="stat-icon assignments-icon">
-                        <ClipboardList size={22} />
+                        <Calendar size={22} />
                     </div>
                     <div className="stat-info">
-                        <h3>{stats?.pendingGrading ?? 0}</h3>
-                        <p>Pending Grading</p>
+                        <h3>{stats?.upcomingExams ?? upcomingExams.length}</h3>
+                        <p>Upcoming Exams</p>
                     </div>
                 </div>
 
@@ -323,6 +336,70 @@ const TeacherDashboard = () => {
                     </div>
                     <ArrowRight size={16} className="quick-action-arrow" />
                 </Link>
+            </div>
+            {/* ── Bottom Row: Upcoming Exams + Notifications ── */}
+            <div className="teacher-insights-grid" style={{ marginTop: '1.5rem' }}>
+                {/* Upcoming Exams */}
+                <div className="glass-card attendance-section">
+                    <div className="section-header">
+                        <div className="header-info">
+                            <h2>Upcoming Exams</h2>
+                            <span className="text-muted text-sm">{upcomingExams.length} upcoming</span>
+                        </div>
+                        <Link to="/exams" className="view-link">
+                            View All
+                            <ArrowRight size={16} />
+                        </Link>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {upcomingExams.length > 0 ? upcomingExams.map(ex => (
+                            <div key={ex._id} className="schedule-row glass-panel">
+                                <div className="schedule-time">
+                                    <Calendar size={14} />
+                                    <span>{ex.date ? new Date(ex.date).toLocaleDateString('default', { month: 'short', day: 'numeric' }) : 'TBA'}</span>
+                                </div>
+                                <div className="schedule-details">
+                                    <h4>{ex.title || ex.courseName || 'Examination'}</h4>
+                                    <p>{ex.courseCode || ''} · {ex.startTime || '08:30 AM'} · {ex.place || 'Hall'}</p>
+                                </div>
+                            </div>
+                        )) : (
+                            <EmptyState
+                                icon={CheckCircle2}
+                                message="No upcoming exams"
+                                submessage="No exam sessions scheduled"
+                                compact
+                            />
+                        )}
+                    </div>
+                </div>
+
+                {/* Notifications */}
+                <div className="glass-card attention-card">
+                    <div className="section-header">
+                        <div className="header-info">
+                            <h2>Notifications</h2>
+                            <span className="text-muted text-sm">Latest updates</span>
+                        </div>
+                        <Bell size={20} className="section-icon" />
+                    </div>
+                    <div className="attention-list">
+                        {notifications.length > 0 ? notifications.map(notif => (
+                            <div key={notif._id} className="attention-row">
+                                <div className="attention-avatar" style={{ background: 'rgba(99,102,241,0.2)', color: '#818cf8' }}>!</div>
+                                <div className="attention-info">
+                                    <h4 style={{ fontSize: '0.85rem' }}>{notif.message}</h4>
+                                    <p>{new Date(notif.createdAt).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="attention-empty">
+                                <CheckCircle2 size={22} />
+                                <span>No recent notifications</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

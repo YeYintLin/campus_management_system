@@ -40,7 +40,7 @@ const StudentDashboard = () => {
                 setLoading(true);
                 const [statsRes, examsRes, gradesRes, attendanceRes, notifRes] = await Promise.allSettled([
                     apiClient.get('/dashboard/stats'),
-                    apiClient.get('/exams'),
+                    apiClient.get('/sessions', { params: { sessionType: 'Exam' } }),
                     apiClient.get('/grades', { params: { student: studentId } }),
                     apiClient.get('/attendance', { params: { student: studentId } }),
                     apiClient.get('/notifications'),
@@ -80,7 +80,11 @@ const StudentDashboard = () => {
     // Upcoming exams
     const upcomingExams = useMemo(() => {
         return exams
-            .filter(ex => new Date(ex.date) >= new Date() && ex.status === 'Upcoming')
+            .filter(ex => {
+                const examDate = new Date(ex.date);
+                return !isNaN(examDate.getTime()) && examDate >= new Date();
+            })
+            .sort((a, b) => new Date(a.date) - new Date(b.date))
             .slice(0, 3);
     }, [exams]);
 
@@ -149,11 +153,11 @@ const StudentDashboard = () => {
 
                 <div className="glass-card stat-card highlight-card">
                     <div className="stat-icon student-gpa-icon">
-                        <ShieldCheck size={22} />
+                        <Calendar size={22} />
                     </div>
                     <div className="stat-info">
-                        <h3>Good Standing</h3>
-                        <p>Academic Status</p>
+                        <h3>{upcomingExams.length}</h3>
+                        <p>Upcoming Exams</p>
                     </div>
                 </div>
             </div>
