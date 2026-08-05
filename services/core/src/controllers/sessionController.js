@@ -73,6 +73,7 @@ const batchImportSessions = async (req, res) => {
                             periodNumber: slot.periodNumber,
                             startTime: slot.startTime,
                             endTime: slot.endTime,
+                            time: slot.startTime,
                             startTimeMinutes: slot.startTimeMinutes,
                             endTimeMinutes: slot.endTimeMinutes,
                             courseCode: slot.courseCode,
