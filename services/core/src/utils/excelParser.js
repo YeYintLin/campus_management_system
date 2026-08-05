@@ -89,21 +89,21 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
             let majorRoom = '3/212-A';
             let familyTeacher = 'Faculty Member';
 
-            if (combined.includes('first year') || combined.includes('i mc') || combined.includes('1st year')) {
-                detectedYear = '1st Year';
-            } else if (combined.includes('second year') || combined.includes('ii mc') || combined.includes('2nd year')) {
-                detectedYear = '2nd Year';
-            } else if (combined.includes('third year') || combined.includes('iii mc') || combined.includes('3rd year')) {
-                detectedYear = '3rd Year';
-            } else if (combined.includes('fourth year') || combined.includes('iv mc') || combined.includes('4th year')) {
-                detectedYear = '4th Year';
-            } else if (combined.includes('fifth year') || combined.includes('v mc') || combined.includes('5th year')) {
-                detectedYear = '5th Year';
-            } else if (combined.includes('me mc') || combined.includes('me ') || combined.startsWith('me') || combined.includes('master')) {
+            if (combined.match(/\b(me|master)\b/i) || combined.match(/\bme\s*mc\b/i)) {
                 detectedYear = 'ME Program';
+            } else if (combined.match(/\b(fifth|5th)\b/i) || combined.match(/\bv\s*mc\b/i)) {
+                detectedYear = '5th Year';
+            } else if (combined.match(/\b(fourth|4th)\b/i) || combined.match(/\biv\s*mc\b/i)) {
+                detectedYear = '4th Year';
+            } else if (combined.match(/\b(third|3rd)\b/i) || combined.match(/\biii\s*mc\b/i)) {
+                detectedYear = '3rd Year';
+            } else if (combined.match(/\b(second|2nd)\b/i) || combined.match(/\bii\s*mc\b/i)) {
+                detectedYear = '2nd Year';
+            } else if (combined.match(/\b(first|1st)\b/i) || combined.match(/\bi\s*mc\b/i)) {
+                detectedYear = '1st Year';
             }
 
-            if (combined.includes('sem 1') || combined.includes('sem i ') || combined.includes(',s1') || combined.includes('first semester') || combined.includes('sem iii') || combined.includes('sem v') || combined.includes('sem vii')) {
+            if (combined.match(/\b(s1|sem\s*1|sem\s*i|first\s*semester|sem\s*iii|sem\s*v|sem\s*vii)\b/i)) {
                 detectedSemester = 'Semester 1';
             } else {
                 detectedSemester = 'Semester 2';
