@@ -503,7 +503,7 @@ const TimeTable = () => {
                                     🎉 Today is {actualToday} (Weekend) — Showing Monday's Schedule
                                 </div>
                             )}
-                            <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.2rem' }}>
                                 {days.map(d => (
                                     <button key={d} className={`year-tag ${selectedMobileDay === d ? 'active' : ''}`} onClick={() => setSelectedMobileDay(d)}>
                                         {d}{actualToday === d ? ' • Today' : ''}
@@ -517,35 +517,39 @@ const TimeTable = () => {
                             {TU_HMAWBI_PERIODS.map((p, idx) => {
                                 if (p.isLunch) {
                                     return (
-                                        <div key={idx} className="glass-panel" style={{ padding: '0.75rem 1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                        <div key={idx} className="glass-panel" style={{ padding: '0.9rem 1.1rem', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
                                             <Coffee size={18} style={{ color: '#f87171' }} />
-                                            <div>
-                                                <span style={{ fontWeight: '700', fontSize: '0.85rem', color: '#f87171' }}>LUNCH BREAK</span>
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>12:00 to 1:00 PM</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span style={{ fontWeight: '700', fontSize: '0.82rem', color: '#f87171', letterSpacing: '0.05em' }}>LUNCH BREAK</span>
+                                                <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)' }}>12:00 to 1:00 PM</span>
                                             </div>
                                         </div>
                                     );
                                 }
 
-                                const session = schedules[selectedMobileDay]?.[p.slotKey];
+                                const session = schedules[selectedMobileDay]?.[p.period] || schedules[selectedMobileDay]?.[p.slotKey];
                                 return (
-                                    <div key={idx} className="glass-panel" style={{ padding: '1rem', borderRadius: '14px', borderLeft: session ? '4px solid #6366f1' : '1px solid var(--surface-border)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                {p.label} ({p.time})
+                                    <div key={idx} className="glass-panel" style={{ padding: '1.1rem', borderRadius: '14px', background: 'rgba(30, 41, 59, 0.4)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                                        <div style={{ marginBottom: session ? '0.5rem' : '0.25rem' }}>
+                                            <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                PERIOD {p.period} ({p.time})
                                             </span>
-                                            {session && <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>{session.sessionLabel}</span>}
                                         </div>
                                         {session ? (
                                             <div>
-                                                <h4 style={{ margin: '0 0 0.3rem', fontSize: '1.05rem', color: '#fff' }}>{session.course}</h4>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                                                    <MapPin size={12} />
-                                                    <span>Room: {session.room}</span>
+                                                <h4 style={{ margin: '0 0 0.35rem', fontSize: '1rem', color: '#fff', fontWeight: '600', lineHeight: 1.3 }}>
+                                                    {formatCourseDisplayName(session.course, session.name)}
+                                                </h4>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                        <MapPin size={12} />
+                                                        <span>Room: {session.room}</span>
+                                                    </div>
+                                                    <span className="type-tag" style={{ fontSize: '0.7rem' }}>{session.sessionLabel || session.type}</span>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <p style={{ margin: 0, fontSize: '0.82rem', color: 'rgba(255,255,255,0.3)', italic: 'true' }}>Free Period</p>
+                                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)' }}>Free Period</p>
                                         )}
                                     </div>
                                 );
