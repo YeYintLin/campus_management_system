@@ -29,29 +29,38 @@ const getTimetable = async (req, res) => {
         const Semester = require('../models/Semester');
         const ClassSection = require('../models/ClassSection');
 
-        // 1. Build query for Semester doc (strictly matching BOTH year AND semester)
-        const yearOr = [
-            yNum ? { yearNumber: yNum } : null,
-            targetYearString ? { yearLabel: targetYearString } : null,
-            year ? { yearLabel: year } : null
-        ].filter(Boolean);
+        const yStr = String(year || targetYearString || '');
+        const sStr = String(semester || targetSemesterString || '');
+        const isSecondSemTab = sNum === 2 || sStr.toLowerCase().includes('2');
+        const isFirstSemTab = sNum === 1 || sStr.toLowerCase().includes('1');
 
-        const semOr = [
-            sNum ? { semesterNumber: sNum } : null,
-            targetSemesterString ? { semesterLabel: targetSemesterString } : null,
-            semester ? { semesterLabel: semester } : null
-        ].filter(Boolean);
+        const allSemDocs = await Semester.find().lean().exec();
+        const semesterDoc = allSemDocs.find(d => {
+            const dY = d.yearNumber || parseNum(d.yearLabel) || parseNum(d.sheetName);
+            if (yNum === 1 || yStr.includes('1')) {
+                return dY === 1 || d.sheetName.toLowerCase().includes('first');
+            }
+            if (yNum === 2 || yStr.includes('2')) {
+                return dY === 2 || d.sheetName.toLowerCase().includes('second year');
+            }
+            if (yNum === 3 || yStr.includes('3')) {
+                return dY === 3 || d.sheetName.toLowerCase().includes('third');
+            }
+            if (yNum === 4 || yStr.includes('4')) {
+                return dY === 4 || d.sheetName.toLowerCase().includes('fourth');
+            }
+            if (yNum === 5 || yStr.includes('5')) {
+                if (isFirstSemTab) return d.sheetName.includes('S1') || (dY === 5 && d.semesterNumber === 1);
+                if (isSecondSemTab) return d.sheetName.includes('S2') || (dY === 5 && d.semesterNumber === 2);
+                return dY === 5;
+            }
+            if (yStr.includes('ME')) {
+                return d.sheetName.includes('ME') || d.yearLabel === 'ME';
+            }
+            return false;
+        }) || null;
 
-        let semQuery = {};
-        if (yearOr.length > 0 && semOr.length > 0) {
-            semQuery = { $and: [{ $or: yearOr }, { $or: semOr }] };
-        } else if (yearOr.length > 0) {
-            semQuery = { $or: yearOr };
-        } else if (semOr.length > 0) {
-            semQuery = { $or: semOr };
-        }
-
-        // 2. Build query for Timetable slots model (strictly matching BOTH year AND semester)
+        // Build query for Timetable slots model
         let timetableQuery = {
             $and: [
                 {
@@ -74,9 +83,7 @@ const getTimetable = async (req, res) => {
         if (category) timetableQuery.category = category;
         if (major) timetableQuery.major = major;
 
-        // 3. Query MongoDB
-        const [semesterDoc, classSection, directSlots] = await Promise.all([
-            Semester.findOne(semQuery).lean().exec(),
+        const [classSection, directSlots] = await Promise.all([
             ClassSection.findOne({ year: targetYearString, semester: targetSemesterString }).lean().exec(),
             Timetable.find(timetableQuery).lean().exec()
         ]);
