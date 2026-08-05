@@ -57,13 +57,25 @@ const Files = () => {
             try {
                 const { data: coursesData } = await apiClient.get('/courses');
                 if (Array.isArray(coursesData)) {
-                    const subjectFolders = coursesData.map(c => ({
-                        name: `${c.code} - ${c.name}`,
-                        code: c.code,
-                        year: deriveYearTag(c.code),
-                        description: `Syllabus, reference materials & study files for ${c.code}`,
-                        iconColor: '#6366f1'
-                    }));
+                    const isNonAcademic = (code = '', name = '') => {
+                        const text = (code + ' ' + name).toLowerCase();
+                        return (
+                            text.includes('private study') ||
+                            text.includes('extra') ||
+                            text.includes('self-study') ||
+                            text.includes('lunch')
+                        );
+                    };
+
+                    const subjectFolders = coursesData
+                        .filter(c => c.code && !isNonAcademic(c.code, c.name))
+                        .map(c => ({
+                            name: `${c.code} - ${c.name}`,
+                            code: c.code,
+                            year: deriveYearTag(c.code),
+                            description: `Syllabus, reference materials & study files for ${c.code}`,
+                            iconColor: '#6366f1'
+                        }));
 
                     setFolders(prev => {
                         const existingIdentifiers = new Set(
