@@ -97,22 +97,40 @@ const TimeTable = () => {
             const scheduleMap = {};
             if (slotsList.length > 0) {
                 slotsList.forEach(slot => {
-                    if (slot && slot.day && (slot.startTime || slot.time)) {
+                    if (slot && slot.day) {
                         const slotType = slot.type || 'Lecture';
 
                         // In Practical/Tutorial tabs, filter specifically; in Academic tab, show complete weekly matrix
                         if (selectedCategory === 'Practical' && !['practical', 'lab'].includes(slotType.toLowerCase())) return;
                         if (selectedCategory === 'Tutorial' && slotType.toLowerCase() !== 'tutorial') return;
 
-                        const timeKey = slot.startTime || slot.time;
-                        if (!scheduleMap[slot.day]) scheduleMap[slot.day] = {};
-                        scheduleMap[slot.day][timeKey] = {
+                        const sessionData = {
                             course: slot.courseCode || slot.course || '',
                             name: slot.courseName || '',
                             room: slot.room || mRoom,
                             type: slotType,
                             sessionLabel: slot.sessionLabel || slotType
                         };
+
+                        if (!scheduleMap[slot.day]) scheduleMap[slot.day] = {};
+
+                        // Store by period number (1..6)
+                        if (slot.periodNumber) {
+                            scheduleMap[slot.day][slot.periodNumber] = sessionData;
+                        }
+
+                        // Store by time strings
+                        if (slot.startTime) scheduleMap[slot.day][slot.startTime] = sessionData;
+                        if (slot.time) scheduleMap[slot.day][slot.time] = sessionData;
+
+                        // Also map standard period times
+                        const pIndex = slot.periodNumber || (slot.period ? parseInt(slot.period, 10) : null);
+                        const nonLunchPeriods = TU_HMAWBI_PERIODS.filter(p => !p.isLunch);
+                        if (pIndex && nonLunchPeriods[pIndex - 1]) {
+                            const stdKey = nonLunchPeriods[pIndex - 1].slotKey;
+                            if (stdKey) scheduleMap[slot.day][stdKey] = sessionData;
+                        }
+
                         if (slot.room) mRoom = slot.room;
                         if (slot.classSection?.familyTeacher) fTeacher = slot.classSection.familyTeacher;
                         if (slot.classSection?.majorRoom) mRoom = slot.classSection.majorRoom;
@@ -401,7 +419,7 @@ const TimeTable = () => {
                                                     );
                                                 }
 
-                                                const session = schedules[day]?.[p.slotKey];
+                                                const session = schedules[day]?.[p.period] || schedules[day]?.[p.slotKey];
                                                 return (
                                                     <td key={pIdx} className="schedule-td">
                                                         {session ? (

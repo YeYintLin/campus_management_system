@@ -90,14 +90,20 @@ const getTimetable = async (req, res) => {
                 if (l && l.code) legendMap.set(l.code.trim().replace(/\s+/g, ''), l);
             });
 
+            const PERIOD_TIMES = {
+                1: { start: '09:00 AM', end: '09:50 AM' },
+                2: { start: '10:00 AM', end: '10:50 AM' },
+                3: { start: '11:00 AM', end: '11:50 AM' },
+                4: { start: '01:00 PM', end: '01:50 PM' },
+                5: { start: '02:00 PM', end: '02:50 PM' },
+                6: { start: '03:00 PM', end: '03:50 PM' }
+            };
+
             (semesterDoc.days || []).forEach(dayObj => {
                 (dayObj.sessions || []).forEach(sess => {
                     (sess.periods || []).forEach((pStr, idx) => {
-                        const pNum = parseInt(pStr.replace(/\D/g, ''), 10) || (idx + 1);
-                        const timeStr = sess.time && sess.time[idx] ? sess.time[idx] : (sess.time && sess.time[0] ? sess.time[0] : '09:00 AM - 09:50 AM');
-                        const timeParts = timeStr.split('-').map(t => t.trim());
-                        const startTime = timeParts[0] || '09:00 AM';
-                        const endTime = timeParts[1] || '09:50 AM';
+                        const pNum = parseInt(String(pStr).replace(/\D/g, ''), 10) || (idx + 1);
+                        const stdTime = PERIOD_TIMES[pNum] || { start: '09:00 AM', end: '09:50 AM' };
                         const cleanCode = sess.code || sess.raw || '';
                         const leg = legendMap.get(cleanCode.replace(/\s+/g, '')) || {};
 
@@ -109,9 +115,9 @@ const getTimetable = async (req, res) => {
                             semesterNumber: sNum || semesterDoc.semesterNumber,
                             day: dayObj.day,
                             periodNumber: pNum,
-                            startTime: startTime,
-                            endTime: endTime,
-                            time: startTime,
+                            startTime: stdTime.start,
+                            endTime: stdTime.end,
+                            time: stdTime.start,
                             courseCode: cleanCode,
                             courseName: leg.subject || cleanCode,
                             teacher: leg.teacher || semesterDoc.familyTeacher || 'Faculty Member',
