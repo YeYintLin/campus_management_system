@@ -7,13 +7,14 @@ const User = require('../models/User');
 // @access  Private
 const getTimetable = async (req, res) => {
     try {
-        const { year, semester, category } = req.query;
+        const { year, semester, category, major } = req.query;
         const { role, _id: userId } = req.user;
         let query = {};
 
         if (year) query.year = year;
         if (semester) query.semester = semester;
         if (category) query.category = category;
+        if (major) query.major = major;
 
         if (role === 'Teacher') {
             const userDoc = await User.findById(userId).select('department');
@@ -22,7 +23,7 @@ const getTimetable = async (req, res) => {
 
             if (!isMinorTeacher) {
                 // Major department teacher (e.g. Mechatronics / MC): restricted to their own major department
-                const teacherMajor = (dept.includes('MC') || dept.includes('MECHA')) ? 'MC' : (req.query.major || 'MC');
+                const teacherMajor = (dept.includes('MC') || dept.includes('MECHA')) ? 'MC' : (major || 'MC');
                 query.major = teacherMajor;
             }
         } else if (role === 'Student') {
@@ -37,16 +38,17 @@ const getTimetable = async (req, res) => {
         }
 
         const ClassSection = require('../models/ClassSection');
-        const classSection = await ClassSection.findOne({
-            year: query.year || year || '4th Year',
-            semester: query.semester || semester || 'Semester 2',
-            major: query.major || 'MC'
-        });
+        const targetYear = query.year || year || '4th Year';
+        const targetSemester = query.semester || semester || 'Semester 2';
+        const targetMajor = query.major || major || 'MC';
 
-        const slots = await Timetable.find(query).populate('classSection');
-        
+        const [classSection, slots] = await Promise.all([
+            ClassSection.findOne({ year: targetYear, semester: targetSemester, major: targetMajor }).lean().exec(),
+            Timetable.find(query).lean().exec()
+        ]);
+
         res.json({
-            slots,
+            slots: slots || [],
             classSection: classSection ? {
                 familyTeacher: classSection.familyTeacher,
                 majorRoom: classSection.majorRoom
@@ -54,7 +56,7 @@ const getTimetable = async (req, res) => {
         });
     } catch (error) {
         console.error('Get Timetable Error:', error.message);
-        res.status(500).json({ message: 'Server error fetching timetable' });
+        res.status(500).json({ message: 'Server error fetching timetable', slots: [] });
     }
 };
 
