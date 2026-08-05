@@ -412,19 +412,36 @@ const restoreTimetableVersion = async (req, res) => {
         }
 
         // c. Snapshot current live semester state BEFORE mutating
-        let currentActiveFile = await TimetableFile.findOne({ isActive: true, data: { $exists: true } }).sort({ createdAt: -1 });
-        if (!currentActiveFile) {
-            currentActiveFile = await TimetableFile.findOne({ data: { $exists: true } }).sort({ createdAt: -1 });
+        const { createSnapshotBufferFromSemesters } = require('../utils/parseTimetable');
+        let snapshotDataBuffer = null;
+
+        const liveSemesters = await Semester.find().lean();
+        if (liveSemesters.length > 0) {
+            try {
+                snapshotDataBuffer = await createSnapshotBufferFromSemesters(liveSemesters);
+            } catch (snapErr) {
+                console.error('Failed to generate live snapshot Excel buffer:', snapErr);
+            }
+        }
+
+        if (!snapshotDataBuffer) {
+            let currentActiveFile = await TimetableFile.findOne({ isActive: true, data: { $exists: true } }).sort({ createdAt: -1 });
+            if (!currentActiveFile) {
+                currentActiveFile = await TimetableFile.findOne({ data: { $exists: true } }).sort({ createdAt: -1 });
+            }
+            if (currentActiveFile && currentActiveFile.data) {
+                snapshotDataBuffer = currentActiveFile.data;
+            }
         }
 
         let snapshotDoc;
-        if (currentActiveFile && currentActiveFile.data) {
+        if (snapshotDataBuffer) {
             const uniqueSuffix = `${Date.now()}-${new mongoose.Types.ObjectId().toString().slice(-6)}`;
             snapshotDoc = await TimetableFile.create({
                 originalName: `pre-restore-snapshot-${uniqueSuffix}.xlsx`,
-                mimeType: currentActiveFile.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                data: currentActiveFile.data,
-                size: currentActiveFile.data.length,
+                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                data: snapshotDataBuffer,
+                size: snapshotDataBuffer.length,
                 isActive: false,
                 uploadedBy: req.user ? req.user._id : null
             });
