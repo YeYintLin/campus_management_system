@@ -10,9 +10,12 @@ const {
     importTimetableFile,
     getSemesters,
     getSemesterById,
-    exportOriginalFile
+    exportOriginalFile,
+    getImportHistory,
+    downloadTimetableFile,
+    restoreTimetableVersion
 } = require('../controllers/timetableController');
-const { protect, teacher } = require('../middleware/authMiddleware');
+const { protect, teacher, admin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -22,6 +25,11 @@ router.get('/semesters', protect, getSemesters);
 router.get('/export', protect, exportOriginalFile);
 router.get('/:id/export', protect, exportOriginalFile);
 router.get('/semester/:id', protect, getSemesterById);
+
+// History & Version Control routes
+router.get('/history', protect, teacher, getImportHistory);
+router.get('/files/:fileId/download', protect, teacher, downloadTimetableFile);
+router.post('/restore/:fileId', protect, admin, restoreTimetableVersion);
 
 // Import endpoint (accepts field name 'file' or 'excel')
 router.post('/import', protect, teacher, upload.single('file'), importTimetableFile);

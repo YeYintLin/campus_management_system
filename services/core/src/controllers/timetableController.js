@@ -260,10 +260,14 @@ const importTimetableFile = async (req, res) => {
         const { parseTimetableBuffer } = require('../utils/parseTimetable');
 
         // 1. Store the original bytes untouched — export returns these exact bytes later
+        await TimetableFile.updateMany({}, { isActive: false });
         const fileDoc = await TimetableFile.create({
             originalName: req.file.originalname || 'TimeTable.xlsx',
             mimeType: req.file.mimetype || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            data: req.file.buffer
+            data: req.file.buffer,
+            size: req.file.buffer ? req.file.buffer.length : 0,
+            isActive: true,
+            uploadedBy: req.user ? req.user._id : null
         });
 
         // 2. Parse into structured data
@@ -317,6 +321,213 @@ const importTimetableFile = async (req, res) => {
     } catch (err) {
         console.error('Import failed:', err);
         res.status(500).json({ error: 'Failed to import timetable.' });
+    }
+};
+
+// @desc    Get upload history list without heavy file binary buffers
+// @route   GET /api/timetable/history
+// @access  Private (Admin, Teacher)
+const getImportHistory = async (req, res) => {
+    try {
+        const TimetableFile = require('../models/TimetableFile');
+        const files = await TimetableFile.find()
+            .select('-data')
+            .sort({ createdAt: -1 })
+            .lean();
+
+        const history = files.map((f, idx) => ({
+            _id: f._id,
+            originalName: f.originalName,
+            createdAt: f.createdAt,
+            size: f.size || 0,
+            isActive: f.isActive || idx === 0,
+            uploadedBy: f.uploadedBy || null
+        }));
+
+        res.json(history);
+    } catch (err) {
+        console.error('getImportHistory error:', err);
+        res.status(500).json({ error: 'Failed to fetch timetable import history.' });
+    }
+};
+
+// @desc    Download stored original timetable file by fileId
+// @route   GET /api/timetable/files/:fileId/download
+// @access  Private (Admin, Teacher)
+const downloadTimetableFile = async (req, res) => {
+    try {
+        const mongoose = require('mongoose');
+        const TimetableFile = require('../models/TimetableFile');
+        const { fileId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(fileId)) {
+            return res.status(404).json({ error: 'Invalid file ID.' });
+        }
+
+        const fileDoc = await TimetableFile.findById(fileId);
+        if (!fileDoc || !fileDoc.data) {
+            return res.status(404).json({ error: 'Timetable file not found.' });
+        }
+
+        res.setHeader('Content-Type', fileDoc.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileDoc.originalName || 'TimeTable.xlsx'}"`);
+        res.send(fileDoc.data);
+    } catch (err) {
+        console.error('downloadTimetableFile error:', err);
+        res.status(500).json({ error: 'Failed to download timetable file.' });
+    }
+};
+
+// @desc    Restore a previous timetable version with pre-restore snapshot & transaction safety
+// @route   POST /api/timetable/restore/:fileId
+// @access  Private (Admin only)
+const restoreTimetableVersion = async (req, res) => {
+    const mongoose = require('mongoose');
+    const Semester = require('../models/Semester');
+    const TimetableFile = require('../models/TimetableFile');
+    const RestoreLog = require('../models/RestoreLog');
+    const { parseTimetableBuffer } = require('../utils/parseTimetable');
+
+    const { fileId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(fileId)) {
+        return res.status(404).json({ error: 'Invalid file ID format.' });
+    }
+
+    try {
+        // a. Look up target file
+        const targetFile = await TimetableFile.findById(fileId);
+        if (!targetFile || !targetFile.data) {
+            return res.status(404).json({ error: 'Target timetable version file not found.' });
+        }
+
+        // b. Parse buffer BEFORE mutating live data. 400 if parsing fails!
+        let parsedSheets;
+        try {
+            parsedSheets = await parseTimetableBuffer(targetFile.data);
+            if (!Array.isArray(parsedSheets) || parsedSheets.length === 0) {
+                return res.status(400).json({ error: 'Target file contains no valid timetable sheets.' });
+            }
+        } catch (parseErr) {
+            return res.status(400).json({ error: `Failed to parse stored timetable file: ${parseErr.message}` });
+        }
+
+        // c. Snapshot current live semester state BEFORE mutating
+        const currentActiveFile = await TimetableFile.findOne({ isActive: true }).sort({ createdAt: -1 });
+        let snapshotDoc;
+        if (currentActiveFile && currentActiveFile.data) {
+            snapshotDoc = await TimetableFile.create({
+                originalName: `pre-restore-snapshot-${Date.now()}.xlsx`,
+                mimeType: currentActiveFile.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                data: currentActiveFile.data,
+                size: currentActiveFile.data.length,
+                isActive: false,
+                uploadedBy: req.user ? req.user._id : null
+            });
+        }
+
+        const overwriteFilters = [];
+        const warnings = [];
+        parsedSheets.forEach((s) => {
+            if (!s.year_number || !s.semester_number) {
+                warnings.push(`Could not determine year/semester number for sheet '${s.sheet_name}'.`);
+            }
+            if (s.year_number && s.semester_number) {
+                overwriteFilters.push({ yearNumber: s.year_number, semesterNumber: s.semester_number });
+            } else {
+                overwriteFilters.push({ sheetName: s.sheet_name });
+            }
+        });
+
+        // d. Execute DB mutation using mongoose session/transaction if available, with fallback
+        let session = null;
+        let created;
+        try {
+            session = await mongoose.startSession();
+            session.startTransaction();
+
+            if (overwriteFilters.length > 0) {
+                await Semester.deleteMany({ $or: overwriteFilters }, { session });
+            }
+
+            created = await Semester.insertMany(
+                parsedSheets.map((s, i) => ({
+                    sourceFile: targetFile._id,
+                    sheetName: s.sheet_name,
+                    department: s.department,
+                    academicYear: s.academic_year,
+                    yearLabel: s.year_label,
+                    yearNumber: s.year_number,
+                    semesterLabel: s.semester_label,
+                    semesterNumber: s.semester_number,
+                    semesterOrder: i,
+                    majorRoom: s.major_room,
+                    combinedRoom: s.combined_room,
+                    familyTeacher: s.family_teacher,
+                    periods: s.periods,
+                    days: s.days,
+                    legend: s.legend
+                })),
+                { session }
+            );
+
+            await session.commitTransaction();
+            session.endSession();
+        } catch (transErr) {
+            if (session) {
+                await session.abortTransaction();
+                session.endSession();
+            }
+            // Fallback for standalone Mongo instances without replica set transactions
+            if (transErr.message && transErr.message.includes('Transaction numbers are only allowed')) {
+                if (overwriteFilters.length > 0) {
+                    await Semester.deleteMany({ $or: overwriteFilters });
+                }
+                created = await Semester.insertMany(
+                    parsedSheets.map((s, i) => ({
+                        sourceFile: targetFile._id,
+                        sheetName: s.sheet_name,
+                        department: s.department,
+                        academicYear: s.academic_year,
+                        yearLabel: s.year_label,
+                        yearNumber: s.year_number,
+                        semesterLabel: s.semester_label,
+                        semesterNumber: s.semester_number,
+                        semesterOrder: i,
+                        majorRoom: s.major_room,
+                        combinedRoom: s.combined_room,
+                        familyTeacher: s.family_teacher,
+                        periods: s.periods,
+                        days: s.days,
+                        legend: s.legend
+                    }))
+                );
+            } else {
+                throw transErr;
+            }
+        }
+
+        // e. Update active flags & record RestoreLog
+        await TimetableFile.updateMany({}, { isActive: false });
+        targetFile.isActive = true;
+        await targetFile.save();
+
+        await RestoreLog.create({
+            fileId: targetFile._id,
+            restoredBy: req.user ? req.user._id : null,
+            snapshotFileId: snapshotDoc ? snapshotDoc._id : null,
+            summary: `Restored ${created.length} semesters from ${targetFile.originalName}`
+        });
+
+        // f. Return summary response
+        res.json({
+            message: `Successfully restored version: ${targetFile.originalName}`,
+            restoredSemestersCount: created.length,
+            snapshotFileId: snapshotDoc ? snapshotDoc._id : null,
+            warnings
+        });
+    } catch (err) {
+        console.error('restoreTimetableVersion error:', err);
+        res.status(500).json({ error: err.message || 'Failed to restore timetable version.' });
     }
 };
 

@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Coffee } from 'lucide-react';
+import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Coffee, History, RotateCcw, ShieldAlert } from 'lucide-react';
 import { getNormalizedUserYear } from '../utils/userYear';
 import { exportAcademicMatrixExcel, exportDateScheduleExcel, exportExamScheduleExcel } from '../utils/excelExporter';
 import './TimeTable.css';
@@ -18,6 +18,15 @@ const TU_HMAWBI_PERIODS = [
 
 const TimeTable = () => {
     const { user } = useContext(AuthContext);
+    const isAdmin = user?.role === 'Admin' || user?.role === 'SuperAdmin' || user?.role === 'AcademicAdmin';
+
+    // Version History Drawer & Rollback States
+    const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+    const [importHistory, setImportHistory] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+    const [restoreTargetFile, setRestoreTargetFile] = useState(null);
+    const [restoring, setRestoring] = useState(false);
+    const [importWarnings, setImportWarnings] = useState([]);
     const roleStr = (user?.role || '').toLowerCase().trim();
     const canManageTimetable = roleStr === 'admin' || roleStr === 'teacher' || roleStr === 'superadmin' || roleStr === 'academicadmin';
     const isStudent = roleStr === 'student';
@@ -193,6 +202,70 @@ const TimeTable = () => {
         loadSemesters();
     }, [selectedYear]);
 
+    const loadHistory = async () => {
+        setLoadingHistory(true);
+        try {
+            const { data } = await apiClient.get('/timetable/history');
+            setImportHistory(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load history:', err);
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
+
+    const handleOpenHistoryDrawer = () => {
+        setIsHistoryDrawerOpen(true);
+        loadHistory();
+    };
+
+    const handleDownloadHistoryFile = async (fileDoc) => {
+        try {
+            const response = await apiClient.get(`/timetable/files/${fileDoc._id}/download`, {
+                responseType: 'blob'
+            });
+            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileDoc.originalName || 'TimeTable.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Download failed:', err);
+            alert(err.response?.data?.message || err.response?.data?.error || 'Failed to download file.');
+        }
+    };
+
+    const handleRestoreConfirm = async () => {
+        if (!restoreTargetFile) return;
+        setRestoring(true);
+        setImportError('');
+        setImportSuccess('');
+
+        try {
+            const { data } = await apiClient.post(`/timetable/restore/${restoreTargetFile._id}`);
+            setImportSuccess(data.message || `Restored ${data.restoredSemestersCount || 0} semesters successfully!`);
+            if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+                setImportWarnings(data.warnings);
+            }
+            setRestoreTargetFile(null);
+            setIsHistoryDrawerOpen(false);
+            fetchTimetableData();
+            loadHistory();
+            setTimeout(() => setImportSuccess(''), 6000);
+        } catch (err) {
+            console.error('Restore failed:', err);
+            const errMsg = err.response?.data?.error || err.response?.data?.message || 'Failed to restore timetable version.';
+            setImportError(`Restore failed: ${errMsg}`);
+            setRestoreTargetFile(null);
+        } finally {
+            setRestoring(false);
+        }
+    };
+
     const handleExcelUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -200,6 +273,7 @@ const TimeTable = () => {
         setImporting(true);
         setImportError('');
         setImportSuccess('');
+        setImportWarnings([]);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -213,8 +287,12 @@ const TimeTable = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             setImportSuccess(data.message || 'Imported timetable successfully!');
+            if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+                setImportWarnings(data.warnings);
+            }
             fetchTimetableData();
-            setTimeout(() => setImportSuccess(''), 5000);
+            loadHistory();
+            setTimeout(() => setImportSuccess(''), 6000);
         } catch (err) {
             console.error('Import failed:', err);
             setImportError(err.response?.data?.message || err.response?.data?.error || 'Failed to import Excel file.');
@@ -284,6 +362,10 @@ const TimeTable = () => {
                 <div className="header-actions">
                     {canManageTimetable && (
                         <>
+                            <button className="btn btn-secondary" onClick={handleOpenHistoryDrawer} title="View Upload History & Rollback Versions">
+                                <History size={18} />
+                                Version History
+                            </button>
                             <button className="btn btn-secondary" onClick={handleExportOfficialExcel} title="Export Official TU Hmawbi Excel File">
                                 <Download size={18} />
                                 Export Excel
@@ -308,6 +390,20 @@ const TimeTable = () => {
                 <div className="alert alert-danger" style={{ marginBottom: '1rem', background: 'rgba(239,68,68,0.15)', color: '#f87171', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <AlertCircle size={18} />
                     <span>{importError}</span>
+                </div>
+            )}
+
+            {Array.isArray(importWarnings) && importWarnings.length > 0 && (
+                <div className="alert alert-warning" style={{ marginBottom: '1rem', background: 'rgba(245,158,11,0.15)', color: '#fbbf24', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid rgba(245,158,11,0.3)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700', marginBottom: '0.3rem' }}>
+                        <ShieldAlert size={18} />
+                        <span>Import Validation Warnings ({importWarnings.length}):</span>
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.82rem' }}>
+                        {importWarnings.map((w, idx) => (
+                            <li key={idx}>{w}</li>
+                        ))}
+                    </ul>
                 </div>
             )}
 
@@ -576,6 +672,95 @@ const TimeTable = () => {
                     </div>
                 )}
             </div>
+
+            {/* Version History Drawer Modal */}
+            {isHistoryDrawerOpen && (
+                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', justifyContent: 'flex-end', backdropFilter: 'blur(4px)' }}>
+                    <div className="glass-card animate-slide-left" style={{ width: '100%', maxWidth: '540px', height: '100%', borderRadius: 0, padding: '1.5rem', display: 'flex', flexDirection: 'column', background: 'rgba(15, 23, 42, 0.95)', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--surface-border)', paddingBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <History size={22} className="text-primary" />
+                                <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Upload History & Rollback</h2>
+                            </div>
+                            <button className="btn btn-secondary" onClick={() => setIsHistoryDrawerOpen(false)} style={{ padding: '0.4rem 0.6rem' }}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {loadingHistory ? (
+                            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading history...</div>
+                        ) : importHistory.length === 0 ? (
+                            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>No timetable uploads recorded yet.</div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                {importHistory.map((item, idx) => (
+                                    <div key={item._id} className="glass-panel" style={{ padding: '1rem', borderRadius: '12px', border: item.isActive ? '2px solid #6366f1' : '1px solid var(--surface-border)', background: item.isActive ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.02)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                                                <FileSpreadsheet size={18} style={{ color: '#10b981', flexShrink: 0 }} />
+                                                <strong style={{ fontSize: '0.92rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {item.originalName}
+                                                </strong>
+                                            </div>
+                                            {item.isActive ? (
+                                                <span className="badge badge-primary" style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem' }}>Active Version</span>
+                                            ) : (
+                                                <span className="badge" style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)' }}>v{importHistory.length - idx}</span>
+                                            )}
+                                        </div>
+                                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.85rem', display: 'flex', gap: '1rem' }}>
+                                            <span>Uploaded: {new Date(item.createdAt).toLocaleString()}</span>
+                                            {item.size > 0 && <span>Size: {(item.size / 1024).toFixed(1)} KB</span>}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => handleDownloadHistoryFile(item)}>
+                                                <Download size={14} />
+                                                Download .xlsx
+                                            </button>
+                                            {isAdmin && !item.isActive && (
+                                                <button className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none' }} onClick={() => setRestoreTargetFile(item)}>
+                                                    <RotateCcw size={14} />
+                                                    Restore Version
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Restore Confirmation Modal */}
+            {restoreTargetFile && (
+                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(6px)' }}>
+                    <div className="glass-card animate-pop-in" style={{ width: '100%', maxWidth: '480px', padding: '1.75rem', borderRadius: '16px', border: '1px solid rgba(245,158,11,0.4)', background: 'rgba(15, 23, 42, 0.98)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', color: '#fbbf24' }}>
+                            <ShieldAlert size={28} />
+                            <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Confirm Timetable Version Restore</h3>
+                        </div>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1rem' }}>
+                            You are about to restore the timetable to version:
+                        </p>
+                        <div className="glass-panel" style={{ padding: '0.85rem 1rem', borderRadius: '10px', marginBottom: '1.25rem', borderLeft: '4px solid #f59e0b' }}>
+                            <strong style={{ color: '#fff', fontSize: '0.95rem', display: 'block', marginBottom: '0.2rem' }}>{restoreTargetFile.originalName}</strong>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Uploaded on {new Date(restoreTargetFile.createdAt).toLocaleString()}</span>
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#4ade80', background: 'rgba(34,197,94,0.1)', padding: '0.75rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid rgba(34,197,94,0.2)' }}>
+                            🛡️ <strong>Safety Guarantee:</strong> A pre-restore snapshot of your current live timetable will be automatically saved before restoring. This restore operation is append-only and fully undoable.
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button className="btn btn-secondary" onClick={() => setRestoreTargetFile(null)} disabled={restoring}>
+                                Cancel
+                            </button>
+                            <button className="btn btn-primary" onClick={handleRestoreConfirm} disabled={restoring} style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none' }}>
+                                {restoring ? 'Restoring...' : 'Confirm & Restore Version'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
