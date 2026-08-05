@@ -41,8 +41,9 @@ const batchImportSessions = async (req, res) => {
                         code: cCode,
                         name: item.courseName || cCode,
                         department: major,
-                        year,
-                        semester
+                        year: item.year || year,
+                        semester: item.semester || semester,
+                        teacher: req.user._id
                     });
                 }
             }
