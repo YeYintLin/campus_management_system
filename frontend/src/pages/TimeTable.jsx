@@ -60,19 +60,39 @@ const TimeTable = () => {
         { id: 'Exam', label: '📝 Exam Schedule', desc: 'Mid-Term & Final Examination Dates' }
     ];
 
+    const parseYearNum = (yearStr) => {
+        if (!yearStr) return null;
+        const match = String(yearStr).match(/\d+/);
+        return match ? parseInt(match[0], 10) : null;
+    };
+
+    const parseSemNum = (semStr) => {
+        if (!semStr) return null;
+        const match = String(semStr).match(/\d+/);
+        return match ? parseInt(match[0], 10) : null;
+    };
+
     const fetchTimetableData = useCallback(async () => {
         setLoading(true);
         setImportError('');
         try {
-            const { data } = await apiClient.get('/timetable', {
-                params: { year: selectedYear, semester: selectedSemester, major: selectedMajor }
-            });
-            
-            const slotsList = Array.isArray(data) ? data : (data?.slots || []);
-            const secObj = Array.isArray(data) ? null : data?.classSection;
+            const yNum = parseYearNum(selectedYear);
+            const sNum = parseSemNum(selectedSemester);
 
-            let fTeacher = secObj?.familyTeacher || 'Faculty Member';
-            let mRoom = secObj?.majorRoom || '3/212-A';
+            const params = {
+                year: yNum || selectedYear,
+                semester: sNum || selectedSemester,
+                major: selectedMajor
+            };
+
+            const { data } = await apiClient.get('/timetable', { params });
+            
+            const semDoc = Array.isArray(data) ? null : data?.semesterDoc;
+            const secObj = Array.isArray(data) ? null : data?.classSection;
+            const slotsList = Array.isArray(data) ? data : (data?.slots || []);
+
+            let fTeacher = semDoc?.familyTeacher || secObj?.familyTeacher || 'Faculty Member';
+            let mRoom = semDoc?.majorRoom || secObj?.majorRoom || '3/212-A';
 
             const scheduleMap = {};
             if (slotsList.length > 0) {

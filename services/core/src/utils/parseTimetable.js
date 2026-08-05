@@ -1,7 +1,46 @@
 // services/core/src/utils/parseTimetable.js
+//
+// Parses the "Technological University (Hmawbi)" style timetable workbook
+// into structured JSON. Works for any number of semesters per year — the
+// output is just an array of { year, semester, days, legend, ... } blocks,
+// one per sheet, so a curriculum with 4 semesters produces 4 blocks with
+// zero code changes.
+
 const ExcelJS = require('exceljs');
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const ROMAN_MAP = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10 };
+const ORDINAL_WORD_MAP = { first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6 };
+
+/**
+ * Converts a label like "II", "Semester IV", "First Semester", "Second sem"
+ * into a plain integer, so the UI can match on numbers instead of free text
+ * that varies sheet-to-sheet. Returns null if nothing recognizable is found.
+ */
+function extractNumber(label) {
+  if (!label) return null;
+  const text = label.trim();
+
+  // Ordinal word form: "First Semester", "Second sem", etc.
+  const wordMatch = text.match(/\b(first|second|third|fourth|fifth|sixth)\b/i);
+  if (wordMatch) return ORDINAL_WORD_MAP[wordMatch[1].toLowerCase()];
+
+  // Roman numeral form: a standalone whole word, e.g. "II" in "Semester II"
+  const ROMAN_STRICT = /^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/i;
+  const words = text.split(/[^A-Za-z]+/).filter(Boolean);
+  for (const w of words) {
+    if (ROMAN_STRICT.test(w) && ROMAN_MAP[w.toUpperCase()]) {
+      return ROMAN_MAP[w.toUpperCase()];
+    }
+  }
+
+  // Plain digit fallback: "Semester 4"
+  const digitMatch = text.match(/\d+/);
+  if (digitMatch) return parseInt(digitMatch[0], 10);
+
+  return null;
+}
 
 /**
  * Given a worksheet and a row/col, return the merged range that cell belongs to.
@@ -83,38 +122,6 @@ function parseSheet(worksheet) {
     if (m) yearLabel = m[1].trim();
     const m2 = yearSemesterRaw.match(/\((.*?)\)/);
     if (m2) semesterLabel = m2[1].trim();
-  }
-
-  // Fallback sheet name matching if title line yearLabel missing
-  const sName = worksheet.name.trim();
-  if (!yearLabel) {
-    if (sName.match(/\b(me|master)\b/i)) yearLabel = 'ME Program';
-    else if (sName.match(/\b(fifth|5th|v)\b/i)) yearLabel = '5th Year';
-    else if (sName.match(/\b(fourth|4th|iv)\b/i)) yearLabel = '4th Year';
-    else if (sName.match(/\b(third|3rd|iii)\b/i)) yearLabel = '3rd Year';
-    else if (sName.match(/\b(second|2nd|ii)\b/i)) yearLabel = '2nd Year';
-    else if (sName.match(/\b(first|1st|i)\b/i)) yearLabel = '1st Year';
-  } else {
-    // Normalize yearLabel to standard CMS string format
-    if (yearLabel === 'I' || yearLabel === 'First') yearLabel = '1st Year';
-    else if (yearLabel === 'II' || yearLabel === 'Second') yearLabel = '2nd Year';
-    else if (yearLabel === 'III' || yearLabel === 'Third') yearLabel = '3rd Year';
-    else if (yearLabel === 'IV' || yearLabel === 'Fourth') yearLabel = '4th Year';
-    else if (yearLabel === 'V' || yearLabel === 'Fifth') yearLabel = '5th Year';
-    else if (yearLabel === 'ME') yearLabel = 'ME Program';
-  }
-
-  if (!semesterLabel) {
-    if (sName.match(/\b(s1|sem\s*1|sem\s*i|first\s*semester|first\s*sem)\b/i)) semesterLabel = 'Semester 1';
-    else if (sName.match(/\b(s2|sem\s*2|sem\s*ii|second\s*semester|second\s*sem)\b/i)) semesterLabel = 'Semester 2';
-    else if (sName.match(/\b(s3|sem\s*3|sem\s*iii|third\s*semester)\b/i)) semesterLabel = 'Semester 3';
-    else if (sName.match(/\b(s4|sem\s*4|sem\s*iv|fourth\s*semester)\b/i)) semesterLabel = 'Semester 4';
-    else semesterLabel = 'Semester 2';
-  } else {
-    if (semesterLabel.match(/\b(semester i|sem i|semester 1|sem 1|first semester)\b/i)) semesterLabel = 'Semester 1';
-    else if (semesterLabel.match(/\b(semester ii|sem ii|semester 2|sem 2|second semester)\b/i)) semesterLabel = 'Semester 2';
-    else if (semesterLabel.match(/\b(semester iii|sem iii|semester 3|sem 3|third semester)\b/i)) semesterLabel = 'Semester 3';
-    else if (semesterLabel.match(/\b(semester iv|sem iv|semester 4|sem 4|fourth semester)\b/i)) semesterLabel = 'Semester 4';
   }
 
   let majorRoom = null, combinedRoom = null;
@@ -215,7 +222,9 @@ function parseSheet(worksheet) {
     academic_year: academicYear,
     department,
     year_label: yearLabel,
+    year_number: (yearLabel && yearLabel.toUpperCase() === 'ME') ? null : extractNumber(yearLabel),
     semester_label: semesterLabel,
+    semester_number: extractNumber(semesterLabel),
     major_room: majorRoom,
     combined_room: combinedRoom,
     family_teacher: familyTeacher,

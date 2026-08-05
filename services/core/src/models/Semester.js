@@ -5,8 +5,10 @@ const semesterSchema = new mongoose.Schema({
     sheetName: { type: String, required: true },
     department: { type: String },
     academicYear: { type: String },
-    yearLabel: { type: String, required: true },
-    semesterLabel: { type: String, required: true },
+    yearLabel: { type: String },
+    yearNumber: { type: Number, default: null }, // 1, 2, 3, 4, 5 (null for ME)
+    semesterLabel: { type: String },
+    semesterNumber: { type: Number, default: null }, // 1, 2, 3, 4...
     semesterOrder: { type: Number, default: 0 },
     majorRoom: { type: String },
     combinedRoom: { type: String },
