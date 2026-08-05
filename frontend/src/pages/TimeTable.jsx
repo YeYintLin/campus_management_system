@@ -64,44 +64,55 @@ const TimeTable = () => {
         setLoading(true);
         setImportError('');
         try {
-            if (selectedCategory === 'Academic') {
-                const { data } = await apiClient.get('/timetable', {
-                    params: { year: selectedYear, semester: selectedSemester, major: selectedMajor }
+            const { data } = await apiClient.get('/timetable', {
+                params: { year: selectedYear, semester: selectedSemester, major: selectedMajor }
+            });
+            
+            const slotsList = Array.isArray(data) ? data : (data?.slots || []);
+            const secObj = Array.isArray(data) ? null : data?.classSection;
+
+            let fTeacher = secObj?.familyTeacher || 'Faculty Member';
+            let mRoom = secObj?.majorRoom || '3/212-A';
+
+            const scheduleMap = {};
+            if (slotsList.length > 0) {
+                slotsList.forEach(slot => {
+                    if (slot && slot.day && (slot.startTime || slot.time)) {
+                        const slotType = slot.type || 'Lecture';
+
+                        // Strict category filtering so Academic only shows Lectures, Practical shows Practicals, etc.
+                        if (selectedCategory === 'Academic' && slotType !== 'Lecture') return;
+                        if (selectedCategory === 'Practical' && slotType !== 'Practical') return;
+                        if (selectedCategory === 'Tutorial' && slotType !== 'Tutorial') return;
+
+                        const timeKey = slot.startTime || slot.time;
+                        if (!scheduleMap[slot.day]) scheduleMap[slot.day] = {};
+                        scheduleMap[slot.day][timeKey] = {
+                            course: slot.courseCode || slot.course || '',
+                            name: slot.courseName || '',
+                            room: slot.room || mRoom,
+                            type: slotType,
+                            sessionLabel: slot.sessionLabel || slotType
+                        };
+                        if (slot.room) mRoom = slot.room;
+                        if (slot.classSection?.familyTeacher) fTeacher = slot.classSection.familyTeacher;
+                        if (slot.classSection?.majorRoom) mRoom = slot.classSection.majorRoom;
+                    }
                 });
-                
-                const slotsList = Array.isArray(data) ? data : (data?.slots || []);
-                const secObj = Array.isArray(data) ? null : data?.classSection;
+            }
 
-                let fTeacher = secObj?.familyTeacher || 'Faculty Member';
-                let mRoom = secObj?.majorRoom || '3/212-A';
+            setClassSectionInfo({ familyTeacher: fTeacher, majorRoom: mRoom });
+            setSchedules(scheduleMap);
 
-                const scheduleMap = {};
-                if (slotsList.length > 0) {
-                    slotsList.forEach(slot => {
-                        if (slot && slot.day && (slot.startTime || slot.time)) {
-                            const timeKey = slot.startTime || slot.time;
-                            if (!scheduleMap[slot.day]) scheduleMap[slot.day] = {};
-                            scheduleMap[slot.day][timeKey] = {
-                                course: slot.courseCode || slot.course || '',
-                                name: slot.courseName || '',
-                                room: slot.room || mRoom,
-                                type: slot.type || 'Lecture',
-                                sessionLabel: slot.sessionLabel || 'Lecture'
-                            };
-                            if (slot.room) mRoom = slot.room;
-                            if (slot.classSection?.familyTeacher) fTeacher = slot.classSection.familyTeacher;
-                            if (slot.classSection?.majorRoom) mRoom = slot.classSection.majorRoom;
-                        }
+            if (selectedCategory !== 'Academic') {
+                try {
+                    const { data: dateData } = await apiClient.get('/sessions', {
+                        params: { year: selectedYear, semester: selectedSemester, major: selectedMajor, sessionType: selectedCategory }
                     });
+                    setDateSessions(Array.isArray(dateData) ? dateData : []);
+                } catch (e) {
+                    setDateSessions([]);
                 }
-
-                setClassSectionInfo({ familyTeacher: fTeacher, majorRoom: mRoom });
-                setSchedules(scheduleMap);
-            } else {
-                const { data } = await apiClient.get('/sessions', {
-                    params: { year: selectedYear, semester: selectedSemester, major: selectedMajor, sessionType: selectedCategory }
-                });
-                setDateSessions(Array.isArray(data) ? data : []);
             }
         } catch (err) {
             console.error('Failed to fetch timetable:', err);
@@ -161,10 +172,18 @@ const TimeTable = () => {
 
     const getTypeClass = (type = '') => {
         const t = type.toLowerCase();
-        if (t.includes('lab')) return 'tier-lab';
+        if (t.includes('lab') || t.includes('practical')) return 'tier-lab';
         if (t.includes('seminar')) return 'tier-seminar';
         if (t.includes('tutorial')) return 'tier-tutorial';
         return 'tier-lecture';
+    };
+
+    const formatCourseDisplayName = (code = '', name = '') => {
+        const raw = (code || name || '').trim();
+        if (raw.toLowerCase().includes('extra-cirruculum') || raw.toLowerCase().includes('extracurricular') || raw.toLowerCase().includes('extra-curriculum') || raw.toLowerCase().includes('extra cirruculum')) {
+            return 'Extra Activity';
+        }
+        return raw;
     };
 
     const hasAnySlots = Object.values(schedules).some(dayObj => Object.values(dayObj || {}).some(slot => slot && slot.course));
@@ -328,13 +347,17 @@ const TimeTable = () => {
                                                         {session ? (
                                                             <div className={`session-block ${getTypeClass(session.type)} hover-glow`}>
                                                                 <div className="session-top">
-                                                                    <span className="course-name">{session.course}</span>
+                                                                    <span className="course-name" title={session.name || session.course}>
+                                                                        {formatCourseDisplayName(session.course, session.name)}
+                                                                    </span>
                                                                 </div>
-                                                                <div className="session-bottom">
-                                                                    <MapPin size={12} />
-                                                                    <span>{session.room}</span>
+                                                                <div className="session-bottom-row">
+                                                                    <div className="session-room">
+                                                                        <MapPin size={11} />
+                                                                        <span>{session.room}</span>
+                                                                    </div>
+                                                                    <span className="type-tag">{session.sessionLabel || session.type}</span>
                                                                 </div>
-                                                                <div className="type-tag">{session.sessionLabel || session.type}</div>
                                                             </div>
                                                         ) : (
                                                             <div className="empty-slot">
