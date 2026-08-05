@@ -8,70 +8,82 @@ const User = require('../models/User');
 const getTimetable = async (req, res) => {
     try {
         const { year, semester, category, major } = req.query;
-        const { role, _id: userId } = req.user || {};
 
-        let yNum = null;
-        let sNum = null;
+        const parseNum = (val) => {
+            if (val === undefined || val === null || val === '') return null;
+            if (typeof val === 'number') return val;
+            const match = String(val).match(/\d+/);
+            return match ? parseInt(match[0], 10) : null;
+        };
+
+        let yNum = parseNum(year);
+        let sNum = parseNum(semester);
+
         let targetYearString = year || '4th Year';
         let targetSemesterString = semester || 'Semester 2';
 
-        if (year !== undefined && year !== null && year !== '') {
-            if (typeof year === 'number' || !isNaN(Number(year))) {
-                yNum = Number(year);
-                targetYearString = `${yNum}${yNum === 1 ? 'st' : yNum === 2 ? 'nd' : yNum === 3 ? 'rd' : 'th'} Year`;
-            } else {
-                targetYearString = year;
-                const match = String(year).match(/\d+/);
-                if (match) yNum = parseInt(match[0], 10);
-            }
-        }
-
-        if (semester !== undefined && semester !== null && semester !== '') {
-            if (typeof semester === 'number' || !isNaN(Number(semester))) {
-                sNum = Number(semester);
-                targetSemesterString = `Semester ${sNum}`;
-            } else {
-                targetSemesterString = semester;
-                const match = String(semester).match(/\d+/);
-                if (match) sNum = parseInt(match[0], 10);
-            }
+        if (yNum) {
+            targetYearString = `${yNum}${yNum === 1 ? 'st' : yNum === 2 ? 'nd' : yNum === 3 ? 'rd' : 'th'} Year`;
         }
 
         const Semester = require('../models/Semester');
         const ClassSection = require('../models/ClassSection');
 
-        // 1. Build query for Semester doc
-        const semConditions = [];
-        if (yNum) semConditions.push({ yearNumber: yNum });
-        if (targetYearString) semConditions.push({ yearLabel: targetYearString });
-        if (year) semConditions.push({ yearLabel: year });
+        // 1. Build query for Semester doc (strictly matching BOTH year AND semester)
+        const yearOr = [
+            yNum ? { yearNumber: yNum } : null,
+            targetYearString ? { yearLabel: targetYearString } : null,
+            year ? { yearLabel: year } : null
+        ].filter(Boolean);
 
-        let semQuery = semConditions.length > 0 ? { $or: semConditions } : {};
-        if (sNum) {
-            const semNumOr = [{ semesterNumber: sNum }, { semesterLabel: targetSemesterString }, { semesterLabel: semester }];
-            if (semConditions.length > 0) {
-                semQuery = { $and: [{ $or: semConditions }, { $or: semNumOr }] };
-            } else {
-                semQuery = { $or: semNumOr };
-            }
+        const semOr = [
+            sNum ? { semesterNumber: sNum } : null,
+            targetSemesterString ? { semesterLabel: targetSemesterString } : null,
+            semester ? { semesterLabel: semester } : null
+        ].filter(Boolean);
+
+        let semQuery = {};
+        if (yearOr.length > 0 && semOr.length > 0) {
+            semQuery = { $and: [{ $or: yearOr }, { $or: semOr }] };
+        } else if (yearOr.length > 0) {
+            semQuery = { $or: yearOr };
+        } else if (semOr.length > 0) {
+            semQuery = { $or: semOr };
         }
 
-        // 2. Query MongoDB
+        // 2. Build query for Timetable slots model (strictly matching BOTH year AND semester)
+        let timetableQuery = {
+            $and: [
+                {
+                    $or: [
+                        { year: targetYearString },
+                        { year: year },
+                        yNum ? { yearNumber: yNum } : null
+                    ].filter(Boolean)
+                },
+                {
+                    $or: [
+                        { semester: targetSemesterString },
+                        { semester: semester },
+                        sNum ? { semesterNumber: sNum } : null
+                    ].filter(Boolean)
+                }
+            ]
+        };
+
+        if (category) timetableQuery.category = category;
+        if (major) timetableQuery.major = major;
+
+        // 3. Query MongoDB
         const [semesterDoc, classSection, directSlots] = await Promise.all([
             Semester.findOne(semQuery).lean().exec(),
             ClassSection.findOne({ year: targetYearString, semester: targetSemesterString }).lean().exec(),
-            Timetable.find({
-                $or: [
-                    { year: targetYearString },
-                    { year: year },
-                    { yearNumber: yNum }
-                ].filter(c => Object.values(c)[0] !== undefined)
-            }).lean().exec()
+            Timetable.find(timetableQuery).lean().exec()
         ]);
 
         let slots = directSlots || [];
 
-        // If direct Timetable slots are empty, automatically populate from semesterDoc!
+        // If direct Timetable slots are empty, populate ONLY if semesterDoc matches!
         if (slots.length === 0 && semesterDoc) {
             const legendMap = new Map();
             (semesterDoc.legend || []).forEach(l => {
@@ -92,9 +104,9 @@ const getTimetable = async (req, res) => {
                         slots.push({
                             _id: `${semesterDoc._id}_${dayObj.day}_${pNum}`,
                             year: targetYearString,
-                            yearNumber: yNum,
+                            yearNumber: yNum || semesterDoc.yearNumber,
                             semester: targetSemesterString,
-                            semesterNumber: sNum,
+                            semesterNumber: sNum || semesterDoc.semesterNumber,
                             day: dayObj.day,
                             periodNumber: pNum,
                             startTime: startTime,
@@ -271,10 +283,44 @@ const importTimetableFile = async (req, res) => {
 const getSemesters = async (req, res) => {
     try {
         const Semester = require('../models/Semester');
+        const parseNum = (val) => {
+            if (val === undefined || val === null || val === '') return null;
+            if (typeof val === 'number') return val;
+            const match = String(val).match(/\d+/);
+            return match ? parseInt(match[0], 10) : null;
+        };
+
+        const yearParam = req.query.yearLabel || req.query.year;
+        const semParam = req.query.semesterLabel || req.query.semester;
+
         const filter = {};
-        if (req.query.yearLabel || req.query.year) filter.yearLabel = req.query.yearLabel || req.query.year;
-        if (req.query.semesterLabel || req.query.semester) filter.semesterLabel = req.query.semesterLabel || req.query.semester;
-        const semesters = await Semester.find(filter).sort({ yearLabel: 1, semesterOrder: 1 }).lean();
+
+        if (yearParam) {
+            const yNum = parseNum(yearParam);
+            const yearConditions = [
+                { yearLabel: yearParam },
+                yNum ? { yearNumber: yNum } : null,
+                yNum ? { yearLabel: `${yNum}${yNum === 1 ? 'st' : yNum === 2 ? 'nd' : yNum === 3 ? 'rd' : 'th'} Year` } : null
+            ].filter(Boolean);
+            filter.$or = yearConditions;
+        }
+
+        if (semParam) {
+            const sNum = parseNum(semParam);
+            const semConditions = [
+                { semesterLabel: semParam },
+                sNum ? { semesterNumber: sNum } : null,
+                sNum ? { semesterLabel: `Semester ${sNum}` } : null
+            ].filter(Boolean);
+            if (filter.$or) {
+                filter.$and = [{ $or: filter.$or }, { $or: semConditions }];
+                delete filter.$or;
+            } else {
+                filter.$or = semConditions;
+            }
+        }
+
+        const semesters = await Semester.find(filter).sort({ yearNumber: 1, semesterNumber: 1, semesterOrder: 1 }).lean();
         res.json(semesters);
     } catch (err) {
         console.error('Get Semesters Error:', err);

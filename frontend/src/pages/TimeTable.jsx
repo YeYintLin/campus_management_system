@@ -155,7 +155,10 @@ const TimeTable = () => {
             try {
                 const { data } = await apiClient.get('/timetable/semesters', { params: { year: selectedYear } });
                 if (Array.isArray(data) && data.length > 0) {
-                    const fetchedSems = Array.from(new Set(data.map(s => s.semesterLabel).filter(Boolean)));
+                    const fetchedSems = Array.from(new Set(data.map(s => {
+                        if (s.semesterNumber) return `Semester ${s.semesterNumber}`;
+                        return s.semesterLabel || 'Semester 1';
+                    }).filter(Boolean)));
                     if (fetchedSems.length > 0) {
                         setAvailableSemesters(fetchedSems);
                         if (!fetchedSems.includes(selectedSemester)) {
