@@ -133,6 +133,17 @@ const seedExcelTeachers = async () => {
             }
         }
 
+        // Clean non-academic entries from Course collection
+        const nonAcadResult = await Course.deleteMany({
+            $or: [
+                { code: { $regex: /private study|extra|self-study|lunch/i } },
+                { name: { $regex: /private study|extra|self-study|lunch/i } }
+            ]
+        });
+        if (nonAcadResult.deletedCount > 0) {
+            console.log(`Cleaned ${nonAcadResult.deletedCount} non-academic course entries.`);
+        }
+
         console.log('Seeding completed successfully!');
         mongoose.disconnect();
     } catch (err) {
