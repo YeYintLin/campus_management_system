@@ -14,20 +14,54 @@ const batchImportSessions = async (req, res) => {
 
         const { year = '6th Year', semester = 'Semester 1', major = 'MC', sessionType = 'Academic' } = req.body;
 
-        // 1. Find or create authoritative ClassSection
-        let classSection = await ClassSection.findOne({ year, semester, major });
-        if (!classSection) {
-            classSection = await ClassSection.create({
+        // 1. Parse Excel file via server-side parser
+        const { parsedMatrix, parsedSessions } = parseTUHmawbiExcel(req.file.buffer, sessionType);
+
+        // 2. Find or create authoritative ClassSections per parsed cohort
+        const ClassSection = require('../models/ClassSection');
+        const sectionMap = new Map();
+        const itemsForSections = sessionType === 'Academic' ? (parsedMatrix || []) : (parsedSessions || []);
+
+        for (const item of itemsForSections) {
+            const sYear = item.year || year;
+            const sSem = item.semester || semester;
+            const sMajor = item.major || major;
+            const key = `${sYear}_${sSem}_${sMajor}`;
+            if (!sectionMap.has(key)) {
+                sectionMap.set(key, {
+                    year: sYear,
+                    semester: sSem,
+                    major: sMajor,
+                    familyTeacher: item.familyTeacher || 'Faculty Member',
+                    majorRoom: item.majorRoom || item.room || '3/212-A'
+                });
+            }
+        }
+
+        if (sectionMap.size === 0) {
+            sectionMap.set(`${year}_${semester}_${major}`, {
                 year,
                 semester,
                 major,
-                familyTeacher: 'Daw Thin Yu Maw',
+                familyTeacher: 'Faculty Member',
                 majorRoom: '3/212-A'
             });
         }
 
-        // 2. Parse Excel file via server-side parser
-        const { parsedMatrix, parsedSessions } = parseTUHmawbiExcel(req.file.buffer, sessionType);
+        const createdSections = new Map();
+        for (const sec of sectionMap.values()) {
+            const updated = await ClassSection.findOneAndUpdate(
+                { year: sec.year, semester: sec.semester, major: sec.major },
+                {
+                    $set: {
+                        familyTeacher: sec.familyTeacher,
+                        majorRoom: sec.majorRoom
+                    }
+                },
+                { upsert: true, new: true }
+            );
+            createdSections.set(`${sec.year}_${sec.semester}_${sec.major}`, updated);
+        }
 
         // 3. Find-or-create subject courses cleanly (deduplicating subject folders)
         const Course = require('../models/Course');
@@ -81,7 +115,7 @@ const batchImportSessions = async (req, res) => {
                             room: slot.room || slot.majorRoom || '3/212-A',
                             type: slot.type || 'Lecture',
                             sessionLabel: slot.sessionLabel || 'Lecture',
-                            classSection: classSection._id
+                            classSection: createdSections.get(`${slot.year || year}_${slot.semester || semester}_${slot.major || major}`)?. _id
                         }
                     },
                     upsert: true

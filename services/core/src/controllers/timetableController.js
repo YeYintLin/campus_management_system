@@ -36,8 +36,22 @@ const getTimetable = async (req, res) => {
             }
         }
 
-        const slots = await Timetable.find(query);
-        res.json(slots);
+        const ClassSection = require('../models/ClassSection');
+        const classSection = await ClassSection.findOne({
+            year: query.year || year || '4th Year',
+            semester: query.semester || semester || 'Semester 2',
+            major: query.major || 'MC'
+        });
+
+        const slots = await Timetable.find(query).populate('classSection');
+        
+        res.json({
+            slots,
+            classSection: classSection ? {
+                familyTeacher: classSection.familyTeacher,
+                majorRoom: classSection.majorRoom
+            } : null
+        });
     } catch (error) {
         console.error('Get Timetable Error:', error.message);
         res.status(500).json({ message: 'Server error fetching timetable' });

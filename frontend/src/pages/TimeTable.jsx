@@ -69,21 +69,33 @@ const TimeTable = () => {
                     params: { year: selectedYear, semester: selectedSemester, major: selectedMajor }
                 });
                 
+                const slotsList = Array.isArray(data) ? data : (data?.slots || []);
+                const secObj = Array.isArray(data) ? null : data?.classSection;
+
+                let fTeacher = secObj?.familyTeacher || 'Faculty Member';
+                let mRoom = secObj?.majorRoom || '3/212-A';
+
                 const scheduleMap = {};
-                if (Array.isArray(data) && data.length > 0) {
-                    data.forEach(slot => {
-                        if (slot && slot.day && slot.time) {
+                if (slotsList.length > 0) {
+                    slotsList.forEach(slot => {
+                        if (slot && slot.day && (slot.startTime || slot.time)) {
+                            const timeKey = slot.startTime || slot.time;
                             if (!scheduleMap[slot.day]) scheduleMap[slot.day] = {};
-                            scheduleMap[slot.day][slot.time] = {
+                            scheduleMap[slot.day][timeKey] = {
                                 course: slot.courseCode || slot.course || '',
                                 name: slot.courseName || '',
-                                room: slot.room || '3/212-A',
+                                room: slot.room || mRoom,
                                 type: slot.type || 'Lecture',
                                 sessionLabel: slot.sessionLabel || 'Lecture'
                             };
+                            if (slot.room) mRoom = slot.room;
+                            if (slot.classSection?.familyTeacher) fTeacher = slot.classSection.familyTeacher;
+                            if (slot.classSection?.majorRoom) mRoom = slot.classSection.majorRoom;
                         }
                     });
                 }
+
+                setClassSectionInfo({ familyTeacher: fTeacher, majorRoom: mRoom });
                 setSchedules(scheduleMap);
             } else {
                 const { data } = await apiClient.get('/sessions', {
