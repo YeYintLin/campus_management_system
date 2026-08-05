@@ -247,28 +247,4 @@ async function parseTimetableBuffer(buffer) {
   return result;
 }
 
-async function createSnapshotBufferFromSemesters(semesters) {
-  const workbook = new ExcelJS.Workbook();
-  for (const sem of semesters) {
-    const sheet = workbook.addWorksheet(sem.sheetName || `Semester_${sem.semesterNumber || 1}`);
-    sheet.addRow([`Timetable for ${sem.yearLabel || ''} (${sem.semesterLabel || ''})`]);
-    sheet.addRow([`Department: ${sem.department || ''}`]);
-    sheet.addRow([`Major Room (${sem.majorRoom || ''}) Combined Room (${sem.combinedRoom || ''})`]);
-    sheet.addRow([]);
-
-    const periodHeaders = ['Day', ...(sem.periods || []).map(p => `${p.period}\n${p.time}`)];
-    sheet.addRow(periodHeaders);
-
-    for (const d of (sem.days || [])) {
-      const rowVals = [d.day];
-      for (const p of (sem.periods || [])) {
-        const slot = (d.sessions || []).find(s => s.period === p.period || s.time === p.time);
-        rowVals.push(slot ? `${slot.course || slot.code || ''} (${slot.sessionType || 'Lecture'})` : '');
-      }
-      sheet.addRow(rowVals);
-    }
-  }
-  return await workbook.xlsx.writeBuffer();
-}
-
-module.exports = { parseTimetableBuffer, createSnapshotBufferFromSemesters };
+module.exports = { parseTimetableBuffer };
