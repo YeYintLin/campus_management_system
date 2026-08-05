@@ -75,37 +75,43 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
         const isAcademicFormat = fullText.includes('monday') || fullText.includes('tuesday') || fullText.includes('lunch break') || fullText.includes('timetable for');
 
         if (targetCategory === 'Academic' || isAcademicFormat) {
+            let titleText = '';
+            jsonRows.forEach(row => {
+                if (!Array.isArray(row)) return;
+                const lineStr = row.filter(Boolean).map(c => String(c).trim()).join(' ');
+                if (lineStr.toLowerCase().includes('timetable for')) titleText = lineStr;
+            });
+
+            const combined = `${sheetName} ${titleText}`.toLowerCase().trim();
+
             let detectedYear = '4th Year';
             let detectedSemester = 'Semester 2';
             let majorRoom = '3/212-A';
             let familyTeacher = 'Faculty Member';
 
-            const sNameLower = sheetName.toLowerCase();
-            if (sNameLower.includes('first') || sNameLower.includes(' 1') || sNameLower.includes('i ')) detectedYear = '1st Year';
-            else if (sNameLower.includes('second year') || sNameLower.includes('ii ')) detectedYear = '2nd Year';
-            else if (sNameLower.includes('third') || sNameLower.includes('iii ')) detectedYear = '3rd Year';
-            else if (sNameLower.includes('fourth') || sNameLower.includes('iv ')) detectedYear = '4th Year';
-            else if (sNameLower.includes('fifth') || sNameLower.includes('v ')) detectedYear = '5th Year';
-            else if (sNameLower.includes('me')) detectedYear = 'ME Program';
+            if (combined.includes('first year') || combined.includes('i mc') || combined.includes('1st year')) {
+                detectedYear = '1st Year';
+            } else if (combined.includes('second year') || combined.includes('ii mc') || combined.includes('2nd year')) {
+                detectedYear = '2nd Year';
+            } else if (combined.includes('third year') || combined.includes('iii mc') || combined.includes('3rd year')) {
+                detectedYear = '3rd Year';
+            } else if (combined.includes('fourth year') || combined.includes('iv mc') || combined.includes('4th year')) {
+                detectedYear = '4th Year';
+            } else if (combined.includes('fifth year') || combined.includes('v mc') || combined.includes('5th year')) {
+                detectedYear = '5th Year';
+            } else if (combined.includes('me mc') || combined.includes('me ') || combined.startsWith('me') || combined.includes('master')) {
+                detectedYear = 'ME Program';
+            }
 
-            if (sNameLower.includes('s1') || sNameLower.includes('first semester')) detectedSemester = 'Semester 1';
+            if (combined.includes('sem 1') || combined.includes('sem i ') || combined.includes(',s1') || combined.includes('first semester') || combined.includes('sem iii') || combined.includes('sem v') || combined.includes('sem vii')) {
+                detectedSemester = 'Semester 1';
+            } else {
+                detectedSemester = 'Semester 2';
+            }
 
             jsonRows.forEach(row => {
                 if (!Array.isArray(row)) return;
                 const lineStr = row.filter(Boolean).map(c => String(c).trim()).join(' ');
-
-                if (lineStr.toLowerCase().includes('timetable for')) {
-                    if (lineStr.includes('I MC') || lineStr.includes('First')) detectedYear = '1st Year';
-                    else if (lineStr.includes('II MC') || lineStr.includes('Second Year')) detectedYear = '2nd Year';
-                    else if (lineStr.includes('III MC') || lineStr.includes('Third')) detectedYear = '3rd Year';
-                    else if (lineStr.includes('IV MC') || lineStr.includes('Fourth')) detectedYear = '4th Year';
-                    else if (lineStr.includes('V MC') || lineStr.includes('Fifth')) detectedYear = '5th Year';
-                    else if (lineStr.includes('ME MC') || lineStr.includes('ME')) detectedYear = 'ME Program';
-
-                    if (lineStr.toLowerCase().includes('first semester') || lineStr.toLowerCase().includes('sem i') || lineStr.toLowerCase().includes('sem 1')) {
-                        detectedSemester = 'Semester 1';
-                    }
-                }
 
                 if (lineStr.toLowerCase().includes('major room')) {
                     const match = lineStr.match(/major room\s*\(([^)]+)\)/i);
