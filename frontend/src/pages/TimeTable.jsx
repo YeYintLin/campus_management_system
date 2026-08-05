@@ -167,6 +167,8 @@ const TimeTable = () => {
         return 'tier-lecture';
     };
 
+    const hasAnySlots = Object.values(schedules).some(dayObj => Object.values(dayObj || {}).some(slot => slot && slot.course));
+
     return (
         <div className="timetable-page animate-fade-in">
             <input
@@ -276,7 +278,22 @@ const TimeTable = () => {
                             <p>Loading schedule...</p>
                         </div>
                     ) : selectedCategory === 'Academic' ? (
-                        <div className="table-container">
+                        !hasAnySlots ? (
+                            <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                <Calendar size={48} style={{ opacity: 0.3, marginBottom: '1rem', color: '#818cf8' }} />
+                                <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '0.5rem' }}>No Timetable Published for {selectedYear} ({selectedSemester})</h3>
+                                <p style={{ fontSize: '0.9rem', maxWidth: '440px', margin: '0 auto 1.5rem auto' }}>
+                                    There are no class schedules published for {selectedYear} ({selectedSemester}) in {selectedMajor} Department.
+                                </p>
+                                {canManageTimetable && (
+                                    <button className="btn btn-primary" onClick={handleFileUploadClick} disabled={importing}>
+                                        <Upload size={16} />
+                                        Upload Official Excel File
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="table-container">
                             <table className="timetable-grid">
                                 <thead>
                                     <tr>
@@ -332,6 +349,7 @@ const TimeTable = () => {
                                 </tbody>
                             </table>
                         </div>
+                    )
                     ) : (
                         <div className="table-container" style={{ padding: '1rem' }}>
                             {dateSessions.length === 0 ? (
