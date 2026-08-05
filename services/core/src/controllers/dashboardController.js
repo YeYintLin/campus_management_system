@@ -9,7 +9,7 @@ const axios = require('axios');
 
 const AcademicConfig = require('../models/AcademicConfig');
 
-const ATTENDANCE_SERVICE_URL = process.env.ATTENDANCE_SERVICE_URL || 'http://localhost:5003';
+const ATTENDANCE_SERVICE_URL = process.env.ATTENDANCE_SERVICE_URL || 'http://attendance-service:5003';
 
 // Fallback thresholds if not yet configured in DB
 const DEFAULT_ATTENDANCE_THRESHOLD = 75;  // below this % = at-risk
@@ -320,7 +320,10 @@ const getDashboardStats = async (req, res) => {
             const myCoursesCodes = myCourses.map(c => c.code);
 
             const todaySlots = await Timetable.find({
-                course: { $in: myCoursesCodes },
+                $or: [
+                    { courseCode: { $in: myCoursesCodes } },
+                    { course: { $in: myCourses.map(c => c._id) } }
+                ],
                 day: today,
             }).sort({ time: 1 });
 
