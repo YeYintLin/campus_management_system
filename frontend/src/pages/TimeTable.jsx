@@ -48,7 +48,7 @@ const TimeTable = () => {
     const [importError, setImportError] = useState('');
     const [importSuccess, setImportSuccess] = useState('');
 
-    const years = isStudent ? [studentYear] : ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+    const years = isStudent ? [studentYear] : ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'];
     const semesters = ['Semester 1', 'Semester 2'];
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     const majors = ['MC', 'EIE', 'CS', 'MECH', 'EE', 'EC', 'CE', 'ARCH'];

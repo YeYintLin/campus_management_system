@@ -86,7 +86,7 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
             else if (sNameLower.includes('third') || sNameLower.includes('iii ')) detectedYear = '3rd Year';
             else if (sNameLower.includes('fourth') || sNameLower.includes('iv ')) detectedYear = '4th Year';
             else if (sNameLower.includes('fifth') || sNameLower.includes('v ')) detectedYear = '5th Year';
-            else if (sNameLower.includes('me')) detectedYear = '6th Year';
+            else if (sNameLower.includes('me')) detectedYear = 'ME Program';
 
             if (sNameLower.includes('s1') || sNameLower.includes('first semester')) detectedSemester = 'Semester 1';
 
@@ -100,7 +100,7 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                     else if (lineStr.includes('III MC') || lineStr.includes('Third')) detectedYear = '3rd Year';
                     else if (lineStr.includes('IV MC') || lineStr.includes('Fourth')) detectedYear = '4th Year';
                     else if (lineStr.includes('V MC') || lineStr.includes('Fifth')) detectedYear = '5th Year';
-                    else if (lineStr.includes('ME MC') || lineStr.includes('ME')) detectedYear = '6th Year';
+                    else if (lineStr.includes('ME MC') || lineStr.includes('ME')) detectedYear = 'ME Program';
 
                     if (lineStr.toLowerCase().includes('first semester') || lineStr.toLowerCase().includes('sem i') || lineStr.toLowerCase().includes('sem 1')) {
                         detectedSemester = 'Semester 1';

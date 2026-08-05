@@ -5,7 +5,7 @@ const timetableSchema = new mongoose.Schema(
         year: {
             type: String,
             required: [true, 'Academic year is required'],
-            enum: ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'],
+            enum: ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'],
         },
         semester: {
             type: String,

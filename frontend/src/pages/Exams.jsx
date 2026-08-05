@@ -60,7 +60,7 @@ const Exams = () => {
 
     const years = isStudent
         ? [studentYear]
-        : ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+        : ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'];
 
     const fetchExams = useCallback(async () => {
         setLoading(true);
@@ -915,7 +915,7 @@ const Exams = () => {
                                         value={formData.year}
                                         onChange={e => setFormData({ ...formData, year: e.target.value })}
                                     >
-                                        {['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'].map(y => (
+                                        {['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'].map(y => (
                                             <option key={y} value={y}>{y}</option>
                                         ))}
                                     </select>
