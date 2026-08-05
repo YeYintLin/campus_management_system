@@ -68,25 +68,48 @@ const seedExcelTeachers = async () => {
                 ]
             });
 
+            const determineDepartment = (tName, subs) => {
+                const text = (tName + ' ' + subs.map(s => s.code + ' ' + s.name).join(' ')).toLowerCase();
+                if (text.includes('myanmar') || subs.some(s => (s.code || '').trim().startsWith('M-'))) {
+                    return 'Myanmar';
+                }
+                if (text.includes('physics') || subs.some(s => (s.code || '').toLowerCase().includes('eph'))) {
+                    return 'Engineering Physics';
+                }
+                if (text.includes('chemistry') || subs.some(s => (s.code || '').toLowerCase().includes('chem'))) {
+                    return 'Engineering Chemistry';
+                }
+                if (text.includes('mathematics') || subs.some(s => (s.code || '').toLowerCase().startsWith('em-') || (s.code || '').toLowerCase().startsWith('em '))) {
+                    return 'Engineering Mathematics';
+                }
+                if (text.includes('english') || subs.some(s => (s.code || '').toLowerCase().startsWith('e-') || (s.code || '').toLowerCase().startsWith('e '))) {
+                    return 'English';
+                }
+                return 'Mechatronics Engineering';
+            };
+
+            const dept = determineDepartment(teacherName, uniqueSubjects);
+
             if (!user) {
                 user = await User.create({
                     name: teacherName,
                     email: email,
                     password: 'password',
                     role: 'Teacher',
-                    department: teacherName.includes('Dr.') ? 'Mechatronics Engineering' : 'Academic Faculty',
+                    department: dept,
                     title: teacherName.startsWith('Dr.') ? 'Associate Professor' : 'Lecturer',
                     status: 'Active',
                     specialization: uniqueSubjects.map(s => s.name).join(', ')
                 });
-                console.log(`Created Teacher User: ${teacherName} (${email}) with password 'password'`);
+                console.log(`Created Teacher User: ${teacherName} (${email}) [${dept}] with password 'password'`);
             } else {
                 user.email = email;
                 user.role = 'Teacher';
                 user.password = 'password';
+                user.department = dept;
                 user.specialization = uniqueSubjects.map(s => s.name).join(', ');
                 await user.save();
-                console.log(`Updated Teacher User: ${teacherName} (${email}) with password 'password'`);
+                console.log(`Updated Teacher User: ${teacherName} (${email}) [${dept}] with password 'password'`);
             }
 
             // Upsert Course documents and associate with teacher user
