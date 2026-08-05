@@ -80,10 +80,9 @@ const TimeTable = () => {
                     if (slot && slot.day && (slot.startTime || slot.time)) {
                         const slotType = slot.type || 'Lecture';
 
-                        // Strict category filtering so Academic only shows Lectures, Practical shows Practicals, etc.
-                        if (selectedCategory === 'Academic' && slotType !== 'Lecture') return;
-                        if (selectedCategory === 'Practical' && slotType !== 'Practical') return;
-                        if (selectedCategory === 'Tutorial' && slotType !== 'Tutorial') return;
+                        // In Practical/Tutorial tabs, filter specifically; in Academic tab, show complete weekly matrix
+                        if (selectedCategory === 'Practical' && !['practical', 'lab'].includes(slotType.toLowerCase())) return;
+                        if (selectedCategory === 'Tutorial' && slotType.toLowerCase() !== 'tutorial') return;
 
                         const timeKey = slot.startTime || slot.time;
                         if (!scheduleMap[slot.day]) scheduleMap[slot.day] = {};
