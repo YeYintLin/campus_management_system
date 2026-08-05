@@ -81,6 +81,7 @@ const seedExcelTeachers = async () => {
                 });
                 console.log(`Created Teacher User: ${teacherName} (${email}) with password 'password'`);
             } else {
+                user.email = email;
                 user.role = 'Teacher';
                 user.password = 'password';
                 user.specialization = uniqueSubjects.map(s => s.name).join(', ');
