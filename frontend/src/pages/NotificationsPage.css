@@ -1,0 +1,16 @@
+.notifications-page {
+    padding: 1.5rem;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.notif-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(99, 102, 241, 0.4) !important;
+}
+
+@media (max-width: 768px) {
+    .notifications-page {
+        padding: 1rem;
+    }
+}

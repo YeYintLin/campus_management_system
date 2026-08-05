@@ -22,6 +22,7 @@ const Assignments = lazy(() => import('./pages/Assignments'));
 const AIPromptSettings = lazy(() => import('./pages/AIPromptSettings'));
 const AccountManagement = lazy(() => import('./pages/AccountManagement'));
 const AcademicSettings = lazy(() => import('./pages/AcademicSettings'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 
 const restrictedRoles = new Set(['Student', 'Teacher']);
 
@@ -81,6 +82,7 @@ function App() {
             <Route path="/time-table" element={<TimeTable />} />
             <Route path="/files" element={<Files />} />
             <Route path="/assignments" element={<Assignments />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/admin/ai-settings" element={<AIPromptSettings />} />
             <Route path="/admin/accounts" element={<AccountManagement />} />
             <Route path="/admin/academic-settings" element={<AcademicSettings />} />
