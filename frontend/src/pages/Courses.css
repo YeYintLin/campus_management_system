@@ -6,6 +6,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.5rem;
+  align-items: stretch;
 }
 
 .course-card {
@@ -13,6 +14,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  height: 100%;
   padding: 1.5rem;
 }
 
@@ -101,38 +103,66 @@
 
 .course-card-body {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   padding-left: 0.5rem;
 }
 
 .course-card-body h3 {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
+  font-weight: 700;
   margin-bottom: 0.5rem;
   line-height: 1.3;
+  min-height: 3.5rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .course-instructor {
   color: var(--text-muted);
   font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.course-description {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
   margin-bottom: 1rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .course-meta {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
 }
 
 .meta-item {
   background: rgba(0, 0, 0, 0.2);
   padding: 0.35rem 0.75rem;
   border-radius: 20px;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-main);
   border: 1px solid var(--surface-border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .enrollment-section {
   margin-bottom: 1.5rem;
+  margin-top: auto;
 }
 
 .enrollment-header {
@@ -166,7 +196,7 @@
 .course-card-footer {
   display: flex;
   gap: 0.75rem;
-  margin-top: auto;
+  margin-top: 1rem;
   padding-left: 0.5rem;
 }
 
