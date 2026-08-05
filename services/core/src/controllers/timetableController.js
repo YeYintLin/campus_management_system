@@ -8,51 +8,117 @@ const User = require('../models/User');
 const getTimetable = async (req, res) => {
     try {
         const { year, semester, category, major } = req.query;
-        const { role, _id: userId } = req.user;
-        let query = {};
+        const { role, _id: userId } = req.user || {};
 
-        if (year) query.year = year;
-        if (semester) query.semester = semester;
-        if (category) query.category = category;
-        if (major) query.major = major;
+        let yNum = null;
+        let sNum = null;
+        let targetYearString = year || '4th Year';
+        let targetSemesterString = semester || 'Semester 2';
 
-        if (role === 'Teacher') {
-            const userDoc = await User.findById(userId).select('department');
-            const dept = (userDoc?.department || '').toUpperCase().trim();
-            const isMinorTeacher = ['MATH', 'MTH', 'ENGLISH', 'ENG', 'MYANMAR', 'MM', 'CHEM', 'CHM', 'PHYS', 'PHY'].some(m => dept.includes(m));
-
-            if (!isMinorTeacher) {
-                // Major department teacher (e.g. Mechatronics / MC): restricted to their own major department
-                const teacherMajor = (dept.includes('MC') || dept.includes('MECHA')) ? 'MC' : (major || 'MC');
-                query.major = teacherMajor;
-            }
-        } else if (role === 'Student') {
-            // Student: filter by student's year if not explicitly provided
-            if (!year) {
-                const userDoc = await User.findById(userId).select('year');
-                if (userDoc && userDoc.year) {
-                    const yearString = `${userDoc.year}${userDoc.year === 1 ? 'st' : userDoc.year === 2 ? 'nd' : userDoc.year === 3 ? 'rd' : 'th'} Year`;
-                    query.year = yearString;
-                }
+        if (year !== undefined && year !== null && year !== '') {
+            if (typeof year === 'number' || !isNaN(Number(year))) {
+                yNum = Number(year);
+                targetYearString = `${yNum}${yNum === 1 ? 'st' : yNum === 2 ? 'nd' : yNum === 3 ? 'rd' : 'th'} Year`;
+            } else {
+                targetYearString = year;
+                const match = String(year).match(/\d+/);
+                if (match) yNum = parseInt(match[0], 10);
             }
         }
 
-        const ClassSection = require('../models/ClassSection');
-        const targetYear = query.year || year || '4th Year';
-        const targetSemester = query.semester || semester || 'Semester 2';
-        const targetMajor = query.major || major || 'MC';
+        if (semester !== undefined && semester !== null && semester !== '') {
+            if (typeof semester === 'number' || !isNaN(Number(semester))) {
+                sNum = Number(semester);
+                targetSemesterString = `Semester ${sNum}`;
+            } else {
+                targetSemesterString = semester;
+                const match = String(semester).match(/\d+/);
+                if (match) sNum = parseInt(match[0], 10);
+            }
+        }
 
-        const [classSection, slots] = await Promise.all([
-            ClassSection.findOne({ year: targetYear, semester: targetSemester, major: targetMajor }).lean().exec(),
-            Timetable.find(query).lean().exec()
+        const Semester = require('../models/Semester');
+        const ClassSection = require('../models/ClassSection');
+
+        // 1. Build query for Semester doc
+        const semConditions = [];
+        if (yNum) semConditions.push({ yearNumber: yNum });
+        if (targetYearString) semConditions.push({ yearLabel: targetYearString });
+        if (year) semConditions.push({ yearLabel: year });
+
+        let semQuery = semConditions.length > 0 ? { $or: semConditions } : {};
+        if (sNum) {
+            const semNumOr = [{ semesterNumber: sNum }, { semesterLabel: targetSemesterString }, { semesterLabel: semester }];
+            if (semConditions.length > 0) {
+                semQuery = { $and: [{ $or: semConditions }, { $or: semNumOr }] };
+            } else {
+                semQuery = { $or: semNumOr };
+            }
+        }
+
+        // 2. Query MongoDB
+        const [semesterDoc, classSection, directSlots] = await Promise.all([
+            Semester.findOne(semQuery).lean().exec(),
+            ClassSection.findOne({ year: targetYearString, semester: targetSemesterString }).lean().exec(),
+            Timetable.find({
+                $or: [
+                    { year: targetYearString },
+                    { year: year },
+                    { yearNumber: yNum }
+                ].filter(c => Object.values(c)[0] !== undefined)
+            }).lean().exec()
         ]);
 
+        let slots = directSlots || [];
+
+        // If direct Timetable slots are empty, automatically populate from semesterDoc!
+        if (slots.length === 0 && semesterDoc) {
+            const legendMap = new Map();
+            (semesterDoc.legend || []).forEach(l => {
+                if (l && l.code) legendMap.set(l.code.trim().replace(/\s+/g, ''), l);
+            });
+
+            (semesterDoc.days || []).forEach(dayObj => {
+                (dayObj.sessions || []).forEach(sess => {
+                    (sess.periods || []).forEach((pStr, idx) => {
+                        const pNum = parseInt(pStr.replace(/\D/g, ''), 10) || (idx + 1);
+                        const timeStr = sess.time && sess.time[idx] ? sess.time[idx] : (sess.time && sess.time[0] ? sess.time[0] : '09:00 AM - 09:50 AM');
+                        const timeParts = timeStr.split('-').map(t => t.trim());
+                        const startTime = timeParts[0] || '09:00 AM';
+                        const endTime = timeParts[1] || '09:50 AM';
+                        const cleanCode = sess.code || sess.raw || '';
+                        const leg = legendMap.get(cleanCode.replace(/\s+/g, '')) || {};
+
+                        slots.push({
+                            _id: `${semesterDoc._id}_${dayObj.day}_${pNum}`,
+                            year: targetYearString,
+                            yearNumber: yNum,
+                            semester: targetSemesterString,
+                            semesterNumber: sNum,
+                            day: dayObj.day,
+                            periodNumber: pNum,
+                            startTime: startTime,
+                            endTime: endTime,
+                            time: startTime,
+                            courseCode: cleanCode,
+                            courseName: leg.subject || cleanCode,
+                            teacher: leg.teacher || semesterDoc.familyTeacher || 'Faculty Member',
+                            room: semesterDoc.majorRoom || '3/212-A',
+                            type: sess.session_type || 'Lecture',
+                            sessionLabel: sess.session_type || 'Lecture'
+                        });
+                    });
+                });
+            });
+        }
+
         res.json({
-            slots: slots || [],
-            classSection: classSection ? {
-                familyTeacher: classSection.familyTeacher,
-                majorRoom: classSection.majorRoom
-            } : null
+            semesterDoc: semesterDoc || null,
+            slots: slots,
+            classSection: {
+                familyTeacher: semesterDoc?.familyTeacher || classSection?.familyTeacher || 'Faculty Member',
+                majorRoom: semesterDoc?.majorRoom || classSection?.majorRoom || '3/212-A'
+            }
         });
     } catch (error) {
         console.error('Get Timetable Error:', error.message);
