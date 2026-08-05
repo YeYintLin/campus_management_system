@@ -412,11 +412,16 @@ const restoreTimetableVersion = async (req, res) => {
         }
 
         // c. Snapshot current live semester state BEFORE mutating
-        const currentActiveFile = await TimetableFile.findOne({ isActive: true }).sort({ createdAt: -1 });
+        let currentActiveFile = await TimetableFile.findOne({ isActive: true, data: { $exists: true } }).sort({ createdAt: -1 });
+        if (!currentActiveFile) {
+            currentActiveFile = await TimetableFile.findOne({ data: { $exists: true } }).sort({ createdAt: -1 });
+        }
+
         let snapshotDoc;
         if (currentActiveFile && currentActiveFile.data) {
+            const uniqueSuffix = `${Date.now()}-${new mongoose.Types.ObjectId().toString().slice(-6)}`;
             snapshotDoc = await TimetableFile.create({
-                originalName: `pre-restore-snapshot-${Date.now()}.xlsx`,
+                originalName: `pre-restore-snapshot-${uniqueSuffix}.xlsx`,
                 mimeType: currentActiveFile.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 data: currentActiveFile.data,
                 size: currentActiveFile.data.length,
