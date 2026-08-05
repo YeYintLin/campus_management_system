@@ -72,19 +72,20 @@ const seedExcelTeachers = async () => {
                 user = await User.create({
                     name: teacherName,
                     email: email,
-                    password: 'Password123!',
+                    password: 'password',
                     role: 'Teacher',
                     department: teacherName.includes('Dr.') ? 'Mechatronics Engineering' : 'Academic Faculty',
                     title: teacherName.startsWith('Dr.') ? 'Associate Professor' : 'Lecturer',
                     status: 'Active',
                     specialization: uniqueSubjects.map(s => s.name).join(', ')
                 });
-                console.log(`Created Teacher User: ${teacherName} (${email})`);
+                console.log(`Created Teacher User: ${teacherName} (${email}) with password 'password'`);
             } else {
                 user.role = 'Teacher';
+                user.password = 'password';
                 user.specialization = uniqueSubjects.map(s => s.name).join(', ');
                 await user.save();
-                console.log(`Updated Teacher User: ${teacherName} (${email})`);
+                console.log(`Updated Teacher User: ${teacherName} (${email}) with password 'password'`);
             }
 
             // Upsert Course documents and associate with teacher user
