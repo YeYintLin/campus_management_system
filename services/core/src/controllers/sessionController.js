@@ -57,17 +57,17 @@ const batchImportSessions = async (req, res) => {
             const bulkOps = parsedMatrix.map(slot => ({
                 updateOne: {
                     filter: {
-                        year,
-                        semester,
-                        major,
+                        year: slot.year || year,
+                        semester: slot.semester || semester,
+                        major: slot.major || major,
                         day: slot.day,
                         startTimeMinutes: slot.startTimeMinutes
                     },
                     update: {
                         $set: {
-                            year,
-                            semester,
-                            major,
+                            year: slot.year || year,
+                            semester: slot.semester || semester,
+                            major: slot.major || major,
                             day: slot.day,
                             periodNumber: slot.periodNumber,
                             startTime: slot.startTime,
@@ -76,9 +76,9 @@ const batchImportSessions = async (req, res) => {
                             endTimeMinutes: slot.endTimeMinutes,
                             courseCode: slot.courseCode,
                             courseName: slot.courseName,
-                            room: slot.room,
-                            type: slot.type,
-                            sessionLabel: slot.sessionLabel,
+                            room: slot.room || slot.majorRoom || '3/212-A',
+                            type: slot.type || 'Lecture',
+                            sessionLabel: slot.sessionLabel || 'Lecture',
                             classSection: classSection._id
                         }
                     },
@@ -92,12 +92,12 @@ const batchImportSessions = async (req, res) => {
             await Notification.create({
                 user: null,
                 type: 'timetable',
-                message: `📖 Academic Timetable Updated: ${year} (${semester}) ${major} lecture matrix has been uploaded!`,
+                message: `📖 Academic Timetable Updated: Official university timetable spreadsheet (${parsedMatrix.length} class slots across all years) has been uploaded!`,
                 link: '/timetable'
             });
 
             return res.json({
-                message: `Successfully imported ${parsedMatrix.length} Academic matrix slots for ${year} ${semester} (${major})`,
+                message: `Successfully imported ${parsedMatrix.length} Academic matrix slots across all university years!`,
                 count: parsedMatrix.length
             });
         } else {
