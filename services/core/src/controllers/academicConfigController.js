@@ -62,6 +62,10 @@ const updateAcademicConfig = async (req, res) => {
         const atRiskAttendanceThreshold = Math.max(0, Math.min(100, parseInt(req.body?.atRiskAttendanceThreshold ?? 75, 10)));
         const atRiskFailingThreshold = Math.max(1, Math.min(10, parseInt(req.body?.atRiskFailingThreshold ?? 2, 10)));
         const passMarkPercent = Math.max(0, Math.min(100, parseInt(req.body?.passMarkPercent ?? 40, 10)));
+        const activeTerm = String(req.body?.activeTerm || 'Semester 2').trim();
+        const perYearActiveTerms = typeof req.body?.perYearActiveTerms === 'object' && req.body?.perYearActiveTerms !== null
+            ? req.body.perYearActiveTerms
+            : {};
 
         const uniqueCheck = validateUniqueCodes(departments);
         if (!uniqueCheck.ok) {
@@ -76,6 +80,8 @@ const updateAcademicConfig = async (req, res) => {
         config.atRiskAttendanceThreshold = atRiskAttendanceThreshold;
         config.atRiskFailingThreshold = atRiskFailingThreshold;
         config.passMarkPercent = passMarkPercent;
+        config.activeTerm = activeTerm;
+        config.perYearActiveTerms = perYearActiveTerms;
         await config.save();
 
         res.json(config);

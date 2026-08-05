@@ -269,7 +269,24 @@ const importTimetableFile = async (req, res) => {
         // 2. Parse into structured data
         const parsedSheets = await parseTimetableBuffer(req.file.buffer);
 
-        await Semester.deleteMany({ sheetName: { $in: parsedSheets.map((s) => s.sheet_name) } });
+        const warnings = [];
+        const overwriteFilters = [];
+
+        parsedSheets.forEach((s) => {
+            if (!s.year_number || !s.semester_number) {
+                warnings.push(`Could not determine year or semester number for sheet '${s.sheet_name}' — please confirm manually.`);
+            }
+            if (s.year_number && s.semester_number) {
+                overwriteFilters.push({ yearNumber: s.year_number, semesterNumber: s.semester_number });
+            } else {
+                overwriteFilters.push({ sheetName: s.sheet_name });
+            }
+        });
+
+        // Overwrite matching by (yearNumber + semesterNumber) or sheetName
+        if (overwriteFilters.length > 0) {
+            await Semester.deleteMany({ $or: overwriteFilters });
+        }
 
         const created = await Semester.insertMany(
             parsedSheets.map((s, i) => ({
@@ -294,6 +311,7 @@ const importTimetableFile = async (req, res) => {
         res.json({
             message: `Imported ${created.length} semester timetable(s) from ${req.file.originalname}.`,
             fileId: fileDoc._id,
+            warnings,
             semesters: created.map((c) => ({ id: c._id, yearLabel: c.yearLabel, semesterLabel: c.semesterLabel }))
         });
     } catch (err) {

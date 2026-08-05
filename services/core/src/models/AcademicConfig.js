@@ -16,6 +16,8 @@ const academicConfigSchema = new mongoose.Schema(
         atRiskAttendanceThreshold: { type: Number, default: 75, min: 0, max: 100 },
         atRiskFailingThreshold: { type: Number, default: 2, min: 1, max: 10 },
         passMarkPercent: { type: Number, default: 40, min: 0, max: 100 },
+        activeTerm: { type: String, default: 'Semester 2' },
+        perYearActiveTerms: { type: Map, of: String, default: {} },
     },
     { timestamps: true }
 );

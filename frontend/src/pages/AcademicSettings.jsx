@@ -20,6 +20,8 @@ const AcademicSettings = () => {
     const [atRiskAttendanceThreshold, setAtRiskAttendanceThreshold] = useState(75);
     const [atRiskFailingThreshold, setAtRiskFailingThreshold] = useState(2);
     const [passMarkPercent, setPassMarkPercent] = useState(40);
+    const [activeTerm, setActiveTerm] = useState('Semester 2');
+    const [perYearActiveTerms, setPerYearActiveTerms] = useState({});
 
     useEffect(() => {
         if (!isAdmin) return;
@@ -33,6 +35,8 @@ const AcademicSettings = () => {
                 setAtRiskAttendanceThreshold(data?.atRiskAttendanceThreshold ?? 75);
                 setAtRiskFailingThreshold(data?.atRiskFailingThreshold ?? 2);
                 setPassMarkPercent(data?.passMarkPercent ?? 40);
+                setActiveTerm(data?.activeTerm || 'Semester 2');
+                setPerYearActiveTerms(data?.perYearActiveTerms || {});
             } catch (err) {
                 setError(err.response?.data?.message || err.message || 'Failed to load academic settings');
             } finally {
@@ -66,6 +70,13 @@ const AcademicSettings = () => {
         setSuccess('');
     };
 
+    const handlePerYearOverrideChange = (yr, val) => {
+        setPerYearActiveTerms(prev => ({
+            ...prev,
+            [yr]: val
+        }));
+    };
+
     const handleSave = async () => {
         setSaving(true);
         setError('');
@@ -81,6 +92,8 @@ const AcademicSettings = () => {
                 atRiskAttendanceThreshold: clamp(parseInt(atRiskAttendanceThreshold, 10) || 75, 0, 100),
                 atRiskFailingThreshold: clamp(parseInt(atRiskFailingThreshold, 10) || 2, 1, 10),
                 passMarkPercent: clamp(parseInt(passMarkPercent, 10) || 40, 0, 100),
+                activeTerm: String(activeTerm || 'Semester 2').trim(),
+                perYearActiveTerms: perYearActiveTerms
             };
             const { data } = await apiClient.put('/academic-config', payload);
             setMaxYear(data?.maxYear ?? payload.maxYear);
@@ -88,6 +101,8 @@ const AcademicSettings = () => {
             setAtRiskAttendanceThreshold(data?.atRiskAttendanceThreshold ?? payload.atRiskAttendanceThreshold);
             setAtRiskFailingThreshold(data?.atRiskFailingThreshold ?? payload.atRiskFailingThreshold);
             setPassMarkPercent(data?.passMarkPercent ?? payload.passMarkPercent);
+            setActiveTerm(data?.activeTerm ?? payload.activeTerm);
+            setPerYearActiveTerms(data?.perYearActiveTerms ?? payload.perYearActiveTerms);
             setSuccess('Academic settings saved successfully!');
             setTimeout(() => setSuccess(''), 2500);
         } catch (err) {
@@ -193,6 +208,59 @@ const AcademicSettings = () => {
                         />
                         <span className="text-muted" style={{ fontSize: '0.75rem', marginTop: '0.3rem', display: 'block' }}>Score % required to pass a subject</span>
                     </div>
+                </div>
+
+                <div className="settings-divider" />
+
+                {/* ── Section: Active Academic Term Configuration ── */}
+                <div className="departments-header">
+                    <h3>Active Academic Term & Per-Year Overrides</h3>
+                    <p className="text-muted">Set global default active term or configure specific overrides per year cohort.</p>
+                </div>
+
+                <div className="settings-form-grid" style={{ marginBottom: '1.5rem' }}>
+                    <div className="form-group">
+                        <label className="form-label">Global Default Active Term</label>
+                        <select
+                            className="form-input"
+                            value={activeTerm}
+                            onChange={(e) => setActiveTerm(e.target.value)}
+                            disabled={loading || saving}
+                        >
+                            <option value="Semester 1">Semester 1</option>
+                            <option value="Semester 2">Semester 2</option>
+                            <option value="Semester 3">Semester 3</option>
+                            <option value="Summer Term">Summer Term</option>
+                        </select>
+                        <span className="text-muted" style={{ fontSize: '0.75rem', marginTop: '0.3rem', display: 'block' }}>Default term when no per-year override is set</span>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                    {[1, 2, 3, 4, 5, 6].map(yr => (
+                        <div key={yr} className="glass-panel" style={{ padding: '0.85rem 1rem', borderRadius: '10px' }}>
+                            <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '700', marginBottom: '0.3rem', display: 'block' }}>
+                                Year {yr} Active Term
+                            </label>
+                            <select
+                                className="form-input"
+                                style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem' }}
+                                value={perYearActiveTerms[yr] || ''}
+                                onChange={(e) => handlePerYearOverrideChange(yr, e.target.value)}
+                                disabled={loading || saving}
+                            >
+                                <option value="">Global Default ({activeTerm})</option>
+                                <option value="Semester 1">Semester 1</option>
+                                <option value="Semester 2">Semester 2</option>
+                                <option value="Semester 3">Semester 3</option>
+                                <option value="Semester 4">Semester 4</option>
+                                <option value="Semester 5">Semester 5</option>
+                                <option value="Semester 6">Semester 6</option>
+                                <option value="Semester 7">Semester 7</option>
+                                <option value="Semester 8">Semester 8</option>
+                            </select>
+                        </div>
+                    ))}
                 </div>
 
                 <div className="settings-divider" />
