@@ -128,6 +128,30 @@ const TimeTable = () => {
         if (fileInputRef.current) fileInputRef.current.click();
     };
 
+    const [availableSemesters, setAvailableSemesters] = useState(['Semester 1', 'Semester 2']);
+
+    useEffect(() => {
+        const loadSemesters = async () => {
+            try {
+                const { data } = await apiClient.get('/timetable/semesters', { params: { year: selectedYear } });
+                if (Array.isArray(data) && data.length > 0) {
+                    const fetchedSems = Array.from(new Set(data.map(s => s.semesterLabel).filter(Boolean)));
+                    if (fetchedSems.length > 0) {
+                        setAvailableSemesters(fetchedSems);
+                        if (!fetchedSems.includes(selectedSemester)) {
+                            setSelectedSemester(fetchedSems[0]);
+                        }
+                    }
+                } else {
+                    setAvailableSemesters(['Semester 1', 'Semester 2']);
+                }
+            } catch (e) {
+                setAvailableSemesters(['Semester 1', 'Semester 2']);
+            }
+        };
+        loadSemesters();
+    }, [selectedYear]);
+
     const handleExcelUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -152,20 +176,34 @@ const TimeTable = () => {
             setTimeout(() => setImportSuccess(''), 5000);
         } catch (err) {
             console.error('Import failed:', err);
-            setImportError(err.response?.data?.message || 'Failed to import Excel file.');
+            setImportError(err.response?.data?.message || err.response?.data?.error || 'Failed to import Excel file.');
         } finally {
             setImporting(false);
             e.target.value = '';
         }
     };
 
-    const handleExportOfficialExcel = () => {
-        if (selectedCategory === 'Academic') {
-            exportAcademicMatrixExcel(selectedYear, selectedSemester, selectedMajor, classSectionInfo.familyTeacher, classSectionInfo.majorRoom, schedules);
-        } else if (selectedCategory === 'Exam') {
-            exportExamScheduleExcel(selectedYear, selectedSemester, selectedMajor, 'Mid-Term', dateSessions);
-        } else {
-            exportDateScheduleExcel(selectedCategory, selectedYear, selectedSemester, selectedMajor, dateSessions);
+    const handleExportOfficialExcel = async () => {
+        try {
+            const response = await apiClient.get('/timetable/export', { responseType: 'blob' });
+            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Official_Time_Table_${selectedYear}_${selectedSemester}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Exporting original file failed, falling back to generator:', err);
+            if (selectedCategory === 'Academic') {
+                exportAcademicMatrixExcel(selectedYear, selectedSemester, selectedMajor, classSectionInfo.familyTeacher, classSectionInfo.majorRoom, schedules);
+            } else if (selectedCategory === 'Exam') {
+                exportExamScheduleExcel(selectedYear, selectedSemester, selectedMajor, 'Mid-Term', dateSessions);
+            } else {
+                exportDateScheduleExcel(selectedCategory, selectedYear, selectedSemester, selectedMajor, dateSessions);
+            }
         }
     };
 
@@ -257,8 +295,8 @@ const TimeTable = () => {
 
             {/* Semester & Major Filters */}
             <div className="year-filter-bar semester-filter-bar glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    {semesters.map(sem => (
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    {availableSemesters.map(sem => (
                         <button key={sem} className={`year-tag ${selectedSemester === sem ? 'active' : ''}`} onClick={() => setSelectedSemester(sem)}>
                             {sem}
                         </button>

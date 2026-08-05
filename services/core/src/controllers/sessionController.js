@@ -1,7 +1,10 @@
 const ScheduledSession = require('../models/ScheduledSession');
 const Timetable = require('../models/Timetable');
 const ClassSection = require('../models/ClassSection');
+const Semester = require('../models/Semester');
+const TimetableFile = require('../models/TimetableFile');
 const { parseTUHmawbiExcel } = require('../utils/excelParser');
+const { parseTimetableBuffer } = require('../utils/parseTimetable');
 
 // @desc    Batch import Excel file for Timetable / Practical / Tutorial / Exam
 // @route   POST /api/sessions/batch-import
@@ -14,7 +17,41 @@ const batchImportSessions = async (req, res) => {
 
         const { year = '6th Year', semester = 'Semester 1', major = 'MC', sessionType = 'Academic' } = req.body;
 
-        // 1. Parse Excel file via server-side parser
+        // 0. Store original uploaded file bytes untouched for exact byte-for-byte export
+        const fileDoc = await TimetableFile.create({
+            originalName: req.file.originalname || 'TimeTable.xlsx',
+            mimeType: req.file.mimetype || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            data: req.file.buffer
+        });
+
+        // 1. Parse ExcelJS structured Semester blocks
+        try {
+            const parsedSemesters = await parseTimetableBuffer(req.file.buffer);
+            if (parsedSemesters && parsedSemesters.length > 0) {
+                await Semester.deleteMany({ sheetName: { $in: parsedSemesters.map(s => s.sheet_name) } });
+                await Semester.insertMany(
+                    parsedSemesters.map((s, i) => ({
+                        sourceFile: fileDoc._id,
+                        sheetName: s.sheet_name,
+                        department: s.department,
+                        academicYear: s.academic_year,
+                        yearLabel: s.year_label,
+                        semesterLabel: s.semester_label,
+                        semesterOrder: i,
+                        majorRoom: s.major_room,
+                        combinedRoom: s.combined_room,
+                        familyTeacher: s.family_teacher,
+                        periods: s.periods,
+                        days: s.days,
+                        legend: s.legend
+                    }))
+                );
+            }
+        } catch (semErr) {
+            console.error('Semester insert notice:', semErr.message);
+        }
+
+        // 2. Parse Excel file via server-side parser
         const { parsedMatrix, parsedSessions } = parseTUHmawbiExcel(req.file.buffer, sessionType);
 
         // 2. Find or create authoritative ClassSections per parsed cohort

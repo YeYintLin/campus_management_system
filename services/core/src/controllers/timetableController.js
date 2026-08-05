@@ -143,9 +143,135 @@ const saveBatchTimetableSlots = async (req, res) => {
     }
 };
 
+// @desc    Import Excel workbook, store original bytes, and insert flexible Semester docs
+// @route   POST /api/timetable/import
+// @access  Private (Admin/Teacher)
+const importTimetableFile = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded (field name must be "file" or "excel").' });
+        }
+
+        const Semester = require('../models/Semester');
+        const TimetableFile = require('../models/TimetableFile');
+        const { parseTimetableBuffer } = require('../utils/parseTimetable');
+
+        // 1. Store the original bytes untouched — export returns these exact bytes later
+        const fileDoc = await TimetableFile.create({
+            originalName: req.file.originalname || 'TimeTable.xlsx',
+            mimeType: req.file.mimetype || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            data: req.file.buffer
+        });
+
+        // 2. Parse into structured data
+        const parsedSheets = await parseTimetableBuffer(req.file.buffer);
+
+        await Semester.deleteMany({ sheetName: { $in: parsedSheets.map((s) => s.sheet_name) } });
+
+        const created = await Semester.insertMany(
+            parsedSheets.map((s, i) => ({
+                sourceFile: fileDoc._id,
+                sheetName: s.sheet_name,
+                department: s.department,
+                academicYear: s.academic_year,
+                yearLabel: s.year_label,
+                semesterLabel: s.semester_label,
+                semesterOrder: i,
+                majorRoom: s.major_room,
+                combinedRoom: s.combined_room,
+                familyTeacher: s.family_teacher,
+                periods: s.periods,
+                days: s.days,
+                legend: s.legend
+            }))
+        );
+
+        res.json({
+            message: `Imported ${created.length} semester timetable(s) from ${req.file.originalname}.`,
+            fileId: fileDoc._id,
+            semesters: created.map((c) => ({ id: c._id, yearLabel: c.yearLabel, semesterLabel: c.semesterLabel }))
+        });
+    } catch (err) {
+        console.error('Import failed:', err);
+        res.status(500).json({ error: 'Failed to import timetable.' });
+    }
+};
+
+// @desc    Get all semesters flexible list
+// @route   GET /api/timetable/semesters
+// @access  Private
+const getSemesters = async (req, res) => {
+    try {
+        const Semester = require('../models/Semester');
+        const filter = {};
+        if (req.query.yearLabel || req.query.year) filter.yearLabel = req.query.yearLabel || req.query.year;
+        if (req.query.semesterLabel || req.query.semester) filter.semesterLabel = req.query.semesterLabel || req.query.semester;
+        const semesters = await Semester.find(filter).sort({ yearLabel: 1, semesterOrder: 1 }).lean();
+        res.json(semesters);
+    } catch (err) {
+        console.error('Get Semesters Error:', err);
+        res.status(500).json({ error: 'Failed to fetch semesters.' });
+    }
+};
+
+// @desc    Get single semester detail by ID
+// @route   GET /api/timetable/semester/:id or /:id
+// @access  Private
+const getSemesterById = async (req, res) => {
+    try {
+        const Semester = require('../models/Semester');
+        const semester = await Semester.findById(req.params.id).lean();
+        if (!semester) return res.status(404).json({ error: 'Semester timetable not found.' });
+        res.json(semester);
+    } catch (err) {
+        console.error('Get Semester Detail Error:', err);
+        res.status(500).json({ error: 'Failed to fetch semester detail.' });
+    }
+};
+
+// @desc    Export original uploaded Excel file byte-for-byte
+// @route   GET /api/timetable/:id/export or /export
+// @access  Private
+const exportOriginalFile = async (req, res) => {
+    try {
+        const Semester = require('../models/Semester');
+        const TimetableFile = require('../models/TimetableFile');
+
+        let file = null;
+
+        if (req.params.id && req.params.id !== 'latest' && req.params.id.length === 24) {
+            const semester = await Semester.findById(req.params.id).populate('sourceFile');
+            if (semester && semester.sourceFile) {
+                file = semester.sourceFile;
+            } else {
+                file = await TimetableFile.findById(req.params.id);
+            }
+        }
+
+        if (!file) {
+            file = await TimetableFile.findOne().sort({ createdAt: -1 });
+        }
+
+        if (!file || !file.data) {
+            return res.status(404).json({ error: 'Original uploaded timetable file not found.' });
+        }
+
+        res.setHeader('Content-Type', file.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${file.originalName || 'TimeTable.xlsx'}"`);
+        res.send(file.data);
+    } catch (err) {
+        console.error('Export Original File Error:', err);
+        res.status(500).json({ error: 'Failed to export original timetable file.' });
+    }
+};
+
 module.exports = {
     getTimetable,
     saveTimetableSlot,
     deleteTimetableSlot,
     saveBatchTimetableSlots,
+    importTimetableFile,
+    getSemesters,
+    getSemesterById,
+    exportOriginalFile
 };
