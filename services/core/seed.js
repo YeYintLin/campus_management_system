@@ -108,9 +108,9 @@ const seedUsers = async () => {
 
         for (let i = 0; i < studentUsers.length; i++) {
             const studentUser = studentUsers[i];
-            const enrollmentNumber = 'I-MC-001';
-
             const studentProfile = await Student.findOne({ user: studentUser._id });
+            const enrollmentNumber = studentProfile?.enrollmentNumber || `I-MC-${(i + 1).toString().padStart(3, '0')}`;
+
             if (!studentProfile) {
                 await Student.create({
                     user: studentUser._id,
@@ -122,10 +122,7 @@ const seedUsers = async () => {
                 });
                 results.push({ email: studentUser.email, action: 'student profile created' });
             } else {
-                studentProfile.enrollmentNumber = enrollmentNumber;
-                studentProfile.department = 'Mechatronics Engineering';
-                studentProfile.semester = 6;
-                studentProfile.contactNumber = '09-123456789';
+                studentProfile.department = studentUser.department || 'Mechatronics Engineering';
                 studentProfile.status = 'Active';
                 await studentProfile.save();
                 results.push({ email: studentUser.email, action: 'student profile verified' });
