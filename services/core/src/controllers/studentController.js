@@ -20,8 +20,13 @@ const getStudents = async (req, res) => {
                     studentUserIds.add(sid.toString());
                 }
             }
-            const students = await Student.find({ user: { $in: Array.from(studentUserIds) } })
-                .populate('user', STUDENT_USER_FIELDS);
+            if (studentUserIds.size > 0) {
+                const students = await Student.find({ user: { $in: Array.from(studentUserIds) } })
+                    .populate('user', STUDENT_USER_FIELDS);
+                return res.json(students);
+            }
+            // Fallback for teachers: return all active students so directory is not empty
+            const students = await Student.find().populate('user', STUDENT_USER_FIELDS);
             return res.json(students);
         } else if (role === 'Student') {
             // Student: only their own student profile
