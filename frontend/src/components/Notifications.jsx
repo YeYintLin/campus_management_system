@@ -1,9 +1,10 @@
-import { X, Bell, FileText, FileEdit, Info, Check } from 'lucide-react';
+import { X, Bell, FileText, FileEdit, Info, Check, MessageSquare } from 'lucide-react';
 
 const ICON_BY_TYPE = {
     file: <FileText size={16} className="text-primary" />,
     exam: <FileEdit size={16} className="text-warning" />,
     system: <Info size={16} className="text-info" />,
+    message: <MessageSquare size={16} className="text-success" />,
 };
 
 const Notifications = ({ notifications, onMarkAsRead, onClose }) => {

@@ -23,6 +23,7 @@ const AIPromptSettings = lazy(() => import('./pages/AIPromptSettings'));
 const AccountManagement = lazy(() => import('./pages/AccountManagement'));
 const AcademicSettings = lazy(() => import('./pages/AcademicSettings'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const Chat = lazy(() => import('./pages/Chat'));
 
 const restrictedRoles = new Set(['Student', 'Teacher']);
 
@@ -76,6 +77,8 @@ function App() {
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/grades" element={<Grades />} />
             <Route path="/ai-assistant" element={<AIAssistant />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/chat/:partnerId" element={<Chat />} />
             <Route path="/teachers" element={<Teachers />} />
             <Route path="/teachers/:teacherId" element={<TeacherProfile />} />
             <Route path="/exams" element={<Exams />} />

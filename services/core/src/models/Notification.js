@@ -10,7 +10,7 @@ const notificationSchema = new mongoose.Schema(
         type: {
             type: String,
             required: true,
-            enum: ['file', 'exam', 'system', 'assignment', 'grade', 'practical', 'tutorial', 'timetable'],
+            enum: ['file', 'exam', 'system', 'assignment', 'grade', 'practical', 'tutorial', 'timetable', 'message'],
             default: 'system',
         },
         message: {

@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import {
     LayoutDashboard, CalendarDays, Clock, FileSpreadsheet,
     Menu, X, BookOpen, Users, FileText, FolderSearch, FileEdit,
-    GraduationCap, ShieldCheck, Settings, LogOut
+    GraduationCap, ShieldCheck, Settings, LogOut, MessageSquare
 } from 'lucide-react';
 import './MobileBottomNav.css';
 
@@ -95,6 +95,10 @@ const MobileBottomNav = () => {
                         </div>
 
                         <div className="sheet-links">
+                            <Link to="/chat" className="sheet-item" onClick={() => setIsMenuOpen(false)}>
+                                <MessageSquare size={18} />
+                                <span>Messages</span>
+                            </Link>
                             <Link to="/courses" className="sheet-item" onClick={() => setIsMenuOpen(false)}>
                                 <BookOpen size={18} />
                                 <span>Subjects</span>

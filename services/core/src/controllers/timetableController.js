@@ -646,5 +646,8 @@ module.exports = {
     importTimetableFile,
     getSemesters,
     getSemesterById,
-    exportOriginalFile
+    exportOriginalFile,
+    getImportHistory,
+    downloadTimetableFile,
+    restoreTimetableVersion,
 };
