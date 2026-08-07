@@ -35,6 +35,8 @@ const Chat = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
+    const loadedPartnerIdRef = useRef(null);
+
     // Fetch conversation list
     const fetchConversations = useCallback(async () => {
         try {
@@ -66,46 +68,52 @@ const Chat = () => {
             }
             setHasMore(data.hasMore || false);
 
-            // Mark conversation as read
+            // Mark conversation as read & update unread count locally without triggering refetch loop
             await apiClient.put(`/chat/read/${partnerId}`);
-            fetchConversations();
+            setConversations(prev =>
+                prev.map(c => (c.partner?._id === partnerId ? { ...c, unreadCount: 0 } : c))
+            );
         } catch (err) {
             console.error('Failed to fetch chat history:', err);
         } finally {
             setLoadingHistory(false);
             setLoadingMore(false);
         }
-    }, [fetchConversations]);
+    }, []);
 
     // Initial load & Polling (every 15s)
     useEffect(() => {
         fetchConversations();
         const interval = setInterval(() => {
             fetchConversations();
-            if (selectedPartner) {
-                fetchHistory(selectedPartner._id);
-            }
         }, 15000);
 
         return () => clearInterval(interval);
-    }, [fetchConversations, fetchHistory, selectedPartner]);
+    }, [fetchConversations]);
 
-    // Handle URL partnerId route sync
+    // Handle URL partnerId route sync (only runs when urlPartnerId changes)
     useEffect(() => {
-        if (urlPartnerId) {
-            const existing = conversations.find(c => c.partner?._id === urlPartnerId);
-            if (existing) {
-                setSelectedPartner(existing.partner);
-                fetchHistory(existing.partner._id);
-            } else {
-                // Fetch user info for partnerId
-                apiClient.get(`/users/${urlPartnerId}`)
-                    .then(({ data }) => {
-                        setSelectedPartner(data);
-                        fetchHistory(data._id);
-                    })
-                    .catch(err => console.error('Could not fetch partner info:', err));
-            }
+        if (!urlPartnerId) {
+            loadedPartnerIdRef.current = null;
+            return;
+        }
+
+        if (loadedPartnerIdRef.current === urlPartnerId) {
+            return; // Already loaded history for this partner
+        }
+
+        loadedPartnerIdRef.current = urlPartnerId;
+        const existing = conversations.find(c => c.partner?._id === urlPartnerId);
+        if (existing) {
+            setSelectedPartner(existing.partner);
+            fetchHistory(existing.partner._id);
+        } else {
+            apiClient.get(`/users/${urlPartnerId}`)
+                .then(({ data }) => {
+                    setSelectedPartner(data);
+                    fetchHistory(data._id);
+                })
+                .catch(err => console.error('Could not fetch partner info:', err));
         }
     }, [urlPartnerId, fetchHistory, conversations]);
 
@@ -119,6 +127,7 @@ const Chat = () => {
 
     // Select partner to chat with
     const handleSelectPartner = (partner) => {
+        loadedPartnerIdRef.current = partner._id;
         setSelectedPartner(partner);
         setMessages([]);
         fetchHistory(partner._id);
