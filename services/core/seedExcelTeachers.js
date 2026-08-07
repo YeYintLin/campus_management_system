@@ -48,6 +48,39 @@ const seedExcelTeachers = async () => {
 
         console.log(`Extracted ${teacherMap.size} unique teachers from Excel timetables.`);
 
+        // Fallback: If no timetables are stored in MongoDB yet, seed the static 22 real teachers
+        if (teacherMap.size === 0) {
+            console.log('No timetable legends found in MongoDB. Seeding default 22 real teacher profiles...');
+            const fallbackTeachers = [
+                { name: 'Daw Myat Thu Zar', dept: 'Mechatronics Engineering', email: 'myat.thu.zar@tuhmawbi.edu.mm' },
+                { name: 'Dr. Sandar', dept: 'Mechatronics Engineering', email: 'sandar@tuhmawbi.edu.mm' },
+                { name: 'Daw Ei Ei Khin', dept: 'Mechatronics Engineering', email: 'ei.ei.khin@tuhmawbi.edu.mm' },
+                { name: 'Daw Khin Saw Win', dept: 'Myanmar', email: 'khin.saw.win@tuhmawbi.edu.mm' },
+                { name: 'Daw Cho Cho Win', dept: 'English', email: 'cho.cho.win@tuhmawbi.edu.mm' },
+                { name: 'Daw Ni Ni San', dept: 'Engineering Mathematics', email: 'ni.ni.san@tuhmawbi.edu.mm' },
+                { name: 'Daw Hnin Nu Phyu', dept: 'Engineering Physics', email: 'hnin.nu.phyu@tuhmawbi.edu.mm' },
+                { name: 'Daw Thin Thin Moe', dept: 'Engineering Chemistry', email: 'thin.thin.moe@tuhmawbi.edu.mm' },
+                { name: 'U Thein Htoo', dept: 'Mechatronics Engineering', email: 'thein.htoo@tuhmawbi.edu.mm' },
+                { name: 'Daw Mu Mu Aye', dept: 'Mechatronics Engineering', email: 'mu.mu.aye@tuhmawbi.edu.mm' },
+                { name: 'Daw Su Su Hmwe', dept: 'Mechatronics Engineering', email: 'su.su.hmwe@tuhmawbi.edu.mm' },
+                { name: 'Daw Thinzar Win', dept: 'Mechatronics Engineering', email: 'thinzar.win@tuhmawbi.edu.mm' },
+                { name: 'Daw Win Win Maw', dept: 'Mechatronics Engineering', email: 'win.win.maw@tuhmawbi.edu.mm' },
+                { name: 'U Aung Ko Latt', dept: 'Mechatronics Engineering', email: 'aung.ko.latt@tuhmawbi.edu.mm' },
+                { name: 'Daw Moe Moe Thin', dept: 'Mechatronics Engineering', email: 'moe.moe.thin@tuhmawbi.edu.mm' },
+                { name: 'Daw Phyu Phyu Han', dept: 'Mechatronics Engineering', email: 'phyu.phyu.han@tuhmawbi.edu.mm' },
+                { name: 'Daw Nwe Nwe Aung', dept: 'Mechatronics Engineering', email: 'nwe.nwe.aung@tuhmawbi.edu.mm' },
+                { name: 'Daw Zin Mar Aye', dept: 'Mechatronics Engineering', email: 'zin.mar.aye@tuhmawbi.edu.mm' },
+                { name: 'Daw Aye Thida', dept: 'Mechatronics Engineering', email: 'aye.thida@tuhmawbi.edu.mm' },
+                { name: 'Daw Nilar Win', dept: 'Mechatronics Engineering', email: 'nilar.win@tuhmawbi.edu.mm' },
+                { name: 'Daw Su Myat Mon', dept: 'Mechatronics Engineering', email: 'su.myat.mon@tuhmawbi.edu.mm' },
+                { name: 'Daw Phyu Lay Khine', dept: 'Mechatronics Engineering', email: 'phyu.lay.khine@tuhmawbi.edu.mm' }
+            ];
+
+            fallbackTeachers.forEach(t => {
+                teacherMap.set(t.name, []);
+            });
+        }
+
         for (const [teacherName, subjects] of teacherMap.entries()) {
             const email = createSlugEmail(teacherName);
 
