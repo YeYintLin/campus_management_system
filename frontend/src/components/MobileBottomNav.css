@@ -252,4 +252,34 @@
     border: 1px solid rgba(244, 63, 94, 0.25) !important;
 }
 
+/* Mobile Unread Badges */
+.mobile-icon-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-nav-badge-dot {
+    position: absolute;
+    top: -2px;
+    right: -4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #06b6d4;
+    box-shadow: 0 0 8px #06b6d4;
+    animation: unreadPulse 2.5s ease-in-out infinite;
+}
+
+.unread-bubble-badge.sheet-badge {
+    margin-left: auto;
+    background: linear-gradient(135deg, #06b6d4, #6366f1);
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 0.15rem 0.45rem;
+    border-radius: 10px;
+}
+
 

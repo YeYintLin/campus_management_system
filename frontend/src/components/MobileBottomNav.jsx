@@ -9,7 +9,7 @@ import {
 import './MobileBottomNav.css';
 
 const MobileBottomNav = () => {
-    const { user, logout } = useContext(AuthContext);
+    const { user, logout, unreadChatCount } = useContext(AuthContext);
     const location = useLocation();
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -72,7 +72,10 @@ const MobileBottomNav = () => {
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
                     aria-label="More Menu"
                 >
-                    {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                    <div className="mobile-icon-wrapper">
+                        {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                        {unreadChatCount > 0 && <span className="mobile-nav-badge-dot" />}
+                    </div>
                     <span>More</span>
                 </button>
             </nav>
@@ -98,6 +101,11 @@ const MobileBottomNav = () => {
                             <Link to="/chat" className="sheet-item" onClick={() => setIsMenuOpen(false)}>
                                 <MessageSquare size={18} />
                                 <span>Messages</span>
+                                {unreadChatCount > 0 && (
+                                    <span className="unread-bubble-badge sheet-badge">
+                                        {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                                    </span>
+                                )}
                             </Link>
                             <Link to="/courses" className="sheet-item" onClick={() => setIsMenuOpen(false)}>
                                 <BookOpen size={18} />

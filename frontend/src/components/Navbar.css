@@ -131,6 +131,24 @@
   white-space: nowrap;
 }
 
+/* Unread Chat Badge Bubble */
+.unread-bubble-badge {
+  margin-left: auto;
+  background: linear-gradient(135deg, #06b6d4, #6366f1);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+  animation: unreadPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes unreadPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 8px rgba(6, 182, 212, 0.4); }
+  50% { transform: scale(1.08); box-shadow: 0 0 14px rgba(99, 102, 241, 0.7); }
+}
+
 .sidebar-footer {
   margin-top: auto;
   padding-top: 0.8rem;

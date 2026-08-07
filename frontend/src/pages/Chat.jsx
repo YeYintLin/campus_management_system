@@ -8,7 +8,7 @@ import './Chat.css';
 const Chat = () => {
     const { partnerId: urlPartnerId } = useParams();
     const navigate = useNavigate();
-    const { user } = useContext(AuthContext);
+    const { user, fetchUnreadChatCount } = useContext(AuthContext);
 
     const [conversations, setConversations] = useState([]);
     const [selectedPartner, setSelectedPartner] = useState(null);
@@ -42,10 +42,11 @@ const Chat = () => {
         try {
             const { data } = await apiClient.get('/chat/conversations');
             setConversations(data || []);
+            if (fetchUnreadChatCount) fetchUnreadChatCount();
         } catch (err) {
             console.error('Failed to fetch conversations:', err);
         }
-    }, []);
+    }, [fetchUnreadChatCount]);
 
     // Fetch chat history with selected partner
     const fetchHistory = useCallback(async (partnerId, before = null) => {
@@ -73,6 +74,7 @@ const Chat = () => {
             setConversations(prev =>
                 prev.map(c => (c.partner?._id === partnerId ? { ...c, unreadCount: 0 } : c))
             );
+            if (fetchUnreadChatCount) fetchUnreadChatCount();
         } catch (err) {
             console.error('Failed to fetch chat history:', err);
         } finally {

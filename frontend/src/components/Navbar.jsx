@@ -23,7 +23,7 @@ const NAV_LINKS = [
 ];
 
 const Navbar = () => {
-    const { user, logout } = useContext(AuthContext);
+    const { user, logout, unreadChatCount } = useContext(AuthContext);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -63,6 +63,11 @@ const Navbar = () => {
                     >
                         <span className="nav-icon">{link.icon}</span>
                         <span className="nav-label">{link.name}</span>
+                        {link.path === '/chat' && unreadChatCount > 0 && (
+                            <span className="unread-bubble-badge" title={`${unreadChatCount} unread message(s)`}>
+                                {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                            </span>
+                        )}
                     </Link>
                 ))}
             </div>

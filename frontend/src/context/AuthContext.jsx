@@ -160,8 +160,35 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+    const fetchUnreadChatCount = useCallback(async () => {
+        if (!user) {
+            setUnreadChatCount(0);
+            return;
+        }
+        try {
+            const { data } = await apiClient.get('/chat/conversations');
+            const total = (data || []).reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+            setUnreadChatCount(total);
+        } catch {
+            // Silently ignore background unread check errors
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (!user) {
+            setUnreadChatCount(0);
+            return;
+        }
+
+        fetchUnreadChatCount();
+        const interval = setInterval(fetchUnreadChatCount, 15000);
+        return () => clearInterval(interval);
+    }, [user, fetchUnreadChatCount]);
+
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, logout, loading, unreadChatCount, fetchUnreadChatCount }}>
             {!initialLoad && children}
         </AuthContext.Provider>
     );
