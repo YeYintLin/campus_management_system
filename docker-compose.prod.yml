@@ -114,7 +114,7 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-    command: ["npm", "run", "seed:users"]
+    command: ["npm", "run", "seed:all"]
 
   seed-demo-prod:
     build:

@@ -101,21 +101,10 @@ const seedUsers = async () => {
             results.push({ email, action: overwritePasswords ? 'updated (with password)' : 'updated' });
         }
 
-        // Clean up any extra users not in allowed list
-        const deletedUsers = await User.deleteMany({ email: { $nin: allowedEmails } });
-        if (deletedUsers.deletedCount > 0) {
-            results.push({ email: 'extra_users', action: `removed ${deletedUsers.deletedCount} extra accounts` });
-        }
-
+        // Non-destructive seeding: do not delete other users or profiles (e.g. real teachers & students)
         // Ensure student profile exists for the student account
         const studentUsers = await User.find({ role: 'Student' });
         const studentUserIds = studentUsers.map(u => u._id);
-
-        // Delete extra student profiles
-        const deletedProfiles = await Student.deleteMany({ user: { $nin: studentUserIds } });
-        if (deletedProfiles.deletedCount > 0) {
-            results.push({ email: 'extra_profiles', action: `removed ${deletedProfiles.deletedCount} extra student profiles` });
-        }
 
         for (let i = 0; i < studentUsers.length; i++) {
             const studentUser = studentUsers[i];

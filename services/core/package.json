@@ -5,8 +5,10 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
     "seed:users": "node seed.js",
+    "seed:teachers": "node seedExcelTeachers.js",
+    "seed:students": "node seedVimcStudents.js",
+    "seed:all": "node seed.js && node seedExcelTeachers.js && node seedVimcStudents.js",
     "seed:demo": "node seed.js --demo",
     "seed:courses": "node seedCourses.js"
   },
