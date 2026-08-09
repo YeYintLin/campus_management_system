@@ -250,6 +250,21 @@ const Exams = () => {
         }
     };
 
+    const renderDeskPill = (rollNo) => {
+        const text = String(rollNo || '').toUpperCase().trim();
+        let majorClass = 'desk-pill-ep';
+        if (text.includes('MECH')) majorClass = 'desk-pill-mech';
+        else if (text.includes('MC')) majorClass = 'desk-pill-mc';
+        else if (text.includes('EXT') || text.includes('EC')) majorClass = 'desk-pill-ext';
+        else if (text.includes('EP')) majorClass = 'desk-pill-ep';
+
+        return (
+            <div className={`desk-pill ${majorClass}`}>
+                {text}
+            </div>
+        );
+    };
+
     return (
         <div className="exams-page animate-fade-in">
             <input
@@ -754,6 +769,14 @@ const Exams = () => {
                                     </div>
                                 </div>
 
+                                {/* MAJOR COLOR LEGEND */}
+                                <div className="seating-legend-bar" style={{ marginBottom: '0.85rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.78rem', fontWeight: '700', padding: '0.5rem 0.75rem', borderRadius: '8px' }}>
+                                    <div className="legend-item"><span className="legend-dot ep-dot"></span> EP (Electronics/Physics)</div>
+                                    <div className="legend-item"><span className="legend-dot mech-dot"></span> Mech (Mechatronics)</div>
+                                    <div className="legend-item"><span className="legend-dot mc-dot"></span> MC (Microelectronics)</div>
+                                    <div className="legend-item"><span className="legend-dot ext-dot"></span> Ext / EC (External)</div>
+                                </div>
+
                                 {/* MOBILE HORIZONTAL SCROLL HELP BANNER */}
                                 <div style={{ background: 'rgba(56,189,248,0.1)', padding: '0.4rem 0.75rem', borderRadius: '8px', border: '1px dashed rgba(56,189,248,0.3)', marginBottom: '0.85rem', fontSize: '0.78rem', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <span>👈 👉 Swipe left/right to view all 4 Exam Hall Columns side-by-side</span>
@@ -765,7 +788,7 @@ const Exams = () => {
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))', gap: '0.75rem', minWidth: '680px' }}>
                                         {/* COLUMN 1 */}
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                                            <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 1</div>
+                                            {renderDeskPill('VI-EP 1')}
                                             {[
                                                 ['VI-EP 2', 'VI-Mech 49'],
                                                 ['VI-Mech 50', 'VI-EP 3'],
@@ -780,9 +803,9 @@ const Exams = () => {
                                                 ['VI-EP 12', 'VI-Mech 59'],
                                                 ['VI-Mech 61', 'VI-EP 13']
                                             ].map(([left, right], idx) => (
-                                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
-                                                    <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
-                                                    <div style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                                <div key={idx} className="desk-pair-container">
+                                                    {renderDeskPill(left)}
+                                                    {renderDeskPill(right)}
                                                 </div>
                                             ))}
                                         </div>
@@ -803,9 +826,9 @@ const Exams = () => {
                                                 ['VI-EP 24', 'VI-Mech 72'],
                                                 ['VI-Mech 73', 'VI-EP 25']
                                             ].map(([left, right], idx) => (
-                                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
-                                                    <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
-                                                    <div style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                                <div key={idx} className="desk-pair-container">
+                                                    {renderDeskPill(left)}
+                                                    {renderDeskPill(right)}
                                                 </div>
                                             ))}
                                         </div>
@@ -826,16 +849,16 @@ const Exams = () => {
                                                 ['VI-EP 36', 'VI-MC 6'],
                                                 ['VI-MC 7', 'VI-EP 37']
                                             ].map(([left, right], idx) => (
-                                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
-                                                    <div style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
-                                                    <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                                <div key={idx} className="desk-pair-container">
+                                                    {renderDeskPill(left)}
+                                                    {renderDeskPill(right)}
                                                 </div>
                                             ))}
                                         </div>
 
                                         {/* COLUMN 4 */}
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                                            <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 38</div>
+                                            {renderDeskPill('VI-EP 38')}
                                             {[
                                                 ['VI-EP 39', 'VI-MC 8'],
                                                 ['VI-MC 9', 'VI-EP 40'],
@@ -847,19 +870,17 @@ const Exams = () => {
                                                 ['VI-MC 15', 'VI-EP 46'],
                                                 ['VI-EP 47', 'Ext-1']
                                             ].map(([left, right], idx) => (
-                                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
-                                                    <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
-                                                    <div style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
-                                                </div>
-                                            ))}
-                                            <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 48</div>
-                                            <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 49</div>
-                                            <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 50</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* HANDWRITTEN PAPER SUMMARY BREAKDOWN MATCHING FOOTER OF PHOTO */}
+                                                 <div key={idx} className="desk-pair-container">
+                                                     {renderDeskPill(left)}
+                                                     {renderDeskPill(right)}
+                                                 </div>
+                                             ))}
+                                             {renderDeskPill('VI-EP 48')}
+                                             {renderDeskPill('VI-EP 49')}
+                                             {renderDeskPill('VI-EP 50')}
+                                         </div>
+                                     </div>
+                                 </div>
                                 <div style={{ background: 'rgba(0,0,0,0.4)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px border rgba(255,255,255,0.15)', fontSize: '0.83rem', fontFamily: 'monospace' }}>
                                     <div style={{ color: '#38bdf8', fontWeight: '700', marginBottom: '0.3rem' }}>✍️ Official Paper Roll Count Breakdown (ထိုင်ခုံစာရင်း ချုပ်):</div>
                                     <div style={{ color: '#e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>

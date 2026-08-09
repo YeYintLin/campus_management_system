@@ -245,6 +245,100 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     background: rgba(255, 255, 255, 0.96) !important;
     border: 1px solid rgba(15, 23, 42, 0.15) !important;
 }
+.modal-header h2 { margin: 0; font-size: 1.5rem; }
+.modal-subtitle { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.9rem; }
+
+.modal-body {
+  padding: 2.5rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+/* Year Filter Bar */
+.year-filter-bar {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.year-filter-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.year-tag {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--surface-border);
+    padding: 0.5rem 1.25rem;
+    border-radius: 2rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+}
+
+.year-tag:hover {
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 0 0.5rem;
+}
+
+/* Seating Plan Grid Container */
+.seating-plan-grid-container {
+    background: #0d1117;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #f0f6fc;
+}
+
+:root[data-theme='light'] .seating-plan-grid-container {
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    color: #0b1220;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+}
+
+:root[data-theme='light'] .seating-plan-grid-container h3 {
+    color: #0284c7 !important;
+}
+
+:root[data-theme='light'] .seating-plan-grid-container strong {
+    color: #0b1220 !important;
+}
+
+:root[data-theme='light'] .modal-content {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border: 1px solid rgba(15, 23, 42, 0.15) !important;
+}
 
 :root[data-theme='light'] .modal-header h2 {
     color: #0b1220 !important;
@@ -252,4 +346,114 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 :root[data-theme='light'] .modal-header .close-btn {
     color: #0b1220 !important;
+}
+
+/* Desk Pair Container */
+.desk-pair-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+:root[data-theme='light'] .desk-pair-container {
+    background: rgba(15, 23, 42, 0.04);
+    border-color: rgba(15, 23, 42, 0.12);
+}
+
+/* Major Color Legend Bar */
+.seating-legend-bar {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+}
+
+:root[data-theme='light'] .seating-legend-bar {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.ep-dot { background: #6366f1; }
+.mech-dot { background: #10b981; }
+.mc-dot { background: #f59e0b; }
+.ext-dot { background: #ec4899; }
+
+/* Base Desk Pill */
+.desk-pill {
+    padding: 0.35rem 0.15rem;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 0.75rem;
+    transition: transform 0.15s ease;
+}
+
+/* Dark Mode Pill Colors */
+.desk-pill-ep {
+    background: rgba(99, 102, 241, 0.25);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.desk-pill-mech {
+    background: rgba(16, 185, 129, 0.25);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.desk-pill-mc {
+    background: rgba(245, 158, 11, 0.25);
+    color: #fcd34d;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.desk-pill-ext {
+    background: rgba(236, 72, 153, 0.25);
+    color: #fbcfe8;
+    border: 1px solid rgba(236, 72, 153, 0.4);
+}
+
+/* LIGHT MODE DESK PILL COLORS — High contrast dark text on crisp pastel backgrounds! */
+:root[data-theme='light'] .desk-pill-ep {
+    background: #e0e7ff !important;
+    color: #312e81 !important;
+    border: 1px solid #a5b4fc !important;
+    font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .desk-pill-mech {
+    background: #d1fae5 !important;
+    color: #064e3b !important;
+    border: 1px solid #6ee7b7 !important;
+    font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .desk-pill-mc {
+    background: #fef3c7 !important;
+    color: #78350f !important;
+    border: 1px solid #fcd34d !important;
+    font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .desk-pill-ext {
+    background: #ffe4e6 !important;
+    color: #831843 !important;
+    border: 1px solid #f472b6 !important;
+    font-weight: 800 !important;
 }
