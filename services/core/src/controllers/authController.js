@@ -233,8 +233,10 @@ const loginUser = async (req, res) => {
             });
         }
 
-        // Security check 1: Email verification
-        if (!user.isEmailVerified) {
+        const isAdminRole = ['Admin', 'Superadmin', 'Academicadmin'].includes(user.role);
+
+        // Security check 1: Email verification (Bypassed for Admins & legacy accounts)
+        if (!isAdminRole && user.isEmailVerified === false) {
             return res.status(403).json({
                 code: 'AUTH_EMAIL_NOT_VERIFIED',
                 requiresVerification: true,
@@ -243,8 +245,8 @@ const loginUser = async (req, res) => {
             });
         }
 
-        // Security check 2: Admin approval
-        if (!user.isApproved || user.status === 'Pending') {
+        // Security check 2: Admin approval (Bypassed for Admins)
+        if (!isAdminRole && (user.isApproved === false || user.status === 'Pending')) {
             return res.status(403).json({
                 code: 'AUTH_PENDING_APPROVAL',
                 requiresApproval: true,

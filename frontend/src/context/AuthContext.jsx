@@ -104,9 +104,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         if (typeof serverMessage === 'string' && serverMessage.trim()) {
-            // Only surface unexpected detailed backend messages in development.
-            if (isDev) return serverMessage;
-            return 'Something went wrong. Please try again.';
+            return serverMessage;
         }
 
         return error?.message || 'Something went wrong. Please try again.';
