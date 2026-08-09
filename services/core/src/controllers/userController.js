@@ -247,6 +247,14 @@ const rejectUser = async (req, res) => {
 
         user.isApproved = false;
         user.status = 'Deactivated';
+        await user.save();
+
+        res.json({ message: `Account for ${user.name} has been rejected/deactivated.` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // @desc    Admin suspends a user account
 // @route   PUT /api/users/:id/suspend
 // @access  Private (Admin)
