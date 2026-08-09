@@ -152,6 +152,40 @@ const resetUserPassword = async (req, res) => {
     }
 };
 
+const getYearPrefix = (yearStr) => {
+    const text = String(yearStr || '').toUpperCase();
+    if (text.includes('VI') || text.includes('6TH') || text.includes('FINAL')) return 'VI';
+    if (text.includes('V') || text.includes('5TH')) return 'V';
+    if (text.includes('IV') || text.includes('4TH')) return 'IV';
+    if (text.includes('III') || text.includes('3RD')) return 'III';
+    if (text.includes('II') || text.includes('2ND')) return 'II';
+    if (text.includes('I') || text.includes('1ST')) return 'I';
+    return 'VI';
+};
+
+const getDeptCode = (deptStr) => {
+    const text = String(deptStr || '').toUpperCase();
+    if (text.includes('MECHATRONIC')) return 'MC';
+    if (text.includes('COMPUTER')) return 'CE';
+    if (text.includes('INFORMATION') || text.includes('IT')) return 'IT';
+    if (text.includes('ELECTRICAL') || text.includes('EP')) return 'EP';
+    if (text.includes('MECHANICAL') || text.includes('MECH')) return 'Mech';
+    if (text.includes('CIVIL')) return 'Civil';
+    if (text.includes('ELECTRONIC') || text.includes('EC')) return 'EC';
+    return 'MC';
+};
+
+const formatOfficialRollNumber = (year, department, rollNoInput) => {
+    const raw = String(rollNoInput || '').trim();
+    if (!raw) return '';
+    if (raw.includes('-') || raw.includes(' ')) {
+        return raw;
+    }
+    const yearPrefix = getYearPrefix(year);
+    const deptCode = getDeptCode(department);
+    return `${yearPrefix}-${deptCode} ${raw}`;
+};
+
 // @desc    Admin approves pending user account
 // @route   PUT /api/users/:id/approve
 // @access  Private (Admin)
@@ -164,6 +198,15 @@ const approveUser = async (req, res) => {
 
         user.isApproved = true;
         user.status = 'Active';
+
+        // Format official roll number for students if number was provided (e.g. 6 -> I-MC 6)
+        let formattedRoll = '';
+        if (user.role === 'Student') {
+            formattedRoll = formatOfficialRollNumber(user.year, user.department, user.rollNo);
+            if (formattedRoll) {
+                user.rollNo = formattedRoll;
+            }
+        }
         await user.save();
 
         // Create student profile record if role is Student and no Student doc exists
@@ -171,7 +214,7 @@ const approveUser = async (req, res) => {
             const existingStudent = await Student.findOne({ user: user._id });
             if (!existingStudent) {
                 const count = await Student.countDocuments();
-                const rollNum = user.rollNo || `VI-MC-${(count + 1).toString().padStart(2, '0')}`;
+                const rollNum = formattedRoll || user.rollNo || `VI-MC-${(count + 1).toString().padStart(2, '0')}`;
                 await Student.create({
                     user: user._id,
                     enrollmentNumber: rollNum,
@@ -180,6 +223,7 @@ const approveUser = async (req, res) => {
                     status: 'Active'
                 });
             } else {
+                if (formattedRoll) existingStudent.enrollmentNumber = formattedRoll;
                 existingStudent.status = 'Active';
                 await existingStudent.save();
             }

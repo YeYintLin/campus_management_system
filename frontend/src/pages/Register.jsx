@@ -148,11 +148,14 @@ const Register = () => {
                                     type="text"
                                     name="rollNo"
                                     className="form-input"
-                                    placeholder="e.g. VI-EP 1, VI-Mech 49, VI-MC 1, 6McE-12"
+                                    placeholder="e.g. 1, 2, 6, 49"
                                     value={formData.rollNo}
                                     onChange={handleChange}
                                     required
                                 />
+                                <small style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                                    Just enter your number (e.g. <strong>6</strong>). Upon Admin approval, system formats as <strong>I-MC 6</strong> or <strong>VI-MC 6</strong> based on your Year & Department.
+                                </small>
                             </div>
                         </>
                     )}
