@@ -389,33 +389,33 @@ const Exams = () => {
                                 </div>
 
                                 <div className="exam-card-body">
-                                    <h3 className="exam-title" style={{ margin: '0 0 0.4rem', fontSize: '1.1rem', color: '#fff' }}>{exam.title}</h3>
+                                    <h3 className="exam-title" style={{ margin: '0 0 0.4rem', fontSize: '1.1rem', color: 'var(--text-primary)' }}>{exam.title}</h3>
                                     {exam.courseName && (
-                                        <p style={{ margin: '0 0 0.85rem', fontSize: '0.85rem', color: '#818cf8', fontWeight: '600' }}>{exam.courseName}</p>
+                                        <p style={{ margin: '0 0 0.85rem', fontSize: '0.85rem', color: 'var(--primary-color)', fontWeight: '600' }}>{exam.courseName}</p>
                                     )}
 
                                     <div className="exam-details" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.65rem' }}>
                                         <div className="detail-item">
-                                            <Calendar size={14} style={{ color: '#4ade80' }} />
+                                            <Calendar size={14} style={{ color: '#10b981' }} />
                                             <span><strong>Date:</strong> {exam.date}</span>
                                         </div>
                                         <div className="detail-item">
-                                            <Clock size={14} style={{ color: '#818cf8' }} />
+                                            <Clock size={14} style={{ color: '#6366f1' }} />
                                             <span><strong>Shift:</strong> {exam.sessionShift === 'Afternoon' ? '🌆 Afternoon (12:30 PM)' : '🌅 Morning (08:30 AM)'}</span>
                                         </div>
                                         <div className="detail-item">
-                                            <MapPin size={14} style={{ color: '#f87171' }} />
+                                            <MapPin size={14} style={{ color: '#ef4444' }} />
                                             <span><strong>Room:</strong> {exam.room}</span>
                                         </div>
-                                        <div className="detail-item" style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.04)', padding: '0.4rem 0.65rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                            <BookOpen size={14} style={{ color: '#fbbf24' }} />
+                                        <div className="detail-item seat-proc-box" style={{ gridColumn: '1 / -1', padding: '0.4rem 0.65rem', borderRadius: '8px' }}>
+                                            <BookOpen size={14} style={{ color: '#f59e0b' }} />
                                             <span><strong>Seat Procedure:</strong> {exam.seatProcedure || 'Standard Roll Order (#1-#30)'}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="exam-card-footer" style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                    <span className="exam-id" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Invigilator: <strong style={{ color: '#fff' }}>{exam.invigilator || 'Faculty Member'}</strong></span>
+                                    <span className="exam-id" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Invigilator: <strong style={{ color: 'var(--text-primary)' }}>{exam.invigilator || 'Faculty Member'}</strong></span>
                                     <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => {
                                         setActiveSeatingExam(exam);
                                         setExamSessionShift((exam.sessionShift || 'Morning').toLowerCase());
