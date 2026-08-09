@@ -40,13 +40,29 @@ const Navbar = () => {
     const getUserInitial = (name) => (name?.trim()?.charAt(0) || '?').toUpperCase();
     const isActiveRoute = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
 
+    const handleProfileClick = () => {
+        if (!user) return;
+        if (user.role === 'Student') {
+            navigate(`/students/${user._id}`);
+        } else if (user.role === 'Teacher') {
+            navigate(`/teachers/${user._id}`);
+        } else {
+            navigate('/admin/accounts');
+        }
+    };
+
     return (
         <nav className="sidebar glass-panel">
             <div className="sidebar-header">
                 <h2 className="logo-text">TU Hmawbi CMS</h2>
             </div>
 
-            <div className="user-info-pill">
+            <div
+                className="user-info-pill"
+                onClick={handleProfileClick}
+                style={{ cursor: 'pointer' }}
+                title="Click to view profile"
+            >
                 <div className="user-avatar-small">{getUserInitial(user?.name)}</div>
                 <div className="user-text-details">
                     <span className="user-name">{user?.name || 'Guest User'}</span>
