@@ -156,13 +156,25 @@
 }
 
 .logout-btn {
-  color: #fda4af;
+  color: #f87171;
+  font-weight: 600;
 }
 
 .logout-btn:hover {
-  color: #ffe4e6;
-  border-color: rgba(244, 63, 94, 0.45);
-  background: rgba(244, 63, 94, 0.2);
+  color: #ffffff;
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.2);
+}
+
+:root[data-theme='light'] .logout-btn {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+:root[data-theme='light'] .logout-btn:hover {
+  color: #b91c1c;
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.3);
 }
 
 .notifications-tray {
