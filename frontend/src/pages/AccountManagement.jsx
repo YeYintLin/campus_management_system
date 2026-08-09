@@ -119,6 +119,8 @@ const AccountManagement = () => {
                 email: selectedUser.email,
                 status: selectedUser.status,
                 department: selectedUser.department,
+                year: selectedUser.year,
+                rollNo: selectedUser.rollNo,
             });
             
             setUsers(prev => prev.map(u => u._id === selectedUser._id ? { ...u, ...data } : u));
@@ -421,6 +423,54 @@ const AccountManagement = () => {
                                 />
                             </div>
 
+                            <div className="form-group" style={{ marginBottom: '1rem' }}>
+                                <label className="form-label">Department / Major</label>
+                                <select
+                                    className="form-input"
+                                    value={selectedUser.department || ''}
+                                    onChange={(e) => setSelectedUser({ ...selectedUser, department: e.target.value })}
+                                >
+                                    <option value="Mechatronics Engineering">Mechatronics Engineering (McE)</option>
+                                    <option value="Computer Engineering">Computer Engineering (CE)</option>
+                                    <option value="Information Technology">Information Technology (IT)</option>
+                                    <option value="Electrical Engineering">Electrical Engineering (EP)</option>
+                                    <option value="Mechanical Engineering">Mechanical Engineering (Mech)</option>
+                                    <option value="Civil Engineering">Civil Engineering (Civil)</option>
+                                    <option value="Electronic Engineering">Electronic Engineering (EC)</option>
+                                </select>
+                            </div>
+
+                            {selectedUser.role === 'Student' && (
+                                <>
+                                    <div className="form-group" style={{ marginBottom: '1rem' }}>
+                                        <label className="form-label">Academic Year</label>
+                                        <select
+                                            className="form-input"
+                                            value={selectedUser.year || ''}
+                                            onChange={(e) => setSelectedUser({ ...selectedUser, year: e.target.value })}
+                                        >
+                                            <option value="Final Year (VI)">Final Year (VI)</option>
+                                            <option value="Fifth Year (V)">Fifth Year (V)</option>
+                                            <option value="Fourth Year (IV)">Fourth Year (IV)</option>
+                                            <option value="Third Year (III)">Third Year (III)</option>
+                                            <option value="Second Year (II)">Second Year (II)</option>
+                                            <option value="First Year (I)">First Year (I)</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: '1rem' }}>
+                                        <label className="form-label">Roll Number</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="e.g. 6 or VI-MC 6"
+                                            value={selectedUser.rollNo || ''}
+                                            onChange={(e) => setSelectedUser({ ...selectedUser, rollNo: e.target.value })}
+                                        />
+                                    </div>
+                                </>
+                            )}
+
                             <div className="form-group mt-6">
                                 <label className="form-label">Change System Role</label>
                                 <div className="role-selector-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
@@ -452,6 +502,7 @@ const AccountManagement = () => {
                                 >
                                     <option value="Active">Active</option>
                                     <option value="Pending">Pending Approval</option>
+                                    <option value="Suspended">Suspended</option>
                                     <option value="Deactivated">Deactivated</option>
                                 </select>
                             </div>

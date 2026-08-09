@@ -8,6 +8,7 @@ const USER_PROFILE_FIELDS = [
     'title',
     'status',
     'year',
+    'rollNo',
     'office',
     'consultationHours',
     'specialization',
@@ -58,6 +59,7 @@ const formatUserProfile = (user) => ({
     title: user.title,
     status: user.status,
     year: user.year,
+    rollNo: user.rollNo,
     office: user.office,
     consultationHours: user.consultationHours,
     specialization: user.specialization,
@@ -71,7 +73,7 @@ const formatUserProfile = (user) => ({
 const updateUserRole = async (req, res) => {
     try {
         const { role } = req.body;
-        const allowedRoles = ['Admin', 'Teacher', 'Student'];
+        const allowedRoles = ['Admin', 'Teacher', 'Student', 'Superadmin', 'Academicadmin'];
         if (!allowedRoles.includes(role)) {
             return res.status(400).json({ message: 'Invalid role' });
         }
@@ -116,10 +118,22 @@ const updateUserProfile = async (req, res) => {
             }
         });
 
+        // Format official roll number for students if rollNo was updated
+        if (user.role === 'Student' && req.body.rollNo) {
+            const formattedRoll = formatOfficialRollNumber(user.year, user.department, req.body.rollNo);
+            if (formattedRoll) {
+                user.rollNo = formattedRoll;
+            }
+        }
+
         await user.save();
 
-        if (req.body.status) {
-            await Student.findOneAndUpdate({ user: user._id }, { status: req.body.status });
+        if (user.role === 'Student') {
+            const studentUpdates = {};
+            if (req.body.status) studentUpdates.status = req.body.status;
+            if (req.body.department) studentUpdates.department = req.body.department;
+            if (user.rollNo) studentUpdates.enrollmentNumber = user.rollNo;
+            await Student.findOneAndUpdate({ user: user._id }, studentUpdates);
         }
 
         res.json(formatUserProfile(user));
