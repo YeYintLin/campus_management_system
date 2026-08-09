@@ -1,6 +1,12 @@
-const nodemailer = require('nodemailer');
+let nodemailer = null;
+try {
+    nodemailer = require('nodemailer');
+} catch (err) {
+    console.warn('[emailService] nodemailer module optional load note:', err.message);
+}
 
 const createTransporter = () => {
+    if (!nodemailer) return null;
     const host = process.env.SMTP_HOST;
     const port = process.env.SMTP_PORT || 587;
     const user = process.env.SMTP_USER;
