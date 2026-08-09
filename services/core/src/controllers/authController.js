@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Student = require('../models/Student');
 const jwt = require('jsonwebtoken');
+const { sendVerificationEmail } = require('../utils/emailService');
 
 const getJwtSecret = () => {
     const secret = process.env.JWT_SECRET;
@@ -21,7 +22,7 @@ const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
-// @access  Public (Can be restricted to Admin in a real scenario for Teachers/Students)
+// @access  Public
 const registerUser = async (req, res) => {
     try {
         const { name, email, password } = req.body;
@@ -34,28 +35,131 @@ const registerUser = async (req, res) => {
         const userExists = await User.findOne({ email: normalizedEmail });
 
         if (userExists) {
-            return res.status(400).json({ message: 'User already exists' });
+            // If account exists but email is not verified, allow re-triggering verification code
+            if (!userExists.isEmailVerified) {
+                const code = Math.floor(100000 + Math.random() * 900000).toString();
+                userExists.emailVerificationCode = code;
+                userExists.emailVerificationExpires = new Date(Date.now() + 15 * 60 * 1000);
+                await userExists.save();
+                await sendVerificationEmail(normalizedEmail, code);
+                return res.status(200).json({
+                    message: 'Account exists but is unverified. A new verification code has been sent.',
+                    requiresVerification: true,
+                    email: normalizedEmail,
+                });
+            }
+            return res.status(400).json({ message: 'User with this email already exists' });
         }
+
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
 
         const user = await User.create({
             name,
             email: normalizedEmail,
             password,
-            // Security: public registration must never allow creating privileged roles.
             role: 'Student',
+            isEmailVerified: false,
+            emailVerificationCode: code,
+            emailVerificationExpires: new Date(Date.now() + 15 * 60 * 1000),
+            isApproved: false,
+            status: 'Pending',
         });
 
         if (user) {
+            await sendVerificationEmail(normalizedEmail, code);
             res.status(201).json({
-                _id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                token: generateToken(user._id, user.role, user.email),
+                message: 'Registration successful! Please check your email for the 6-digit verification code.',
+                requiresVerification: true,
+                email: normalizedEmail,
             });
         } else {
             res.status(400).json({ message: 'Invalid user data' });
         }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Verify 6-digit email code
+// @route   POST /api/auth/verify-email
+// @access  Public
+const verifyEmail = async (req, res) => {
+    try {
+        const { email, code } = req.body;
+        const normalizedEmail = normalizeEmail(email);
+
+        if (!normalizedEmail || !code) {
+            return res.status(400).json({ message: 'Email and verification code are required' });
+        }
+
+        const user = await User.findOne({ email: normalizedEmail }).select('+emailVerificationCode');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (user.isEmailVerified) {
+            return res.status(200).json({
+                message: 'Email is already verified.',
+                isEmailVerified: true,
+                isApproved: user.isApproved,
+            });
+        }
+
+        if (!user.emailVerificationCode || user.emailVerificationCode !== code.toString().trim()) {
+            return res.status(400).json({ message: 'Invalid verification code' });
+        }
+
+        if (user.emailVerificationExpires && user.emailVerificationExpires < new Date()) {
+            return res.status(400).json({ message: 'Verification code has expired. Please request a new code.' });
+        }
+
+        user.isEmailVerified = true;
+        user.emailVerificationCode = undefined;
+        user.emailVerificationExpires = undefined;
+        await user.save();
+
+        res.json({
+            message: 'Email verified successfully! Your account is now pending Admin approval.',
+            isEmailVerified: true,
+            isApproved: user.isApproved,
+            requiresApproval: !user.isApproved,
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Resend verification code
+// @route   POST /api/auth/resend-code
+// @access  Public
+const resendVerificationCode = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const normalizedEmail = normalizeEmail(email);
+
+        if (!normalizedEmail) {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+
+        const user = await User.findOne({ email: normalizedEmail });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (user.isEmailVerified) {
+            return res.status(400).json({ message: 'Email is already verified' });
+        }
+
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        user.emailVerificationCode = code;
+        user.emailVerificationExpires = new Date(Date.now() + 15 * 60 * 1000);
+        await user.save();
+
+        await sendVerificationEmail(normalizedEmail, code);
+
+        res.json({ message: 'A new 6-digit verification code has been sent to your email.' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -79,9 +183,7 @@ const loginUser = async (req, res) => {
         if (identifier.includes('@')) {
             user = await User.findOne({ email: normalizeEmail(identifier) });
         } else {
-            // Allow "username" as exact name match (case-insensitive).
             user = await User.findOne({ name: new RegExp(`^${escapeRegex(identifier)}$`, 'i') });
-            // Also allow email local-part (e.g. `admin` for `admin@gmail.com`) for convenience.
             if (!user) {
                 user = await User.findOne({ email: new RegExp(`^${escapeRegex(identifier)}@`, 'i') });
             }
@@ -94,7 +196,7 @@ const loginUser = async (req, res) => {
             });
         }
 
-                const passwordMatches = await user.comparePassword(password);
+        const passwordMatches = await user.comparePassword(password);
         if (!passwordMatches) {
             return res.status(401).json({
                 code: 'AUTH_INVALID_PASSWORD',
@@ -109,15 +211,32 @@ const loginUser = async (req, res) => {
             });
         }
 
-        if (user) {
-            res.json({
-                _id: user._id,
-                name: user.name,
+        // Security check 1: Email verification
+        if (!user.isEmailVerified) {
+            return res.status(403).json({
+                code: 'AUTH_EMAIL_NOT_VERIFIED',
+                requiresVerification: true,
                 email: user.email,
-                role: user.role,
-                token: generateToken(user._id, user.role, user.email),
+                message: 'Please verify your Gmail address first before logging in.',
             });
         }
+
+        // Security check 2: Admin approval
+        if (!user.isApproved || user.status === 'Pending') {
+            return res.status(403).json({
+                code: 'AUTH_PENDING_APPROVAL',
+                requiresApproval: true,
+                message: 'Your email is verified, but your account is pending Admin approval. Please wait for an administrator to approve your account.',
+            });
+        }
+
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            token: generateToken(user._id, user.role, user.email),
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -159,6 +278,7 @@ const adminRegisterUser = async (req, res) => {
         const dept = department || 'Mechatronics Engineering';
         const yr = year || 'Final Year (VI)';
 
+        // Admin-created users are pre-verified & pre-approved
         const user = await User.create({
             name,
             email: normalizedEmail,
@@ -166,6 +286,8 @@ const adminRegisterUser = async (req, res) => {
             role,
             department: dept,
             year: yr,
+            isEmailVerified: true,
+            isApproved: true,
             status: 'Active'
         });
 
@@ -201,6 +323,8 @@ const adminRegisterUser = async (req, res) => {
 
 module.exports = {
     registerUser,
+    verifyEmail,
+    resendVerificationCode,
     loginUser,
     getUserProfile,
     adminRegisterUser,

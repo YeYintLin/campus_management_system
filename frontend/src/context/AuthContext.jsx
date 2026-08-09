@@ -144,6 +144,10 @@ export const AuthProvider = ({ children }) => {
                 role,
             });
 
+            if (data.requiresVerification) {
+                return { success: true, requiresVerification: true, email: data.email };
+            }
+
             localStorage.setItem('userInfo', JSON.stringify(data));
             setUser(data);
             return { success: true };

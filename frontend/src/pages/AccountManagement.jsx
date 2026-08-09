@@ -4,8 +4,8 @@ import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
 import {
     Search, UserPlus, Shield, UserCircle,
-    MoreVertical, UserCheck, UserX, AlertTriangle,
-    Mail, Calendar, Filter, Download, X, Settings, Lock, User
+    UserCheck, UserX, AlertTriangle,
+    Mail, Calendar, Filter, Download, X, Settings, Lock, User, Check, RefreshCw
 } from 'lucide-react';
 import './AccountManagement.css';
 
@@ -28,6 +28,12 @@ const AccountManagement = () => {
     const [roleFilter, setRoleFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
     const [selectedUser, setSelectedUser] = useState(null);
+    const [resetPasswordUser, setResetPasswordUser] = useState(null);
+    const [newPasswordInput, setNewPasswordInput] = useState('');
+    const [resetLoading, setResetLoading] = useState(false);
+    const [resetMsg, setResetMsg] = useState('');
+    const [resetError, setResetError] = useState('');
+    
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -39,13 +45,13 @@ const AccountManagement = () => {
     const [registerSuccess, setRegisterSuccess] = useState('');
     const [savingUser, setSavingUser] = useState(false);
     const [updateError, setUpdateError] = useState('');
+    const [approvalLoadingId, setApprovalLoadingId] = useState(null);
 
     const fetchUsers = async () => {
         setLoading(true);
         setError('');
         try {
             const { data } = await apiClient.get('/users');
-            // Normalize API response to ensure consistent field access
             const normalized = data.map(u => ({
                 ...u,
                 id: u._id,
@@ -62,9 +68,9 @@ const AccountManagement = () => {
 
     const handleExportCSV = () => {
         if (!users.length) return;
-        const headers = ['Name,Email,Role,Status,LastActivity'];
+        const headers = ['Name,Email,Role,Status,Verified,Approved,LastActivity'];
         const rows = filteredUsers.map(u => 
-            `"${u.name || ''}","${u.email || ''}","${u.role || ''}","${u.status || 'Active'}","${u.lastLogin || ''}"`
+            `"${u.name || ''}","${u.email || ''}","${u.role || ''}","${u.status || 'Active'}","${u.isEmailVerified ? 'Yes' : 'No'}","${u.isApproved ? 'Yes' : 'No'}","${u.lastLogin || ''}"`
         );
         const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
         const encodedUri = encodeURI(csvContent);
@@ -82,10 +88,11 @@ const AccountManagement = () => {
         }
     }, [currentUser]);
 
-    // Redirect if not admin
     if (currentUser?.role !== 'Admin') {
         return <div className="p-8 text-center glass-panel">Unauthorized. Administrative access required.</div>;
     }
+
+    const pendingUsers = users.filter(u => u.status === 'Pending' || u.isApproved === false);
 
     const filteredUsers = users.filter(u => {
         const nameText = u.name || '';
@@ -103,17 +110,69 @@ const AccountManagement = () => {
         setSavingUser(true);
         setUpdateError('');
         try {
-            // Update role
             await apiClient.put(`/users/${selectedUser._id}/role`, { role: selectedUser.role });
-            // Update status and details
-            await apiClient.put(`/users/${selectedUser._id}`, { status: selectedUser.status, department: selectedUser.department });
+            const { data } = await apiClient.put(`/users/${selectedUser._id}`, {
+                name: selectedUser.name,
+                email: selectedUser.email,
+                status: selectedUser.status,
+                department: selectedUser.department,
+            });
             
-            setUsers(prev => prev.map(u => u._id === selectedUser._id ? { ...u, role: selectedUser.role, status: selectedUser.status, department: selectedUser.department } : u));
+            setUsers(prev => prev.map(u => u._id === selectedUser._id ? { ...u, ...data } : u));
             setSelectedUser(null);
         } catch (err) {
             setUpdateError(err.response?.data?.message || 'Failed to update user profile');
         } finally {
             setSavingUser(false);
+        }
+    };
+
+    const handleApproveUser = async (userToApprove) => {
+        try {
+            setApprovalLoadingId(userToApprove._id);
+            await apiClient.put(`/users/${userToApprove._id}/approve`);
+            setUsers(prev => prev.map(u => u._id === userToApprove._id ? { ...u, isApproved: true, status: 'Active' } : u));
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to approve user account');
+        } finally {
+            setApprovalLoadingId(null);
+        }
+    };
+
+    const handleRejectUser = async (userToReject) => {
+        if (!window.confirm(`Are you sure you want to reject/deactivate ${userToReject.name}?`)) return;
+        try {
+            setApprovalLoadingId(userToReject._id);
+            await apiClient.put(`/users/${userToReject._id}/reject`);
+            setUsers(prev => prev.map(u => u._id === userToReject._id ? { ...u, isApproved: false, status: 'Deactivated' } : u));
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to reject user account');
+        } finally {
+            setApprovalLoadingId(null);
+        }
+    };
+
+    const handleResetPasswordSubmit = async (e) => {
+        e.preventDefault();
+        if (!newPasswordInput || newPasswordInput.length < 6) {
+            setResetError('Password must be at least 6 characters');
+            return;
+        }
+        try {
+            setResetLoading(true);
+            setResetError('');
+            setResetMsg('');
+            const { data } = await apiClient.put(`/users/${resetPasswordUser._id}/reset-password`, { newPassword: newPasswordInput });
+            setResetMsg(data.message || 'Password reset successfully');
+            setTimeout(() => {
+                setResetPasswordUser(null);
+                setNewPasswordInput('');
+                setResetMsg('');
+            }, 1800);
+        } catch (err) {
+            setResetError(err.response?.data?.message || 'Failed to reset password');
+        } finally {
+            setResetLoading(false);
         }
     };
 
@@ -135,6 +194,8 @@ const AccountManagement = () => {
                 ...data,
                 id: data._id,
                 status: 'Active',
+                isEmailVerified: true,
+                isApproved: true,
                 lastLogin: 'Just now',
             };
             setUsers(prev => [newUser, ...prev]);
@@ -189,9 +250,9 @@ const AccountManagement = () => {
                     <div className="filter-item">
                         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                             <option value="All">All Statuses</option>
+                            <option value="Pending">Pending Approval ({pendingUsers.length})</option>
                             <option value="Active">Active</option>
-                            <option value="Probation">Probation</option>
-                            <option value="Suspended">Suspended</option>
+                            <option value="Deactivated">Deactivated</option>
                         </select>
                     </div>
                 </div>
@@ -218,7 +279,7 @@ const AccountManagement = () => {
                         <tr>
                             <th>User</th>
                             <th>System Role</th>
-                            <th>Status</th>
+                            <th>Status & Verification</th>
                             <th>Last Activity</th>
                             <th>Actions</th>
                         </tr>
@@ -244,15 +305,48 @@ const AccountManagement = () => {
                                     </span>
                                 </td>
                                 <td>
-                                    <span className={`status-badge ${u.status.toLowerCase()}`}>
-                                        {u.status}
-                                    </span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <span className={`status-badge ${(u.status || 'Active').toLowerCase()}`}>
+                                            {u.status}
+                                        </span>
+                                        <span style={{ fontSize: '0.72rem', color: u.isEmailVerified ? '#4ade80' : '#f87171' }}>
+                                            {u.isEmailVerified ? '✓ Gmail Verified' : '⚠ Unverified Gmail'}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td className="text-muted">{u.lastLogin}</td>
                                 <td>
-                                    <button className="action-btn" title="Edit User Access & Status" onClick={() => { setUpdateError(''); setSelectedUser(u); }}>
-                                        <Settings size={18} />
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                        {(u.status === 'Pending' || !u.isApproved) && (
+                                            <button
+                                                className="btn btn-primary"
+                                                style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem', borderRadius: '6px' }}
+                                                title="Approve User Account"
+                                                onClick={() => handleApproveUser(u)}
+                                                disabled={approvalLoadingId === u._id}
+                                            >
+                                                <UserCheck size={14} />
+                                                <span>Approve</span>
+                                            </button>
+                                        )}
+
+                                        <button
+                                            className="action-btn"
+                                            title="Reset Password"
+                                            onClick={() => { setResetError(''); setResetMsg(''); setNewPasswordInput(''); setResetPasswordUser(u); }}
+                                            style={{ color: '#0891b2' }}
+                                        >
+                                            <Lock size={16} />
+                                        </button>
+
+                                        <button
+                                            className="action-btn"
+                                            title="Edit User Access & Status"
+                                            onClick={() => { setUpdateError(''); setSelectedUser(u); }}
+                                        >
+                                            <Settings size={16} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -267,6 +361,7 @@ const AccountManagement = () => {
             </div>
             )}
 
+            {/* EDIT USER ACCESS MODAL */}
             {selectedUser && createPortal(
                 <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
                     <div className="modal-content glass-panel account-edit-modal" onClick={e => e.stopPropagation()}>
@@ -278,15 +373,24 @@ const AccountManagement = () => {
                             <button className="close-btn" onClick={() => setSelectedUser(null)}><X size={24} /></button>
                         </div>
                         <div className="modal-body">
-                            <div className="user-profile-summary">
-                                <div className="avatar-initials modal-avatar" style={{ background: getAvatarColor(selectedUser.role) }}>
-                                    {getInitials(selectedUser.name)}
-                                </div>
-                                <div>
-                                    <h3>{selectedUser.name}</h3>
-                                    <p><Mail size={14} /> {selectedUser.email}</p>
-                                    <p><Calendar size={14} /> Registered: Jan 2024</p>
-                                </div>
+                            <div className="form-group" style={{ marginBottom: '1rem' }}>
+                                <label className="form-label">Full Name</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={selectedUser.name}
+                                    onChange={(e) => setSelectedUser({ ...selectedUser, name: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: '1rem' }}>
+                                <label className="form-label">Gmail Address</label>
+                                <input
+                                    type="email"
+                                    className="form-input"
+                                    value={selectedUser.email}
+                                    onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
+                                />
                             </div>
 
                             <div className="form-group mt-6">
@@ -312,22 +416,17 @@ const AccountManagement = () => {
                                     onChange={(e) => setSelectedUser({ ...selectedUser, status: e.target.value })}
                                 >
                                     <option value="Active">Active</option>
-                                    <option value="Probation">Probation</option>
-                                    <option value="Suspended">Suspended</option>
+                                    <option value="Pending">Pending Approval</option>
+                                    <option value="Deactivated">Deactivated</option>
                                 </select>
                             </div>
 
                             {updateError && (
-                                <div className="security-info-box alert-box" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+                                <div className="security-info-box alert-box" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', marginTop: '1rem' }}>
                                     <AlertTriangle size={18} />
                                     <p>{updateError}</p>
                                 </div>
                             )}
-
-                            <div className="security-info-box alert-box">
-                                <AlertTriangle size={18} />
-                                <p>Role changes affect system access and visibility of modules immediately.</p>
-                            </div>
                         </div>
                         <div className="modal-footer">
                             <button className="btn btn-secondary" onClick={() => setSelectedUser(null)} disabled={savingUser}>Cancel</button>
@@ -340,6 +439,59 @@ const AccountManagement = () => {
                 document.body
             )}
 
+            {/* ADMIN RESET PASSWORD MODAL */}
+            {resetPasswordUser && createPortal(
+                <div className="modal-overlay" onClick={() => setResetPasswordUser(null)}>
+                    <div className="modal-content glass-panel account-edit-modal" style={{ maxWidth: '440px' }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <div>
+                                <h2>Reset Password</h2>
+                                <p className="modal-subtitle">Resetting password for {resetPasswordUser.name}</p>
+                            </div>
+                            <button className="close-btn" onClick={() => setResetPasswordUser(null)}><X size={24} /></button>
+                        </div>
+                        <form onSubmit={handleResetPasswordSubmit}>
+                            <div className="modal-body">
+                                {resetError && (
+                                    <div className="security-info-box alert-box" style={{ marginBottom: '1rem', background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+                                        <AlertTriangle size={18} />
+                                        <p>{resetError}</p>
+                                    </div>
+                                )}
+
+                                {resetMsg && (
+                                    <div style={{ padding: '0.75rem 1rem', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '8px', color: '#22c55e', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+                                        <Check size={18} />
+                                        <span>{resetMsg}</span>
+                                    </div>
+                                )}
+
+                                <div className="form-group">
+                                    <label className="form-label">New Password</label>
+                                    <input
+                                        type="password"
+                                        className="form-input"
+                                        placeholder="Min 6 characters"
+                                        value={newPasswordInput}
+                                        onChange={(e) => setNewPasswordInput(e.target.value)}
+                                        required
+                                        minLength={6}
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary" onClick={() => setResetPasswordUser(null)} disabled={resetLoading}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={resetLoading}>
+                                    {resetLoading ? 'Resetting...' : 'Confirm Reset Password'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* REGISTER MODAL */}
             {showRegisterModal && createPortal(
                 <div className="modal-overlay" onClick={() => setShowRegisterModal(false)}>
                     <div className="modal-content glass-panel account-edit-modal" onClick={e => e.stopPropagation()}>
@@ -389,7 +541,7 @@ const AccountManagement = () => {
                                             type="email"
                                             className="form-input"
                                             style={{ paddingLeft: '2.25rem' }}
-                                            placeholder="user@altair.edu"
+                                            placeholder="user@tuhmawbi.edu.mm"
                                             value={registerForm.email}
                                             onChange={e => setRegisterForm({ ...registerForm, email: e.target.value })}
                                             required

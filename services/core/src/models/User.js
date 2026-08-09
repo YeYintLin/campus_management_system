@@ -53,6 +53,21 @@ const userSchema = new mongoose.Schema(
             type: String,
             trim: true,
         },
+        isEmailVerified: {
+            type: Boolean,
+            default: true, // Existing seeded users are verified by default
+        },
+        emailVerificationCode: {
+            type: String,
+            select: false,
+        },
+        emailVerificationExpires: {
+            type: Date,
+        },
+        isApproved: {
+            type: Boolean,
+            default: true, // Existing seeded users are approved by default
+        },
     },
     { timestamps: true }
 );

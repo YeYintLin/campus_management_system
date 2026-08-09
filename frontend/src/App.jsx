@@ -24,6 +24,7 @@ const AccountManagement = lazy(() => import('./pages/AccountManagement'));
 const AcademicSettings = lazy(() => import('./pages/AcademicSettings'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const Chat = lazy(() => import('./pages/Chat'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 
 const restrictedRoles = new Set(['Student', 'Teacher']);
 
@@ -43,22 +44,24 @@ function App() {
       if (!inspectionRestricted) return;
       const key = event.key.toUpperCase();
       const ctrlOrMeta = event.ctrlKey || event.metaKey;
-      const isDevShortcut =
-        key === 'F12' ||
-        (ctrlOrMeta && event.shiftKey && ['I', 'J', 'C', 'K', 'S'].includes(key)) ||
-        (ctrlOrMeta && key === 'U');
 
-      if (isDevShortcut) {
+      const isF12 = event.key === 'F12';
+      const isInspectShortcut = ctrlOrMeta && event.shiftKey && (key === 'I' || key === 'J' || key === 'C');
+      const isViewSource = ctrlOrMeta && key === 'U';
+
+      if (isF12 || isInspectShortcut || isViewSource) {
         preventAction(event);
       }
     };
 
-    window.addEventListener('contextmenu', preventAction, true);
+    const handleContextMenu = (event) => preventAction(event);
+
     window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('contextmenu', handleContextMenu, true);
 
     return () => {
-      window.removeEventListener('contextmenu', preventAction, true);
       window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('contextmenu', handleContextMenu, true);
     };
   }, [inspectionRestricted]);
 
@@ -68,6 +71,7 @@ function App() {
         <Routes>
           <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
           <Route path="/register" element={!user ? <Register /> : <Navigate to="/dashboard" />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />

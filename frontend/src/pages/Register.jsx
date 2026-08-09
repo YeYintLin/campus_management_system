@@ -27,7 +27,11 @@ const Register = () => {
 
         const result = await register(formData.name, formData.email, formData.password, formData.role);
         if (result.success) {
-            navigate('/dashboard');
+            if (result.requiresVerification) {
+                navigate('/verify-email', { state: { email: result.email || formData.email } });
+            } else {
+                navigate('/dashboard');
+            }
         } else {
             setErrorMsg(result.message);
         }

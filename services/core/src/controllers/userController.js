@@ -13,7 +13,7 @@ const USER_PROFILE_FIELDS = [
     'specialization',
 ];
 
-// @desc    Get users filtered by query (e.g., role)
+// @desc    Get users filtered by query (e.g., role, status)
 // @route   GET /api/users
 // @access  Private (Admin)
 const getUsers = async (req, res) => {
@@ -22,8 +22,11 @@ const getUsers = async (req, res) => {
         if (req.query.role) {
             filter.role = req.query.role;
         }
+        if (req.query.status) {
+            filter.status = req.query.status;
+        }
 
-        const users = await User.find(filter).select('-password');
+        const users = await User.find(filter).select('-password').sort({ createdAt: -1 });
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -58,8 +61,9 @@ const formatUserProfile = (user) => ({
     office: user.office,
     consultationHours: user.consultationHours,
     specialization: user.specialization,
+    isEmailVerified: user.isEmailVerified,
+    isApproved: user.isApproved,
 });
-
 
 // @desc    Update user's role
 // @route   PUT /api/users/:id/role
@@ -80,18 +84,13 @@ const updateUserRole = async (req, res) => {
         user.role = role;
         await user.save();
 
-        res.json({
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-        });
+        res.json(formatUserProfile(user));
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// @desc    Update user's profile details
+// @desc    Update user's profile details & email (with duplicate email check)
 // @route   PUT /api/users/:id
 // @access  Private (Admin)
 const updateUserProfile = async (req, res) => {
@@ -101,8 +100,18 @@ const updateUserProfile = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        // Email duplicate check
+        if (req.body.email && req.body.email.trim().toLowerCase() !== user.email) {
+            const newEmail = req.body.email.trim().toLowerCase();
+            const emailExists = await User.findOne({ email: newEmail, _id: { $ne: user._id } });
+            if (emailExists) {
+                return res.status(400).json({ message: 'Another account already uses this email address' });
+            }
+            user.email = newEmail;
+        }
+
         USER_PROFILE_FIELDS.forEach((field) => {
-            if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+            if (field !== 'email' && Object.prototype.hasOwnProperty.call(req.body, field)) {
                 user[field] = req.body[field];
             }
         });
@@ -119,9 +128,95 @@ const updateUserProfile = async (req, res) => {
     }
 };
 
+// @desc    Admin resets password for a user
+// @route   PUT /api/users/:id/reset-password
+// @access  Private (Admin)
+const resetUserPassword = async (req, res) => {
+    try {
+        const { newPassword } = req.body;
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+        }
+
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.password = newPassword;
+        await user.save();
+
+        res.json({ message: `Password for ${user.name} (${user.email}) reset successfully` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Admin approves pending user account
+// @route   PUT /api/users/:id/approve
+// @access  Private (Admin)
+const approveUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.isApproved = true;
+        user.status = 'Active';
+        await user.save();
+
+        // Create student profile record if role is Student and no Student doc exists
+        if (user.role === 'Student') {
+            const existingStudent = await Student.findOne({ user: user._id });
+            if (!existingStudent) {
+                const count = await Student.countDocuments();
+                const rollNum = `VI-MC-${(count + 1).toString().padStart(2, '0')}`;
+                await Student.create({
+                    user: user._id,
+                    enrollmentNumber: rollNum,
+                    department: user.department || 'Mechatronics Engineering',
+                    semester: 'First Semester',
+                    status: 'Active'
+                });
+            } else {
+                existingStudent.status = 'Active';
+                await existingStudent.save();
+            }
+        }
+
+        res.json({ message: `Account for ${user.name} approved successfully. User can now log in.` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Admin rejects pending user account
+// @route   PUT /api/users/:id/reject
+// @access  Private (Admin)
+const rejectUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.isApproved = false;
+        user.status = 'Deactivated';
+        await user.save();
+
+        res.json({ message: `Account for ${user.name} has been rejected/deactivated.` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getUsers,
     getUserById,
     updateUserRole,
     updateUserProfile,
+    resetUserPassword,
+    approveUser,
+    rejectUser,
 };

@@ -1,5 +1,13 @@
 const express = require('express');
-const { getUsers, getUserById, updateUserRole, updateUserProfile } = require('../controllers/userController');
+const {
+    getUsers,
+    getUserById,
+    updateUserRole,
+    updateUserProfile,
+    resetUserPassword,
+    approveUser,
+    rejectUser,
+} = require('../controllers/userController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -45,5 +53,8 @@ router.get('/', protect, getUsers);
 router.get('/:id', protect, checkProfileAccess, getUserById);
 router.put('/:id', protect, checkProfileWriteAccess, updateUserProfile);
 router.put('/:id/role', protect, admin, updateUserRole);
+router.put('/:id/reset-password', protect, admin, resetUserPassword);
+router.put('/:id/approve', protect, admin, approveUser);
+router.put('/:id/reject', protect, admin, rejectUser);
 
 module.exports = router;

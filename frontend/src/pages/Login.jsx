@@ -1,22 +1,25 @@
-import { useState, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useContext, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import AuthLoader from '../components/AuthLoader';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import './Auth.css';
 
 const Login = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [infoMsg, setInfoMsg] = useState(location.state?.message || '');
 
     const { login, loading } = useContext(AuthContext);
-    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrorMsg('');
+        setInfoMsg('');
 
         const result = await login(email, password);
         if (result.success) {
@@ -28,7 +31,11 @@ const Login = () => {
                 navigate('/dashboard');
             }
         } else {
-            setErrorMsg(result.message);
+            if (result.requiresVerification) {
+                navigate('/verify-email', { state: { email } });
+            } else {
+                setErrorMsg(result.message);
+            }
         }
     };
 
@@ -58,6 +65,11 @@ const Login = () => {
                     </div>
 
                     {errorMsg && <div className="auth-error">{errorMsg}</div>}
+                    {infoMsg && (
+                        <div className="auth-error" style={{ background: 'rgba(8, 145, 178, 0.15)', borderColor: 'rgba(8, 145, 178, 0.3)', color: 'var(--primary-color)' }}>
+                            {infoMsg}
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
