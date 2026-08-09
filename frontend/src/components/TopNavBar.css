@@ -2,31 +2,32 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 2rem;
+    padding: 0.45rem 1.5rem;
     position: sticky;
     top: 0;
     z-index: 50;
     gap: 1rem;
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-card);
+    min-height: 52px;
 }
 
 .topbar-left {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 0.1rem;
 }
 
 .topbar-brand {
-    font-size: 0.75rem;
+    font-size: 0.68rem;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     color: var(--primary-color);
     font-weight: 700;
 }
 
 .topbar-left h2 {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-primary);
 }
@@ -34,7 +35,7 @@
 .topbar-center {
     flex: 1;
     max-width: 500px;
-    margin: 0 2rem;
+    margin: 0 1.5rem;
     position: relative;
 }
 
@@ -49,8 +50,8 @@
 
 .input {
     width: 100%;
-    padding: 10px 15px;
-    font-size: 0.95rem;
+    padding: 6px 14px;
+    font-size: 0.88rem;
     background-color: var(--control-bg);
     color: var(--text-primary);
     border: none;
