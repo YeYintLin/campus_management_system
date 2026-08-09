@@ -25,8 +25,9 @@ const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$
 // @access  Public
 const registerUser = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, role } = req.body;
         const normalizedEmail = normalizeEmail(email);
+        const targetRole = (role === 'Teacher') ? 'Teacher' : 'Student';
 
         if (!name || !normalizedEmail || !password) {
             return res.status(400).json({ message: 'Name, email, and password are required' });
@@ -57,7 +58,7 @@ const registerUser = async (req, res) => {
             name,
             email: normalizedEmail,
             password,
-            role: 'Student',
+            role: targetRole,
             isEmailVerified: false,
             emailVerificationCode: code,
             emailVerificationExpires: new Date(Date.now() + 15 * 60 * 1000),
