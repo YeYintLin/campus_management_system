@@ -208,10 +208,10 @@ const loginUser = async (req, res) => {
             });
         }
 
-        if (user.status === 'Deactivated') {
+        if (user.status === 'Deactivated' || user.status === 'Suspended') {
             return res.status(403).json({
-                code: 'AUTH_USER_DEACTIVATED',
-                message: 'Your account has been deactivated. Please contact support.',
+                code: 'AUTH_USER_SUSPENDED',
+                message: 'Your account has been suspended by an administrator. You cannot log in until an administrator approves or reactivates your account.',
             });
         }
 

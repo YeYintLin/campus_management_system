@@ -142,6 +142,19 @@ const AccountManagement = () => {
         }
     };
 
+    const handleSuspendUser = async (userToSuspend) => {
+        if (!window.confirm(`Are you sure you want to SUSPEND access for ${userToSuspend.name}? They will not be able to log in until re-approved.`)) return;
+        try {
+            setApprovalLoadingId(userToSuspend._id);
+            await apiClient.put(`/users/${userToSuspend._id}/suspend`);
+            setUsers(prev => prev.map(u => u._id === userToSuspend._id ? { ...u, isApproved: false, status: 'Suspended' } : u));
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to suspend user account');
+        } finally {
+            setApprovalLoadingId(null);
+        }
+    };
+
     const handleRejectUser = async (userToReject) => {
         if (!window.confirm(`Are you sure you want to reject/deactivate ${userToReject.name}?`)) return;
         try {
@@ -255,6 +268,7 @@ const AccountManagement = () => {
                             <option value="All">All Statuses</option>
                             <option value="Pending">Pending Approval ({pendingUsers.length})</option>
                             <option value="Active">Active</option>
+                            <option value="Suspended">Suspended</option>
                             <option value="Deactivated">Deactivated</option>
                         </select>
                     </div>
@@ -319,37 +333,48 @@ const AccountManagement = () => {
                                 </td>
                                 <td className="text-muted">{u.lastLogin}</td>
                                 <td>
-                                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                        {(u.status === 'Pending' || !u.isApproved) && (
-                                            <button
-                                                className="btn btn-primary"
-                                                style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem', borderRadius: '6px' }}
-                                                title="Approve User Account"
-                                                onClick={() => handleApproveUser(u)}
-                                                disabled={approvalLoadingId === u._id}
-                                            >
-                                                <UserCheck size={14} />
-                                                <span>Approve</span>
-                                            </button>
-                                        )}
+                                     <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                         {(u.status === 'Pending' || u.status === 'Suspended' || !u.isApproved) ? (
+                                             <button
+                                                 className="btn btn-primary"
+                                                 style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem', borderRadius: '6px' }}
+                                                 title="Approve / Reactivate User Account"
+                                                 onClick={() => handleApproveUser(u)}
+                                                 disabled={approvalLoadingId === u._id}
+                                             >
+                                                 <UserCheck size={14} />
+                                                 <span>Approve</span>
+                                             </button>
+                                         ) : (
+                                             <button
+                                                 className="btn"
+                                                 style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+                                                 title="Suspend User Access"
+                                                 onClick={() => handleSuspendUser(u)}
+                                                 disabled={approvalLoadingId === u._id}
+                                             >
+                                                 <UserX size={14} />
+                                                 <span>Suspend</span>
+                                             </button>
+                                         )}
 
-                                        <button
-                                            className="action-btn"
-                                            title="Reset Password"
-                                            onClick={() => { setResetError(''); setResetMsg(''); setNewPasswordInput(''); setResetPasswordUser(u); }}
-                                            style={{ color: '#0891b2' }}
-                                        >
-                                            <Lock size={16} />
-                                        </button>
+                                         <button
+                                             className="action-btn"
+                                             title="Reset Password"
+                                             onClick={() => { setResetError(''); setResetMsg(''); setNewPasswordInput(''); setResetPasswordUser(u); }}
+                                             style={{ color: '#0891b2' }}
+                                         >
+                                             <Lock size={16} />
+                                         </button>
 
-                                        <button
-                                            className="action-btn"
-                                            title="Edit User Access & Status"
-                                            onClick={() => { setUpdateError(''); setSelectedUser(u); }}
-                                        >
-                                            <Settings size={16} />
-                                        </button>
-                                    </div>
+                                         <button
+                                             className="action-btn"
+                                             title="Edit User Access & Status"
+                                             onClick={() => { setUpdateError(''); setSelectedUser(u); }}
+                                         >
+                                             <Settings size={16} />
+                                         </button>
+                                     </div>
                                 </td>
                             </tr>
                         ))}

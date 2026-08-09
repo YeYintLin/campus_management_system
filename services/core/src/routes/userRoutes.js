@@ -7,6 +7,7 @@ const {
     resetUserPassword,
     approveUser,
     rejectUser,
+    suspendUser,
 } = require('../controllers/userController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -56,5 +57,6 @@ router.put('/:id/role', protect, admin, updateUserRole);
 router.put('/:id/reset-password', protect, admin, resetUserPassword);
 router.put('/:id/approve', protect, admin, approveUser);
 router.put('/:id/reject', protect, admin, rejectUser);
+router.put('/:id/suspend', protect, admin, suspendUser);
 
 module.exports = router;

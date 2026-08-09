@@ -247,9 +247,29 @@ const rejectUser = async (req, res) => {
 
         user.isApproved = false;
         user.status = 'Deactivated';
+// @desc    Admin suspends a user account
+// @route   PUT /api/users/:id/suspend
+// @access  Private (Admin)
+const suspendUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.isApproved = false;
+        user.status = 'Suspended';
         await user.save();
 
-        res.json({ message: `Account for ${user.name} has been rejected/deactivated.` });
+        if (user.role === 'Student') {
+            const student = await Student.findOne({ user: user._id });
+            if (student) {
+                student.status = 'Suspended';
+                await student.save();
+            }
+        }
+
+        res.json({ message: `Account for ${user.name} has been suspended.` });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -263,4 +283,5 @@ module.exports = {
     resetUserPassword,
     approveUser,
     rejectUser,
+    suspendUser,
 };
