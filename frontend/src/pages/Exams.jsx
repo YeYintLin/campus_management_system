@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useEffect, useContext, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
 import { Edit2, Trash2, X, Calendar, Clock, MapPin, Timer, BookOpen, Plus, LayoutGrid, Users, Upload, CheckCircle, AlertCircle, Camera, Sun, Moon } from 'lucide-react';
@@ -638,7 +639,7 @@ const Exams = () => {
             )}
 
             {/* SEATING PLAN MODAL (WHEN CLICKED FROM EXAM CARD) */}
-            {activeSeatingExam && (
+            {activeSeatingExam && createPortal(
                 <div className="modal-overlay" onClick={() => setActiveSeatingExam(null)}>
                     <div className="modal-content glass-panel" style={{ maxWidth: '850px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                         <div className="modal-header" style={{ borderBottom: '1px solid var(--surface-border)', paddingBottom: '1rem', marginBottom: '1rem' }}>
@@ -870,11 +871,12 @@ const Exams = () => {
                             </div>
                         )}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* EDIT/CREATE EXAM MODAL */}
-            {isModalOpen && (
+            {isModalOpen && createPortal(
                 <div className="modal-overlay" onClick={handleCloseModal}>
                     <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
@@ -891,14 +893,14 @@ const Exams = () => {
                                     <input
                                         type="text"
                                         className="form-input"
-                                        placeholder="e.g. McE 61028"
+                                        placeholder="e.g. McE-61028"
                                         value={formData.course}
                                         onChange={e => setFormData({ ...formData, course: e.target.value })}
                                         required
                                     />
                                 </div>
                                 <div className="form-group full-width">
-                                    <label>Exam Title</label>
+                                    <label>Examination Title / Module</label>
                                     <input
                                         type="text"
                                         className="form-input"
@@ -909,34 +911,30 @@ const Exams = () => {
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label>Year</label>
+                                    <label>Academic Year Level</label>
                                     <select
                                         className="form-input"
                                         value={formData.year}
                                         onChange={e => setFormData({ ...formData, year: e.target.value })}
                                     >
-                                        {['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'].map(y => (
-                                            <option key={y} value={y}>{y}</option>
-                                        ))}
+                                        <option value="1st Year">1st Year (I)</option>
+                                        <option value="2nd Year">2nd Year (II)</option>
+                                        <option value="3rd Year">3rd Year (III)</option>
+                                        <option value="4th Year">4th Year (IV)</option>
+                                        <option value="5th Year">5th Year (V)</option>
+                                        <option value="6th Year">6th Year (VI)</option>
                                     </select>
                                 </div>
                                 <div className="form-group">
-                                    <label>Exam Shift / Time</label>
-                                    <select
+                                    <label>Room / Exam Hall</label>
+                                    <input
+                                        type="text"
                                         className="form-input"
-                                        value={formData.sessionShift}
-                                        onChange={e => {
-                                            const shift = e.target.value;
-                                            setFormData({
-                                                ...formData,
-                                                sessionShift: shift,
-                                                time: shift === 'Afternoon' ? '12:30 PM - 03:30 PM' : '08:30 AM - 11:30 AM'
-                                            });
-                                        }}
-                                    >
-                                        <option value="Morning">🌅 Morning Shift (08:30 AM - 11:30 AM)</option>
-                                        <option value="Afternoon">🌆 Afternoon Shift (12:30 PM - 03:30 PM)</option>
-                                    </select>
+                                        placeholder="e.g. Room 1/109"
+                                        value={formData.room}
+                                        onChange={e => setFormData({ ...formData, room: e.target.value })}
+                                        required
+                                    />
                                 </div>
                                 <div className="form-group">
                                     <label>Date</label>
@@ -949,7 +947,7 @@ const Exams = () => {
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label>Time String</label>
+                                    <label>Time Shift</label>
                                     <input
                                         type="text"
                                         className="form-input"
@@ -967,17 +965,6 @@ const Exams = () => {
                                         placeholder="e.g. 3 Hours"
                                         value={formData.duration}
                                         onChange={e => setFormData({ ...formData, duration: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Room / Exam Hall</label>
-                                    <input
-                                        type="text"
-                                        className="form-input"
-                                        placeholder="e.g. Hall 1/109"
-                                        value={formData.room}
-                                        onChange={e => setFormData({ ...formData, room: e.target.value })}
                                         required
                                     />
                                 </div>
@@ -1000,7 +987,8 @@ const Exams = () => {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

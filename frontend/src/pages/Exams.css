@@ -132,17 +132,6 @@
   font-size: 0.9rem;
 }
 
-.empty-state-full {
-  grid-column: 1 / -1;
-  padding: 4rem;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-/* Modal Enhancements */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -151,7 +140,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 99999;
   animation: fadeIn 0.2s ease;
 }
 
@@ -160,13 +149,6 @@
   max-width: 600px;
   overflow: hidden;
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  padding: 2rem 2.5rem;
-  border-bottom: 1px solid var(--surface-border);
 }
 
 .modal-header h2 { margin: 0; font-size: 1.5rem; }
@@ -232,23 +214,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 .year-tag:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-main);
-    transform: translateY(-2px);
-}
-
-.year-tag.active {
-    background: var(--primary-gradient);
-    border-color: transparent;
-    color: white;
-    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
-}
-
-.badge-year {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-main);
-    font-size: 0.75rem;
-    padding: 0.2rem 0.6rem;
     border-radius: 4px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     margin: 0 0.5rem;
