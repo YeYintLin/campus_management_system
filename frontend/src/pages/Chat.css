@@ -462,10 +462,114 @@
     .back-btn {
         background: none;
         border: none;
-        color: #fff;
+        color: var(--text-primary, #fff);
         cursor: pointer;
         padding: 0;
         display: flex;
         align-items: center;
     }
 }
+
+/* ==========================================================================
+   Light Theme Support
+   ========================================================================== */
+:root[data-theme='light'] .header-title-row h3 {
+    color: #0b1220;
+}
+
+:root[data-theme='light'] .chat-search-bar input {
+    background: #ffffff;
+    color: #0b1220;
+    border-color: rgba(15, 23, 42, 0.15);
+}
+
+:root[data-theme='light'] .chat-search-bar input::placeholder {
+    color: #64748b;
+}
+
+:root[data-theme='light'] .chat-search-bar .search-icon {
+    color: #64748b;
+}
+
+:root[data-theme='light'] .conversation-item:hover {
+    background: rgba(8, 145, 178, 0.08);
+}
+
+:root[data-theme='light'] .conversation-item.active {
+    background: rgba(8, 145, 178, 0.14);
+    border-color: rgba(8, 145, 178, 0.3);
+}
+
+:root[data-theme='light'] .conv-name {
+    color: #0b1220;
+}
+
+:root[data-theme='light'] .conv-time,
+:root[data-theme='light'] .conv-snippet,
+:root[data-theme='light'] .empty-chat-list,
+:root[data-theme='light'] .chat-loading,
+:root[data-theme='light'] .chat-empty-thread {
+    color: #475569;
+}
+
+:root[data-theme='light'] .no-chat-selected h3,
+:root[data-theme='light'] .partner-name-row h4 {
+    color: #0b1220;
+}
+
+:root[data-theme='light'] .partner-email {
+    color: #475569;
+}
+
+:root[data-theme='light'] .chat-thread-header,
+:root[data-theme='light'] .chat-input-bar {
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(15, 23, 42, 0.1);
+}
+
+:root[data-theme='light'] .chat-input-bar input {
+    background: #ffffff;
+    color: #0b1220;
+    border-color: rgba(15, 23, 42, 0.18);
+}
+
+:root[data-theme='light'] .chat-input-bar input::placeholder {
+    color: #64748b;
+}
+
+:root[data-theme='light'] .message-bubble-wrapper.received .message-bubble {
+    background: #ffffff;
+    color: #0b1220;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+:root[data-theme='light'] .chat-sidebar-header,
+:root[data-theme='light'] .modal-header {
+    border-color: rgba(15, 23, 42, 0.1);
+}
+
+:root[data-theme='light'] .modal-backdrop {
+    background: rgba(15, 23, 42, 0.4);
+}
+
+:root[data-theme='light'] .user-picker-modal {
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.15);
+}
+
+:root[data-theme='light'] .modal-header h3,
+:root[data-theme='light'] .close-btn,
+:root[data-theme='light'] .user-info .user-name {
+    color: #0b1220;
+}
+
+:root[data-theme='light'] .user-info .user-email,
+:root[data-theme='light'] .no-users-found {
+    color: #475569;
+}
+
+:root[data-theme='light'] .user-picker-item:hover {
+    background: rgba(8, 145, 178, 0.08);
+}
+

@@ -643,7 +643,7 @@ const Exams = () => {
                     <div className="modal-content glass-panel" style={{ maxWidth: '850px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                         <div className="modal-header" style={{ borderBottom: '1px solid var(--surface-border)', paddingBottom: '1rem', marginBottom: '1rem' }}>
                             <div>
-                                <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#fff' }}>Technological University (Hmawbi)</h2>
+                                <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Technological University (Hmawbi)</h2>
                                 <p className="modal-subtitle" style={{ margin: '0.2rem 0 0', color: 'var(--text-muted)' }}>
                                     Official Seating Plan — Room {activeSeatingExam.room || '1/109'}
                                 </p>
@@ -695,7 +695,7 @@ const Exams = () => {
                         </div>
 
                         <div style={{ background: 'rgba(99,102,241,0.1)', padding: '0.85rem 1rem', borderRadius: '12px', marginBottom: '1.25rem', border: '1px solid rgba(99,102,241,0.25)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.85rem' }}>
-                            <div>Course: <strong style={{ color: '#fff' }}>{activeSeatingExam.course} ({activeSeatingExam.title})</strong></div>
+                            <div>Course: <strong style={{ color: 'var(--text-primary)' }}>{activeSeatingExam.course} ({activeSeatingExam.title})</strong></div>
                             <div>Shift: <strong style={{ color: '#fbbf24' }}>{examSessionShift === 'afternoon' ? 'Afternoon (12:30 PM - 03:30 PM)' : 'Morning (08:30 AM - 11:30 AM)'}</strong></div>
                         </div>
 
@@ -721,7 +721,7 @@ const Exams = () => {
                                 ) : (
                                     <div className="glass-panel" style={{ padding: '3rem 1.5rem', textAlign: 'center', borderRadius: '16px' }}>
                                         <Camera size={40} style={{ color: '#818cf8', marginBottom: '0.75rem' }} />
-                                        <h3 style={{ margin: '0 0 0.4rem', color: '#fff' }}>No Hand-Written Seating Photo Uploaded Yet</h3>
+                                        <h3 style={{ margin: '0 0 0.4rem', color: 'var(--text-primary)' }}>No Hand-Written Seating Photo Uploaded Yet</h3>
                                         <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                                             Upload a photo of the official hand-written paper seating plan for the {examSessionShift === 'afternoon' ? 'Afternoon' : 'Morning'} shift.
                                         </p>
@@ -736,7 +736,7 @@ const Exams = () => {
                                 )}
                             </div>
                         ) : (
-                            <div style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '14px', padding: '1.25rem', color: '#f0f6fc', fontFamily: "'Inter', sans-serif" }}>
+                            <div className="seating-plan-grid-container" style={{ borderRadius: '14px', padding: '1.25rem', fontFamily: "'Inter', sans-serif" }}>
                                 {/* OFFICIAL PAPER DOCUMENT HEADER */}
                                 <div style={{ borderBottom: '2px solid rgba(255,255,255,0.2)', paddingBottom: '0.85rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
                                     <div>

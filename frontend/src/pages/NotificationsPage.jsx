@@ -62,7 +62,7 @@ const NotificationsPage = () => {
                     <ArrowLeft size={20} />
                 </button>
                 <div style={{ flex: 1 }}>
-                    <h1 style={{ fontSize: '1.6rem', fontWeight: '700', color: '#fff', margin: 0 }}>Notifications</h1>
+                    <h1 style={{ fontSize: '1.6rem', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>Notifications</h1>
                     <p className="subtitle" style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                         {unreadCount > 0 ? `${unreadCount} unread update${unreadCount > 1 ? 's' : ''}` : 'You are all caught up'}
                     </p>
@@ -99,8 +99,8 @@ const NotificationsPage = () => {
                     </div>
                 ) : filteredNotifications.length === 0 ? (
                     <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        <Bell size={48} style={{ opacity: 0.3, marginBottom: '1rem', color: '#818cf8' }} />
-                        <h3 style={{ fontSize: '1.1rem', color: '#fff', marginBottom: '0.5rem' }}>No Notifications Found</h3>
+                        <Bell size={48} style={{ opacity: 0.3, marginBottom: '1rem', color: 'var(--primary-color)' }} />
+                        <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No Notifications Found</h3>
                         <p style={{ fontSize: '0.85rem' }}>There are no updates in this category.</p>
                     </div>
                 ) : (
@@ -120,8 +120,6 @@ const NotificationsPage = () => {
                                     alignItems: 'flex-start',
                                     gap: '1rem',
                                     cursor: 'pointer',
-                                    background: notif.read ? 'rgba(255,255,255,0.02)' : 'rgba(99,102,241,0.08)',
-                                    border: notif.read ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(99,102,241,0.25)',
                                     transition: 'all 0.2s ease'
                                 }}
                             >
@@ -132,15 +130,15 @@ const NotificationsPage = () => {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    background: notif.type === 'exam' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)',
-                                    color: notif.type === 'exam' ? '#f59e0b' : '#818cf8',
+                                    background: notif.type === 'exam' ? 'rgba(245,158,11,0.15)' : 'rgba(8,145,178,0.15)',
+                                    color: notif.type === 'exam' ? '#f59e0b' : 'var(--primary-color)',
                                     flexShrink: 0
                                 }}>
                                     {notif.type === 'exam' ? <Calendar size={18} /> : <Bell size={18} />}
                                 </div>
 
                                 <div style={{ flex: 1 }}>
-                                    <p style={{ margin: 0, fontSize: '0.92rem', color: '#fff', lineHeight: '1.4' }}>
+                                    <p style={{ margin: 0, fontSize: '0.92rem', color: 'var(--text-primary)', lineHeight: '1.4' }}>
                                         {notif.message}
                                     </p>
                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.35rem' }}>

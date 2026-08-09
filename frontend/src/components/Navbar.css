@@ -275,6 +275,29 @@
   color: var(--text-muted);
 }
 
+:root[data-theme='light'] .notifications-tray {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+}
+
+:root[data-theme='light'] .tray-header h3 {
+  color: #0b1220;
+}
+
+:root[data-theme='light'] .notif-item.unread {
+  background: rgba(8, 145, 178, 0.1);
+}
+
+:root[data-theme='light'] .notif-content p {
+  color: #0b1220;
+}
+
+:root[data-theme='light'] .notif-content span {
+  color: #475569;
+}
+
+
 @keyframes slideInUp {
   from {
     opacity: 0;
