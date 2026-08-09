@@ -151,16 +151,18 @@ const getHistory = async (req, res) => {
     try {
         const { partnerId } = req.params;
         const { before, limit } = req.query;
-        const currentUserId = req.user._id;
 
         if (!mongoose.Types.ObjectId.isValid(partnerId)) {
             return res.status(400).json({ message: 'Invalid partner ID' });
         }
 
+        const currentUserId = new mongoose.Types.ObjectId(req.user._id);
+        const partnerObjectId = new mongoose.Types.ObjectId(partnerId);
+
         const filter = {
             $or: [
-                { sender: currentUserId, recipient: partnerId },
-                { sender: partnerId, recipient: currentUserId }
+                { sender: currentUserId, recipient: partnerObjectId },
+                { sender: partnerObjectId, recipient: currentUserId }
             ]
         };
 
@@ -198,14 +200,16 @@ const getHistory = async (req, res) => {
 const markAsRead = async (req, res) => {
     try {
         const { partnerId } = req.params;
-        const currentUserId = req.user._id;
 
         if (!mongoose.Types.ObjectId.isValid(partnerId)) {
             return res.status(400).json({ message: 'Invalid partner ID' });
         }
 
+        const currentUserId = new mongoose.Types.ObjectId(req.user._id);
+        const partnerObjectId = new mongoose.Types.ObjectId(partnerId);
+
         const result = await Message.updateMany(
-            { recipient: currentUserId, sender: partnerId, read: false },
+            { recipient: currentUserId, sender: partnerObjectId, read: false },
             { $set: { read: true } }
         );
 
