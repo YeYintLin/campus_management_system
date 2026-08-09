@@ -75,6 +75,39 @@ const getAvatarUrl = (name, id) => {
     return `https://ui-avatars.com/api/?name=${initials}&background=374151&color=ffffff`;
 };
 
+const formatRollNumberDisplay = (rollInput, yearLabel, department) => {
+    const raw = String(rollInput || '').trim();
+    if (!raw) return 'N/A';
+    if (raw.includes('-') || raw.includes(' ')) return raw;
+
+    const getYearPrefix = (yearStr) => {
+        const text = String(yearStr || '').toUpperCase();
+        if (text.includes('VI') || text.includes('6')) return 'VI';
+        if (text.includes('V') || text.includes('5')) return 'V';
+        if (text.includes('IV') || text.includes('4')) return 'IV';
+        if (text.includes('III') || text.includes('3')) return 'III';
+        if (text.includes('II') || text.includes('2')) return 'II';
+        if (text.includes('I') || text.includes('1')) return 'I';
+        return 'VI';
+    };
+
+    const getDeptCode = (deptStr) => {
+        const text = String(deptStr || '').toUpperCase();
+        if (text.includes('MECHATRONIC') || text.includes('MCE')) return 'MC';
+        if (text.includes('COMPUTER') || text.includes('CE')) return 'CE';
+        if (text.includes('INFORMATION') || text.includes('IT')) return 'IT';
+        if (text.includes('ELECTRICAL') || text.includes('EP')) return 'EP';
+        if (text.includes('MECHANICAL') || text.includes('MECH')) return 'Mech';
+        if (text.includes('CIVIL')) return 'Civil';
+        if (text.includes('ELECTRONIC') || text.includes('EC')) return 'EC';
+        return 'MC';
+    };
+
+    const y = getYearPrefix(yearLabel);
+    const d = getDeptCode(department);
+    return `${y}-${d}-${raw}`;
+};
+
 const Students = () => {
     const { user } = useContext(AuthContext);
     const roleStr = (user?.role || '').toLowerCase().trim();
@@ -152,11 +185,16 @@ const Students = () => {
         fetchStudents();
     }, []);
 
-    const enhancedStudents = students.map(student => ({
-        ...student,
-        yearLabel: semesterToYearLabel(student.semester, maxYear),
-        displayName: student.user?.name || student.enrollmentNumber || 'Student',
-    }));
+    const enhancedStudents = students.map(student => {
+        const yearLabel = semesterToYearLabel(student.semester, maxYear);
+        const displayRoll = formatRollNumberDisplay(student.enrollmentNumber || student.user?.rollNo, yearLabel, student.department);
+        return {
+            ...student,
+            yearLabel,
+            displayRoll,
+            displayName: student.user?.name || displayRoll || 'Student',
+        };
+    });
 
     const filteredStudents = enhancedStudents.filter(student => {
         const fullText = `${student.displayName} ${student.user?.email || ''} ${student.enrollmentNumber || ''}`.toLowerCase();
@@ -379,7 +417,7 @@ const Students = () => {
                                 </div>
                                 <div className="student-card-body">
                                     <h3>{student.displayName}</h3>
-                                    <p className="student-id">{student.enrollmentNumber || student._id}</p>
+                                    <p className="student-id">{student.displayRoll || student.enrollmentNumber || student._id}</p>
                                     <div className="student-details">
                                         <div className="detail-item">
                                             <span className="detail-label">Program</span>

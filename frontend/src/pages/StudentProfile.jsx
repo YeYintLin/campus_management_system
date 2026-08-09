@@ -17,6 +17,39 @@ const getAvatarUrl = (name, id) => {
     return `https://ui-avatars.com/api/?name=${initials}&background=374151&color=ffffff`;
 };
 
+const formatRollNumberDisplay = (rollInput, yearLabel, department) => {
+    const raw = String(rollInput || '').trim();
+    if (!raw) return 'N/A';
+    if (raw.includes('-') || raw.includes(' ')) return raw;
+
+    const getYearPrefix = (yearStr) => {
+        const text = String(yearStr || '').toUpperCase();
+        if (text.includes('VI') || text.includes('6')) return 'VI';
+        if (text.includes('V') || text.includes('5')) return 'V';
+        if (text.includes('IV') || text.includes('4')) return 'IV';
+        if (text.includes('III') || text.includes('3')) return 'III';
+        if (text.includes('II') || text.includes('2')) return 'II';
+        if (text.includes('I') || text.includes('1')) return 'I';
+        return 'VI';
+    };
+
+    const getDeptCode = (deptStr) => {
+        const text = String(deptStr || '').toUpperCase();
+        if (text.includes('MECHATRONIC') || text.includes('MCE')) return 'MC';
+        if (text.includes('COMPUTER') || text.includes('CE')) return 'CE';
+        if (text.includes('INFORMATION') || text.includes('IT')) return 'IT';
+        if (text.includes('ELECTRICAL') || text.includes('EP')) return 'EP';
+        if (text.includes('MECHANICAL') || text.includes('MECH')) return 'Mech';
+        if (text.includes('CIVIL')) return 'Civil';
+        if (text.includes('ELECTRONIC') || text.includes('EC')) return 'EC';
+        return 'MC';
+    };
+
+    const y = getYearPrefix(yearLabel);
+    const d = getDeptCode(department);
+    return `${y}-${d}-${raw}`;
+};
+
 const StudentProfile = () => {
     const { studentId } = useParams();
     const location = useLocation();
@@ -125,7 +158,7 @@ const StudentProfile = () => {
                     <div className="profile-title-row">
                         <div>
                             <h1>{displayName}</h1>
-                            <p>{student.enrollmentNumber || 'Enrollment number not set'}</p>
+                            <p>{formatRollNumberDisplay(student.enrollmentNumber || student.user?.rollNo, yearLabel, student.department)}</p>
                         </div>
                         <span className={`badge ${status === 'Active' ? 'badge-success' : status === 'Suspended' ? 'badge-danger' : 'badge-warning'}`}>
                             {status}
