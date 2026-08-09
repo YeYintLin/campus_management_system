@@ -83,12 +83,15 @@ const AccountManagement = () => {
     };
 
     useEffect(() => {
-        if (currentUser?.role === 'Admin') {
+        const roleStr = (currentUser?.role || '').toLowerCase().trim();
+        if (['admin', 'superadmin', 'academicadmin'].includes(roleStr)) {
             fetchUsers();
         }
     }, [currentUser]);
 
-    if (currentUser?.role !== 'Admin') {
+    const isAnyAdmin = ['admin', 'superadmin', 'academicadmin'].includes((currentUser?.role || '').toLowerCase().trim());
+
+    if (!isAnyAdmin) {
         return <div className="p-8 text-center glass-panel">Unauthorized. Administrative access required.</div>;
     }
 
@@ -395,14 +398,21 @@ const AccountManagement = () => {
 
                             <div className="form-group mt-6">
                                 <label className="form-label">Change System Role</label>
-                                <div className="role-selector-row">
-                                    {['Student', 'Teacher', 'Admin'].map(role => (
+                                <div className="role-selector-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                    {[
+                                        { id: 'Student', label: 'Student' },
+                                        { id: 'Teacher', label: 'Teacher / Faculty' },
+                                        { id: 'Academicadmin', label: 'User Admin (Academic)' },
+                                        { id: 'Superadmin', label: 'Technical Admin (System)' },
+                                    ].map(r => (
                                         <button
-                                            key={role}
-                                            className={`role-btn ${selectedUser.role === role ? 'active' : ''}`}
-                                            onClick={() => setSelectedUser({ ...selectedUser, role })}
+                                            key={r.id}
+                                            type="button"
+                                            className={`role-btn ${selectedUser.role === r.id ? 'active' : ''}`}
+                                            onClick={() => setSelectedUser({ ...selectedUser, role: r.id })}
+                                            style={{ padding: '0.5rem', fontSize: '0.8rem' }}
                                         >
-                                            {role}
+                                            {r.label}
                                         </button>
                                     ))}
                                 </div>
@@ -599,15 +609,21 @@ const AccountManagement = () => {
 
                                 <div className="form-group">
                                     <label className="form-label">System Role</label>
-                                    <div className="role-selector-row">
-                                        {['Student', 'Teacher', 'Admin'].map(role => (
+                                    <div className="role-selector-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                        {[
+                                            { id: 'Student', label: 'Student' },
+                                            { id: 'Teacher', label: 'Teacher / Faculty' },
+                                            { id: 'Academicadmin', label: 'User Admin (Academic)' },
+                                            { id: 'Superadmin', label: 'Technical Admin (System)' },
+                                        ].map(r => (
                                             <button
                                                 type="button"
-                                                key={role}
-                                                className={`role-btn ${registerForm.role === role ? 'active' : ''}`}
-                                                onClick={() => setRegisterForm({ ...registerForm, role })}
+                                                key={r.id}
+                                                className={`role-btn ${registerForm.role === r.id ? 'active' : ''}`}
+                                                onClick={() => setRegisterForm({ ...registerForm, role: r.id })}
+                                                style={{ padding: '0.5rem', fontSize: '0.8rem' }}
                                             >
-                                                {role}
+                                                {r.label}
                                             </button>
                                         ))}
                                     </div>

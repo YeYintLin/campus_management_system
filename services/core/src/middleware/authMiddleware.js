@@ -44,7 +44,8 @@ const protect = async (req, res, next) => {
 };
 
 const admin = (req, res, next) => {
-    if (req.user && req.user.role === 'Admin') {
+    const roleStr = (req.user?.role || '').toLowerCase().trim();
+    if (req.user && (roleStr === 'admin' || roleStr === 'superadmin' || roleStr === 'academicadmin')) {
         next();
     } else {
         res.status(403).json({ message: 'Not authorized as an Admin' });
@@ -52,7 +53,8 @@ const admin = (req, res, next) => {
 };
 
 const teacher = (req, res, next) => {
-    if (req.user && (req.user.role === 'Teacher' || req.user.role === 'Admin')) {
+    const roleStr = (req.user?.role || '').toLowerCase().trim();
+    if (req.user && (roleStr === 'teacher' || roleStr === 'admin' || roleStr === 'superadmin' || roleStr === 'academicadmin')) {
         next();
     } else {
         res.status(403).json({ message: 'Not authorized as a Teacher' });
