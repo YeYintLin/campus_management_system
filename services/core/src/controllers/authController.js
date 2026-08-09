@@ -111,7 +111,23 @@ const verifyEmail = async (req, res) => {
         }
 
         if (!user.emailVerificationCode || user.emailVerificationCode !== code.toString().trim()) {
-            return res.status(400).json({ message: 'Invalid verification code' });
+            user.emailVerificationAttempts = (user.emailVerificationAttempts || 0) + 1;
+            
+            if (user.emailVerificationAttempts >= 5) {
+                user.emailVerificationCode = undefined;
+                user.emailVerificationExpires = undefined;
+                user.emailVerificationAttempts = 0;
+                await user.save();
+                return res.status(400).json({ 
+                    message: 'Too many invalid verification attempts (5/5). Your verification code has been invalidated. Please click "Resend Code" to get a new code.' 
+                });
+            }
+            
+            await user.save();
+            const remaining = 5 - user.emailVerificationAttempts;
+            return res.status(400).json({ 
+                message: `Invalid verification code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before code is invalidated.` 
+            });
         }
 
         if (user.emailVerificationExpires && user.emailVerificationExpires < new Date()) {
@@ -121,6 +137,7 @@ const verifyEmail = async (req, res) => {
         user.isEmailVerified = true;
         user.emailVerificationCode = undefined;
         user.emailVerificationExpires = undefined;
+        user.emailVerificationAttempts = 0;
         await user.save();
 
         res.json({
@@ -159,6 +176,7 @@ const resendVerificationCode = async (req, res) => {
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         user.emailVerificationCode = code;
         user.emailVerificationExpires = new Date(Date.now() + 15 * 60 * 1000);
+        user.emailVerificationAttempts = 0;
         await user.save();
 
         await sendVerificationEmail(normalizedEmail, code);

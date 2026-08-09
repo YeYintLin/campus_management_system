@@ -36,6 +36,7 @@ const userSchema = new mongoose.Schema(
         status: {
             type: String,
             trim: true,
+            default: 'Pending',
         },
         year: {
             type: String,
@@ -59,7 +60,7 @@ const userSchema = new mongoose.Schema(
         },
         isEmailVerified: {
             type: Boolean,
-            default: true, // Existing seeded users are verified by default
+            default: false,
         },
         emailVerificationCode: {
             type: String,
@@ -68,9 +69,13 @@ const userSchema = new mongoose.Schema(
         emailVerificationExpires: {
             type: Date,
         },
+        emailVerificationAttempts: {
+            type: Number,
+            default: 0,
+        },
         isApproved: {
             type: Boolean,
-            default: true, // Existing seeded users are approved by default
+            default: false,
         },
     },
     { timestamps: true }
