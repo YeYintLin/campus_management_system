@@ -41,6 +41,10 @@ const userSchema = new mongoose.Schema(
             type: String,
             trim: true,
         },
+        rollNo: {
+            type: String,
+            trim: true,
+        },
         office: {
             type: String,
             trim: true,

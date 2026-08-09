@@ -171,12 +171,12 @@ const approveUser = async (req, res) => {
             const existingStudent = await Student.findOne({ user: user._id });
             if (!existingStudent) {
                 const count = await Student.countDocuments();
-                const rollNum = `VI-MC-${(count + 1).toString().padStart(2, '0')}`;
+                const rollNum = user.rollNo || `VI-MC-${(count + 1).toString().padStart(2, '0')}`;
                 await Student.create({
                     user: user._id,
                     enrollmentNumber: rollNum,
                     department: user.department || 'Mechatronics Engineering',
-                    semester: 'First Semester',
+                    semester: 1,
                     status: 'Active'
                 });
             } else {

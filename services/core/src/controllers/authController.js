@@ -25,7 +25,7 @@ const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$
 // @access  Public
 const registerUser = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, department, year, rollNo } = req.body;
         const normalizedEmail = normalizeEmail(email);
         const targetRole = (role === 'Teacher') ? 'Teacher' : 'Student';
 
@@ -59,6 +59,9 @@ const registerUser = async (req, res) => {
             email: normalizedEmail,
             password,
             role: targetRole,
+            department: targetRole === 'Student' ? (department || 'Mechatronics Engineering') : department,
+            year: targetRole === 'Student' ? (year || 'Final Year (VI)') : year,
+            rollNo: targetRole === 'Student' ? (rollNo || '') : '',
             isEmailVerified: false,
             emailVerificationCode: code,
             emailVerificationExpires: new Date(Date.now() + 15 * 60 * 1000),

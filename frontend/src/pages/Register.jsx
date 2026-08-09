@@ -9,7 +9,10 @@ const Register = () => {
         name: '',
         email: '',
         password: '',
-        role: 'Student'
+        role: 'Student',
+        year: 'Final Year (VI)',
+        department: 'Mechatronics Engineering',
+        rollNo: ''
     });
     const [showPassword, setShowPassword] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
@@ -25,7 +28,15 @@ const Register = () => {
         e.preventDefault();
         setErrorMsg('');
 
-        const result = await register(formData.name, formData.email, formData.password, formData.role);
+        const result = await register(
+            formData.name,
+            formData.email,
+            formData.password,
+            formData.role,
+            formData.department,
+            formData.year,
+            formData.rollNo
+        );
         if (result.success) {
             if (result.requiresVerification) {
                 navigate('/verify-email', { state: { email: result.email || formData.email } });
@@ -39,7 +50,7 @@ const Register = () => {
 
     return (
         <div className="auth-container animate-fade-in">
-            <div className="auth-card glass-panel">
+            <div className="auth-card glass-panel" style={{ maxWidth: '520px' }}>
                 <div className="auth-header">
                     <h2>Create Account</h2>
                     <p>Join the Campus Management System</p>
@@ -54,7 +65,7 @@ const Register = () => {
                             type="text"
                             name="name"
                             className="form-input"
-                            placeholder="John Doe"
+                            placeholder="e.g. Mg Mg"
                             value={formData.name}
                             onChange={handleChange}
                             required
@@ -83,6 +94,7 @@ const Register = () => {
                                 value={formData.password}
                                 onChange={handleChange}
                                 required
+                                minLength={6}
                             />
                             <button
                                 type="button"
@@ -94,15 +106,58 @@ const Register = () => {
                             </button>
                         </div>
                     </div>
+                    
                     <div className="form-group">
-                        <label className="form-label">I am a...</label>
+                        <label className="form-label">System Role</label>
                         <select name="role" className="form-input" value={formData.role} onChange={handleChange}>
                             <option value="Student">Student</option>
-                            <option value="Teacher">Teacher</option>
+                            <option value="Teacher">Teacher / Faculty</option>
                         </select>
                     </div>
 
-                    <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>
+                    {formData.role === 'Student' && (
+                        <>
+                            <div className="form-group">
+                                <label className="form-label">Academic Year</label>
+                                <select name="year" className="form-input" value={formData.year} onChange={handleChange}>
+                                    <option value="Final Year (VI)">Final Year (VI)</option>
+                                    <option value="Fifth Year (V)">Fifth Year (V)</option>
+                                    <option value="Fourth Year (IV)">Fourth Year (IV)</option>
+                                    <option value="Third Year (III)">Third Year (III)</option>
+                                    <option value="Second Year (II)">Second Year (II)</option>
+                                    <option value="First Year (I)">First Year (I)</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Department / Major</label>
+                                <select name="department" className="form-input" value={formData.department} onChange={handleChange}>
+                                    <option value="Mechatronics Engineering">Mechatronics Engineering (McE)</option>
+                                    <option value="Computer Engineering">Computer Engineering (CE)</option>
+                                    <option value="Information Technology">Information Technology (IT)</option>
+                                    <option value="Electrical Engineering">Electrical Engineering (EP)</option>
+                                    <option value="Mechanical Engineering">Mechanical Engineering (Mech)</option>
+                                    <option value="Civil Engineering">Civil Engineering (Civil)</option>
+                                    <option value="Electronic Engineering">Electronic Engineering (EC)</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Roll Number</label>
+                                <input
+                                    type="text"
+                                    name="rollNo"
+                                    className="form-input"
+                                    placeholder="e.g. VI-EP 1, VI-Mech 49, VI-MC 1, 6McE-12"
+                                    value={formData.rollNo}
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    <button type="submit" className="btn btn-primary auth-submit" disabled={loading} style={{ marginTop: '1rem' }}>
                         {loading ? 'Creating account...' : 'Create Account'}
                     </button>
                 </form>

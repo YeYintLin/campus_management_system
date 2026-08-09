@@ -134,7 +134,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const register = async (name, email, password, role) => {
+    const register = async (name, email, password, role, department, year, rollNo) => {
         try {
             setLoading(true);
             const { data } = await apiClient.post('/auth/register', {
@@ -142,6 +142,9 @@ export const AuthProvider = ({ children }) => {
                 email,
                 password,
                 role,
+                department,
+                year,
+                rollNo,
             });
 
             if (data.requiresVerification) {
