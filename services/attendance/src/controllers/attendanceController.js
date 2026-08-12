@@ -797,9 +797,48 @@ const exportRollCallExcel = async (req, res) => {
             }).catch(() => null);
 
             if (usersRes?.data && Array.isArray(usersRes.data)) {
+                // Derive target department from course code
+                const deriveDeptFromCode = (code = '') => {
+                    const c = code.toUpperCase();
+                    if (c.includes('MCE') || c.match(/\bMC\b/)) return 'mechatronics';
+                    if (c.includes('CE') && !c.includes('MCE') && !c.includes('ECE')) return 'civil';
+                    if (c.includes('EP')) return 'electrical power';
+                    if (c.includes('ECE') || (c.includes('EC') && !c.includes('MCE'))) return 'electronic';
+                    if (c.includes('IT')) return 'information';
+                    if (c.includes('ME') && !c.includes('MCE')) return 'mechanical';
+                    if (c.includes('ARCH') || c.includes('AR') || c.includes('AG')) return 'architecture';
+                    return '';
+                };
+
+                const deriveDeptFromEmail = (email = '') => {
+                    if (!email) return '';
+                    const parts = email.split('@')[0].toLowerCase().split('.');
+                    if (parts.length >= 2) {
+                        const d = parts[1];
+                        if (d === 'mc' || d === 'mce') return 'mechatronics';
+                        if (d === 'arch' || d === 'ar') return 'architecture';
+                        if (d === 'c' || d === 'ce') return 'civil';
+                        if (d === 'ep') return 'electrical power';
+                        if (d === 'ec' || d === 'ece') return 'electronic';
+                        if (d === 'it') return 'information';
+                        if (d === 'me') return 'mechanical';
+                    }
+                    return '';
+                };
+
+                const targetDept = deriveDeptFromCode(courseId);
+
                 studentsList = usersRes.data.filter(s => {
+                    // Year filter
                     const sYr = String(s.year || '').toLowerCase();
-                    return !yrStr || sYr.includes(yrStr.replace(' year', '')) || yrStr.includes(sYr);
+                    const yearMatch = !yrStr || sYr.includes(yrStr.replace(' year', '')) || yrStr.includes(sYr);
+                    if (!yearMatch) return false;
+
+                    // Department filter
+                    if (!targetDept) return true;
+                    const sDept = (s.department || '').toLowerCase();
+                    const emailDept = deriveDeptFromEmail(s.email);
+                    return sDept.includes(targetDept) || targetDept.includes(sDept) || emailDept === targetDept;
                 });
             }
         } catch (e) {

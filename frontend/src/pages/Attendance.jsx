@@ -671,27 +671,53 @@ const Attendance = () => {
 
                     const deriveDepartmentFromCode = (code = '') => {
                         const clean = code.toUpperCase();
-                        if (clean.includes('MC') || clean.includes('MCE')) return 'Mechatronics Engineering';
-                        if (clean.includes('CE')) return 'Civil Engineering';
+                        if (clean.includes('MCE') || clean.match(/\bMC\b/)) return 'Mechatronics Engineering';
+                        if (clean.includes('CE') && !clean.includes('MCE') && !clean.includes('ECE')) return 'Civil Engineering';
                         if (clean.includes('EP')) return 'Electrical Power Engineering';
-                        if (clean.includes('EC') || clean.includes('ECE')) return 'Electronic Engineering';
+                        if (clean.includes('ECE') || (clean.includes('EC') && !clean.includes('MCE'))) return 'Electronic Engineering';
                         if (clean.includes('IT')) return 'Information Technology';
-                        if (clean.includes('ME')) return 'Mechanical Engineering';
-                        if (clean.includes('AR') || clean.includes('AG')) return 'Architecture';
+                        if (clean.includes('ME') && !clean.includes('MCE')) return 'Mechanical Engineering';
+                        if (clean.includes('ARCH') || clean.includes('AR') || clean.includes('AG')) return 'Architecture';
                         return '';
                     };
 
-                    const matchesDept = (studentDept, targetDept) => {
-                        if (!targetDept || targetDept === 'All' || !studentDept) return true;
-                        const s = studentDept.toLowerCase().trim();
+                    // Derive department from student email prefix (e.g. v.mc.1@tuhmawbi → mc → Mechatronics)
+                    const deriveDepartmentFromEmail = (email = '') => {
+                        if (!email) return '';
+                        const prefix = email.split('@')[0].toLowerCase(); // e.g. "v.mc.1"
+                        const parts = prefix.split('.');
+                        if (parts.length >= 2) {
+                            const deptCode = parts[1]; // e.g. "mc", "arch", "c", "ep"
+                            if (deptCode === 'mc' || deptCode === 'mce') return 'Mechatronics Engineering';
+                            if (deptCode === 'arch' || deptCode === 'ar') return 'Architecture';
+                            if (deptCode === 'c' || deptCode === 'ce') return 'Civil Engineering';
+                            if (deptCode === 'ep') return 'Electrical Power Engineering';
+                            if (deptCode === 'ec' || deptCode === 'ece') return 'Electronic Engineering';
+                            if (deptCode === 'it') return 'Information Technology';
+                            if (deptCode === 'me') return 'Mechanical Engineering';
+                        }
+                        return '';
+                    };
+
+                    // Resolve a student's department from: explicit field > email prefix > rollNo
+                    const resolveStudentDept = (student) => {
+                        if (student.department && student.department.trim()) return student.department.trim();
+                        const fromEmail = deriveDepartmentFromEmail(student.email);
+                        if (fromEmail) return fromEmail;
+                        if (student.rollNo) return deriveDepartmentFromCode(student.rollNo);
+                        return '';
+                    };
+
+                    const matchesDept = (resolvedStudentDept, targetDept) => {
+                        if (!targetDept || targetDept === 'All') return true;
+                        if (!resolvedStudentDept) return false; // No dept info = exclude, don't include blindly
+                        const s = resolvedStudentDept.toLowerCase().trim();
                         const t = targetDept.toLowerCase().trim();
-                        if (t.includes('mechatronics') || t.includes('mc')) return s.includes('mechatronics') || s.includes('mc');
-                        if (t.includes('civil') || t.includes('ce')) return s.includes('civil') || s.includes('ce');
-                        if (t.includes('electrical') || t.includes('ep')) return s.includes('electrical') || s.includes('ep');
-                        if (t.includes('electronic') || t.includes('ec')) return s.includes('electronic') || s.includes('ec');
-                        if (t.includes('information') || t.includes('it')) return s.includes('information') || s.includes('it');
-                        if (t.includes('mechanical') || t.includes('me')) return s.includes('mechanical') || s.includes('me');
-                        return s.includes(t) || t.includes(s);
+                        // Exact department name match
+                        if (s === t) return true;
+                        // Substring match (e.g. "mechatronics" in "mechatronics engineering")
+                        if (s.includes(t) || t.includes(s)) return true;
+                        return false;
                     };
 
                     const targetDept = course.department || deriveDepartmentFromCode(course.code || course.name || '');
@@ -699,15 +725,20 @@ const Attendance = () => {
                     const yearAndDeptStudents = allStudents.filter(u => {
                         const uYearNorm = normalizeYear(u.year);
                         const yearMatches = targetYearNorm === 'All' || uYearNorm === targetYearNorm;
-                        const deptMatches = matchesDept(u.department || u.rollNo || '', targetDept);
+                        const studentDept = resolveStudentDept(u);
+                        const deptMatches = matchesDept(studentDept, targetDept);
                         return yearMatches && deptMatches;
                     });
 
                     if (yearAndDeptStudents.length > 0) {
                         roster = yearAndDeptStudents;
                     } else {
+                        // Only fall back to year-only if no dept match found — never dump ALL students
                         const yearOnlyStudents = allStudents.filter(u => normalizeYear(u.year) === targetYearNorm);
-                        roster = yearOnlyStudents.length > 0 ? yearOnlyStudents : allStudents;
+                        if (yearOnlyStudents.length > 0) {
+                            roster = yearOnlyStudents;
+                        }
+                        // If still empty, roster stays empty — better than showing wrong-department students
                     }
                 } catch (uErr) {
                     console.error('Error fetching students:', uErr);
