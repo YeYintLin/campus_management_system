@@ -21,6 +21,8 @@ const syncCourseCollectionWithTimetable = async () => {
             }) || null;
         };
 
+        // Build a map of code -> { name, yearNum, yearLabel, teacherId } from uploaded timetable legends
+        const legendMap = new Map();
         for (const sem of semesters) {
             const yearNum = sem.yearNumber || 4;
             const yearLabel = sem.yearLabel || `${yearNum}th Year`;
@@ -28,29 +30,53 @@ const syncCourseCollectionWithTimetable = async () => {
             if (Array.isArray(sem.legend)) {
                 for (const item of sem.legend) {
                     if (item && item.code) {
-                        const codeStr = item.code.trim();
+                        const codeStr = item.code.trim().toUpperCase();
                         const subjectName = item.subject ? item.subject.trim() : codeStr;
                         const teacherObj = findTeacherByName(item.teacher);
 
-                        const existing = await Course.findOne({ code: new RegExp(`^${codeStr.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') });
-                        if (existing) {
-                            existing.name = subjectName;
-                            existing.year = yearNum;
-                            existing.yearLabel = yearLabel;
-                            if (teacherObj) existing.teacher = teacherObj._id;
-                            await existing.save();
-                        } else {
-                            await Course.create({
-                                code: codeStr,
-                                name: subjectName,
-                                year: yearNum,
-                                yearLabel: yearLabel,
-                                description: `Official timetable subject offering for ${yearLabel}`,
-                                teacher: teacherObj ? teacherObj._id : null,
-                                students: []
-                            });
-                        }
+                        legendMap.set(codeStr, {
+                            code: item.code.trim(),
+                            name: subjectName,
+                            year: yearNum,
+                            yearLabel: yearLabel,
+                            teacherId: teacherObj ? teacherObj._id : null
+                        });
                     }
+                }
+            }
+        }
+
+        // Apply legendMap to Course collection: update year, name, AND teacher strictly
+        for (const [cleanCode, info] of legendMap.entries()) {
+            const existing = await Course.findOne({ code: new RegExp(`^${info.code.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') });
+            if (existing) {
+                existing.name = info.name;
+                existing.year = info.year;
+                existing.yearLabel = info.yearLabel;
+                existing.teacher = info.teacherId;
+                await existing.save();
+            } else {
+                await Course.create({
+                    code: info.code,
+                    name: info.name,
+                    year: info.year,
+                    yearLabel: info.yearLabel,
+                    description: `Official timetable subject offering for ${info.yearLabel}`,
+                    teacher: info.teacherId,
+                    students: []
+                });
+            }
+        }
+
+        // Unassign teacher from any course in MongoDB that is NOT in legendMap for that teacher
+        const allDbCourses = await Course.find({});
+        for (const dbc of allDbCourses) {
+            const cleanCode = (dbc.code || '').trim().toUpperCase();
+            if (!legendMap.has(cleanCode)) {
+                // If this course is not in the uploaded timetable legend, clear its teacher assignment
+                if (dbc.teacher) {
+                    dbc.teacher = null;
+                    await dbc.save();
                 }
             }
         }
