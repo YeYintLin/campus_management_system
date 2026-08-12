@@ -587,11 +587,11 @@ const Attendance = () => {
                 });
             }
 
-            // Default remaining enrolled/year students to empty status
+            // Default remaining enrolled/year students without a record to 'Absent'
             roster.forEach(s => {
                 const sId = (s._id || s).toString();
-                if (existingSheet[sId] === undefined) {
-                    existingSheet[sId] = '';
+                if (!existingSheet[sId]) {
+                    existingSheet[sId] = 'Absent';
                 }
             });
 
@@ -1267,22 +1267,13 @@ const Attendance = () => {
                             <div className="summary-item">
                                 <span className="label">Present (Code Sent):</span>
                                 <span className="count text-success">
-                                    {Object.values(attendanceSheet).filter(s => s === 'Present').length}
-                                </span>
-                            </div>
-                            <div className="summary-item">
-                                <span className="label">Pending (No Code):</span>
-                                <span className="count text-warning" style={{ color: '#eab308' }}>
-                                    {studentRoster.filter(s => {
-                                        const sId = s._id || s;
-                                        return !attendanceSheet[sId] || attendanceSheet[sId] === '';
-                                    }).length}
+                                    {filteredStudents.filter(s => attendanceSheet[s._id || s] === 'Present').length}
                                 </span>
                             </div>
                             <div className="summary-item">
                                 <span className="label">Absent:</span>
                                 <span className="count text-danger">
-                                    {Object.values(attendanceSheet).filter(s => s === 'Absent').length}
+                                    {filteredStudents.filter(s => attendanceSheet[s._id || s] !== 'Present').length}
                                 </span>
                             </div>
                         </div>
@@ -1305,7 +1296,7 @@ const Attendance = () => {
                                         const sId = student._id || student;
                                         const sName = student.name || 'Student';
                                         const sEmail = student.email || '';
-                                        const currentStatus = attendanceSheet[sId] || '';
+                                        const isPresent = attendanceSheet[sId] === 'Present';
 
                                         return (
                                             <tr key={sId}>
@@ -1319,38 +1310,19 @@ const Attendance = () => {
                                                 <td>
                                                     <div className="status-toggles" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
                                                         <button
-                                                            className={`status-btn p-btn ${currentStatus === 'Present' ? 'active' : ''}`}
+                                                            className={`status-btn p-btn ${isPresent ? 'active' : ''}`}
                                                             onClick={() => handleStatusChange(sId, 'Present')}
                                                         >
                                                             <CheckCircle2 size={18} />
                                                             <span>Present</span>
                                                         </button>
                                                         <button
-                                                            className={`status-btn l-btn ${currentStatus === 'Late' ? 'active' : ''}`}
-                                                            onClick={() => handleStatusChange(sId, 'Late')}
-                                                        >
-                                                            <Clock size={18} />
-                                                            <span>Late</span>
-                                                        </button>
-                                                        <button
-                                                            className={`status-btn a-btn ${currentStatus === 'Absent' ? 'active' : ''}`}
+                                                            className={`status-btn a-btn ${!isPresent ? 'active' : ''}`}
                                                             onClick={() => handleStatusChange(sId, 'Absent')}
                                                         >
                                                             <XCircle size={18} />
                                                             <span>Absent</span>
                                                         </button>
-                                                        {(!currentStatus || currentStatus === '') && (
-                                                            <span style={{
-                                                                fontSize: '0.72rem',
-                                                                color: 'var(--text-muted)',
-                                                                background: 'rgba(255,255,255,0.06)',
-                                                                padding: '0.25rem 0.6rem',
-                                                                borderRadius: '6px',
-                                                                whiteSpace: 'nowrap'
-                                                            }}>
-                                                                No Code Sent
-                                                            </span>
-                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
