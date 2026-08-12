@@ -259,6 +259,10 @@ const loginUser = async (req, res) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            year: user.year,
+            department: user.department,
+            rollNo: user.rollNo,
+            status: user.status,
             token: generateToken(user._id, user.role, user.email),
         });
     } catch (error) {

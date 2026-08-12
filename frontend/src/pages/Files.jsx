@@ -51,56 +51,88 @@ const Files = () => {
     const [viewMode, setViewMode] = useState('folders'); // 'folders' or 'files'
     const [selectedFolder, setSelectedFolder] = useState(null);
 
-    // Dynamic Subject Folders auto-generated from Courses
+    // Fetch custom folders and resource files from backend DB on mount
     useEffect(() => {
-        const fetchSubjectFolders = async () => {
+        const loadPersistedData = async () => {
             try {
-                const { data: coursesData } = await apiClient.get('/courses');
-                if (Array.isArray(coursesData)) {
-                    const isNonAcademic = (code = '', name = '') => {
-                        const text = (code + ' ' + name).toLowerCase();
-                        return (
-                            text.includes('private study') ||
-                            text.includes('extra') ||
-                            text.includes('self-study') ||
-                            text.includes('lunch')
-                        );
-                    };
+                const [foldersRes, filesRes, coursesRes] = await Promise.all([
+                    apiClient.get('/files/folders').catch(() => ({ data: [] })),
+                    apiClient.get('/files/resources').catch(() => ({ data: [] })),
+                    apiClient.get('/courses').catch(() => ({ data: [] })),
+                ]);
 
-                    const subjectFolders = coursesData
-                        .filter(c => c.code && !isNonAcademic(c.code, c.name))
-                        .map(c => ({
-                            name: `${c.code} - ${c.name}`,
-                            code: c.code,
-                            year: deriveYearTag(c.code),
-                            description: `Syllabus, reference materials & study files for ${c.code}`,
-                            iconColor: '#6366f1'
-                        }));
+                const dbFolders = (foldersRes.data || []).map(f => ({
+                    _id: f._id,
+                    name: f.name,
+                    description: f.description,
+                    iconColor: f.iconColor || '#6366f1',
+                    year: f.year || 'All',
+                }));
 
-                    setFolders(prev => {
-                        const existingIdentifiers = new Set(
-                            prev.flatMap(f => [
-                                f.name.toUpperCase().trim(),
-                                (f.code || '').toUpperCase().trim(),
-                                f.name.split(' - ')[0].toUpperCase().trim()
-                            ]).filter(Boolean)
-                        );
+                const dbFiles = (filesRes.data || []).map(f => ({
+                    id: f._id,
+                    _id: f._id,
+                    name: f.name,
+                    type: f.type,
+                    size: f.size,
+                    category: f.category,
+                    owner: f.owner,
+                    date: f.createdAt ? f.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+                    year: f.year,
+                }));
 
-                        const uniqueNew = subjectFolders.filter(sf => {
-                            const sfCode = sf.code.toUpperCase().trim();
-                            const sfName = sf.name.toUpperCase().trim();
-                            return !existingIdentifiers.has(sfCode) && !existingIdentifiers.has(sfName);
-                        });
+                const isNonAcademic = (code = '', name = '') => {
+                    const text = (code + ' ' + name).toLowerCase();
+                    return (
+                        text.includes('private study') ||
+                        text.includes('extra') ||
+                        text.includes('self-study') ||
+                        text.includes('lunch')
+                    );
+                };
 
-                        return [...prev, ...uniqueNew];
+                const subjectFolders = (coursesRes.data || [])
+                    .filter(c => c.code && !isNonAcademic(c.code, c.name))
+                    .map(c => ({
+                        name: `${c.code} - ${c.name}`,
+                        code: c.code,
+                        year: deriveYearTag(c.code),
+                        description: `Syllabus, reference materials & study files for ${c.code}`,
+                        iconColor: '#6366f1'
+                    }));
+
+                setFolders(prev => {
+                    const combined = [...initialFolders, ...dbFolders];
+                    const existingIdentifiers = new Set(
+                        combined.flatMap(f => [
+                            f.name.toUpperCase().trim(),
+                            (f.code || '').toUpperCase().trim(),
+                            f.name.split(' - ')[0].toUpperCase().trim()
+                        ]).filter(Boolean)
+                    );
+
+                    const uniqueNew = subjectFolders.filter(sf => {
+                        const sfCode = sf.code.toUpperCase().trim();
+                        const sfName = sf.name.toUpperCase().trim();
+                        return !existingIdentifiers.has(sfCode) && !existingIdentifiers.has(sfName);
+                    });
+
+                    return [...combined, ...uniqueNew];
+                });
+
+                if (dbFiles.length > 0) {
+                    setFiles(prev => {
+                        const existingIds = new Set(prev.map(f => f.id || f._id));
+                        const uniqueDbFiles = dbFiles.filter(df => !existingIds.has(df._id));
+                        return [...uniqueDbFiles, ...prev];
                     });
                 }
             } catch (err) {
-                console.error('Error fetching subject folders:', err);
+                console.error('Error fetching resource data:', err);
             }
         };
 
-        fetchSubjectFolders();
+        loadPersistedData();
     }, []);
 
     const years = isStudent
@@ -171,34 +203,55 @@ const Files = () => {
         return <FileStack className="file-icon generic" />;
     };
 
-    const handleDeleteFile = (id) => {
+    const handleDeleteFile = async (id) => {
         if (window.confirm('Delete this file permanently?')) {
-            setFiles(files.filter(f => f.id !== id));
+            try {
+                await apiClient.delete(`/files/resources/${id}`);
+            } catch (err) {
+                console.warn('Backend delete error (removing from state anyway):', err.message);
+            }
+            setFiles(files.filter(f => f.id !== id && f._id !== id));
         }
     };
 
-    const handleCreateFolder = (e) => {
+    const handleCreateFolder = async (e) => {
         e.preventDefault();
         if (!newFolderName.trim()) return;
 
         const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
         const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
-        const newFolder = {
-            name: newFolderName,
+        const folderData = {
+            name: newFolderName.trim(),
             description: newFolderDesc || 'Custom collection',
-            iconColor: randomColor
+            iconColor: randomColor,
+            year: selectedYear !== 'All' ? selectedYear : 'All',
         };
 
-        setFolders([...folders, newFolder]);
+        try {
+            const { data } = await apiClient.post('/files/folders', folderData);
+            setFolders(prev => [data, ...prev]);
+        } catch (err) {
+            console.error('Failed to save folder to DB:', err);
+            setFolders(prev => [{ ...folderData, _id: Date.now().toString() }, ...prev]);
+        }
+
         setIsFolderModalOpen(false);
         setNewFolderName('');
         setNewFolderDesc('');
     };
 
-    const handleDeleteFolder = (e, folderName) => {
+    const handleDeleteFolder = async (e, folderName) => {
         e.stopPropagation();
         if (window.confirm(`Delete the folder "${folderName}" and all its contents?`)) {
+            const targetFolder = folders.find(f => f.name === folderName);
+            if (targetFolder && targetFolder._id) {
+                try {
+                    await apiClient.delete(`/files/folders/${targetFolder._id}`);
+                } catch (err) {
+                    console.warn('Folder DB delete warning:', err.message);
+                }
+            }
             setFolders(folders.filter(f => f.name !== folderName));
             setFiles(files.filter(f => f.category !== folderName));
         }
@@ -223,14 +276,13 @@ const Files = () => {
         e.target.value = '';
     };
 
-    const handleFinalizeUpload = (e) => {
+    const handleFinalizeUpload = async (e) => {
         e.preventDefault();
         const { file, year, folder } = uploadMetadata;
         if (!file) return;
 
         const extension = file.name.split('.').pop().toUpperCase();
-        const newFile = {
-            id: Date.now(),
+        const fileData = {
             name: file.name,
             type: extension,
             size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
@@ -240,7 +292,14 @@ const Files = () => {
             date: new Date().toISOString().split('T')[0]
         };
 
-        setFiles([newFile, ...files]);
+        try {
+            const { data } = await apiClient.post('/files/resources', fileData);
+            setFiles(prev => [data, ...prev]);
+        } catch (err) {
+            console.error('Failed to save file to DB:', err);
+            setFiles(prev => [{ ...fileData, id: Date.now() }, ...prev]);
+        }
+
         setIsUploadModalOpen(false);
         setUploadMetadata({ file: null, year: '1st Year', folder: '' });
     };

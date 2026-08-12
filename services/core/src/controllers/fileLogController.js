@@ -139,4 +139,114 @@ const getDownloadStats = async (req, res) => {
     }
 };
 
-module.exports = { logDownload, getDownloadLogs, getDownloadStats };
+// GET /api/files/folders
+// Fetch all custom folders created by users
+const CustomFolder = require('../models/CustomFolder');
+const ResourceFile = require('../models/ResourceFile');
+
+const getCustomFolders = async (req, res) => {
+    try {
+        const folders = await CustomFolder.find().sort({ createdAt: -1 });
+        res.json(folders);
+    } catch (error) {
+        console.error('Error fetching custom folders:', error);
+        res.status(500).json({ message: 'Failed to fetch folders' });
+    }
+};
+
+// POST /api/files/folders
+// Create a new custom folder
+const createCustomFolder = async (req, res) => {
+    try {
+        const { name, description, iconColor, year } = req.body;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ message: 'Folder name is required' });
+        }
+
+        const folder = await CustomFolder.create({
+            name: name.trim(),
+            description: description || 'Custom collection',
+            iconColor: iconColor || '#6366f1',
+            year: year || 'All',
+            createdBy: req.user._id,
+        });
+
+        res.status(201).json(folder);
+    } catch (error) {
+        console.error('Error creating folder:', error);
+        res.status(500).json({ message: 'Failed to create folder' });
+    }
+};
+
+// DELETE /api/files/folders/:id
+const deleteCustomFolder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await CustomFolder.findByIdAndDelete(id);
+        res.json({ message: 'Folder deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting folder:', error);
+        res.status(500).json({ message: 'Failed to delete folder' });
+    }
+};
+
+// GET /api/files/resources
+const getResourceFiles = async (req, res) => {
+    try {
+        const files = await ResourceFile.find().sort({ createdAt: -1 });
+        res.json(files);
+    } catch (error) {
+        console.error('Error fetching resource files:', error);
+        res.status(500).json({ message: 'Failed to fetch resource files' });
+    }
+};
+
+// POST /api/files/resources
+const createResourceFile = async (req, res) => {
+    try {
+        const { name, type, size, category, year, fileUrl } = req.body;
+        if (!name || !category) {
+            return res.status(400).json({ message: 'Name and category are required' });
+        }
+
+        const file = await ResourceFile.create({
+            name: name.trim(),
+            type: type || 'PDF',
+            size: size || '1.0 MB',
+            category: category.trim(),
+            owner: req.user.name || 'Faculty',
+            year: year || 'All',
+            fileUrl: fileUrl || '',
+            uploadedBy: req.user._id,
+        });
+
+        res.status(201).json(file);
+    } catch (error) {
+        console.error('Error uploading file:', error);
+        res.status(500).json({ message: 'Failed to save file record' });
+    }
+};
+
+// DELETE /api/files/resources/:id
+const deleteResourceFile = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await ResourceFile.findByIdAndDelete(id);
+        res.json({ message: 'File deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting file:', error);
+        res.status(500).json({ message: 'Failed to delete file' });
+    }
+};
+
+module.exports = {
+    logDownload,
+    getDownloadLogs,
+    getDownloadStats,
+    getCustomFolders,
+    createCustomFolder,
+    deleteCustomFolder,
+    getResourceFiles,
+    createResourceFile,
+    deleteResourceFile,
+};
