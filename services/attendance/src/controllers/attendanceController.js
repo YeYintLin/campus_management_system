@@ -820,6 +820,40 @@ const exportRollCallExcel = async (req, res) => {
             ];
         }
 
+        // Sort students list numerically by roll number
+        const deriveRollNo = (student, index) => {
+            if (student.rollNo && String(student.rollNo).trim()) {
+                return String(student.rollNo).trim().toUpperCase();
+            }
+            if (student.email) {
+                const prefix = student.email.split('@')[0];
+                const parts = prefix.split('.');
+                if (parts.length >= 3) {
+                    return `${parts[0].toUpperCase()}-${parts[1].toUpperCase()}-${parts[2]}`;
+                } else if (parts.length === 2) {
+                    return `${parts[0].toUpperCase()}-${parts[1].toUpperCase()}`;
+                }
+            }
+            return `ROLL-${index + 1}`;
+        };
+
+        studentsList.sort((a, b) => {
+            const rollA = deriveRollNo(a, 0);
+            const rollB = deriveRollNo(b, 0);
+
+            const numAMatches = rollA.match(/\d+/g);
+            const numBMatches = rollB.match(/\d+/g);
+
+            const numA = numAMatches ? parseInt(numAMatches[numAMatches.length - 1], 10) : 999999;
+            const numB = numBMatches ? parseInt(numBMatches[numBMatches.length - 1], 10) : 999999;
+
+            const prefixA = rollA.replace(/\d+/g, '').toLowerCase();
+            const prefixB = rollB.replace(/\d+/g, '').toLowerCase();
+
+            if (prefixA !== prefixB) return prefixA.localeCompare(prefixB);
+            return numA - numB;
+        });
+
         // Fetch Attendance Records for date mapping
         const attendanceRecords = await Attendance.find({
             courseId: new RegExp(`^${courseId.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&')}$`, 'i')

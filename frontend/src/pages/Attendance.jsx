@@ -62,6 +62,44 @@ const isCourseTaughtByTeacher = (course, user) => {
     return false;
 };
 
+const deriveRollNo = (student, index) => {
+    if (student.rollNo && String(student.rollNo).trim()) {
+        return String(student.rollNo).trim().toUpperCase();
+    }
+    if (student.email) {
+        const prefix = student.email.split('@')[0];
+        const parts = prefix.split('.');
+        if (parts.length >= 3) {
+            const yr = parts[0].toUpperCase();
+            const dept = parts[1].toUpperCase();
+            const num = parts[2] || '';
+            if (num) return `${yr}-${dept}-${num}`;
+        } else if (parts.length === 2) {
+            return `${parts[0].toUpperCase()}-${parts[1].toUpperCase()}`;
+        }
+    }
+    return `ROLL-${index + 1}`;
+};
+
+const sortRosterByRollNo = (rosterList) => {
+    return [...rosterList].sort((a, b) => {
+        const rollA = deriveRollNo(a, 0);
+        const rollB = deriveRollNo(b, 0);
+
+        const numAMatches = rollA.match(/\d+/g);
+        const numBMatches = rollB.match(/\d+/g);
+
+        const numA = numAMatches ? parseInt(numAMatches[numAMatches.length - 1], 10) : 999999;
+        const numB = numBMatches ? parseInt(numBMatches[numBMatches.length - 1], 10) : 999999;
+
+        const prefixA = rollA.replace(/\d+/g, '').toLowerCase();
+        const prefixB = rollB.replace(/\d+/g, '').toLowerCase();
+
+        if (prefixA !== prefixB) return prefixA.localeCompare(prefixB);
+        return numA - numB;
+    });
+};
+
 const Attendance = () => {
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
@@ -705,7 +743,8 @@ const Attendance = () => {
                 }
             });
 
-            setStudentRoster(roster);
+            const sortedRoster = sortRosterByRollNo(roster);
+            setStudentRoster(sortedRoster);
             setAttendanceSheet(existingSheet);
         } catch (err) {
             console.error('Error loading course attendance:', err);
@@ -817,12 +856,18 @@ const Attendance = () => {
         return matchesSearch && matchesYear;
     });
 
-    // Filter student roster by search
-    const filteredStudents = studentRoster.filter(s => {
-        const name = s.name || '';
-        const email = s.email || '';
-        return name.toLowerCase().includes(searchTerm.toLowerCase()) || email.toLowerCase().includes(searchTerm.toLowerCase());
-    });
+    // Filter student roster by search and sort by roll number
+    const filteredStudents = useMemo(() => {
+        const matching = studentRoster.filter(s => {
+            const name = s.name || '';
+            const email = s.email || '';
+            const roll = deriveRollNo(s, 0);
+            return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                roll.toLowerCase().includes(searchTerm.toLowerCase());
+        });
+        return sortRosterByRollNo(matching);
+    }, [studentRoster, searchTerm]);
 
     // -------------------------------------------------------------
     // STUDENT VIEW: Read-Only Personal Attendance Record
@@ -1415,20 +1460,27 @@ const Attendance = () => {
                             <table className="attendance-table">
                                 <thead>
                                     <tr>
+                                        <th>Roll No</th>
                                         <th>Student</th>
                                         <th>Email</th>
                                         <th className="text-center">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredStudents.map(student => {
+                                    {filteredStudents.map((student, idx) => {
                                         const sId = student._id || student;
                                         const sName = student.name || 'Student';
                                         const sEmail = student.email || '';
+                                        const rollDisplay = deriveRollNo(student, idx);
                                         const isPresent = attendanceSheet[sId] === 'Present';
 
                                         return (
                                             <tr key={sId}>
+                                                <td>
+                                                    <span className="badge badge-primary font-mono" style={{ fontSize: '0.8rem', fontWeight: '700', padding: '0.35rem 0.65rem' }}>
+                                                        {rollDisplay}
+                                                    </span>
+                                                </td>
                                                 <td>
                                                     <div className="stu-profile">
                                                         <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(sName)}&background=374151&color=ffffff`} alt={sName} />
