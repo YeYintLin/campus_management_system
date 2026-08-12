@@ -514,20 +514,53 @@ const Attendance = () => {
             const courseYearLabel = deriveYearFromCourse(course);
             const targetYearNorm = normalizeYear(courseYearLabel);
 
-            // If course has no explicit students list attached, fetch registered students
+            // If course has no explicit students list attached, fetch registered students matching academic year AND department
             if (roster.length === 0) {
                 try {
                     const usersRes = await apiClient.get('/users').catch(() => ({ data: [] }));
                     const allUsers = Array.isArray(usersRes.data) ? usersRes.data : [];
                     const allStudents = allUsers.filter(u => (u.role || '').toLowerCase() === 'student');
 
-                    const yearStudents = allStudents.filter(u => {
+                    const deriveDepartmentFromCode = (code = '') => {
+                        const clean = code.toUpperCase();
+                        if (clean.includes('MC') || clean.includes('MCE')) return 'Mechatronics Engineering';
+                        if (clean.includes('CE')) return 'Civil Engineering';
+                        if (clean.includes('EP')) return 'Electrical Power Engineering';
+                        if (clean.includes('EC') || clean.includes('ECE')) return 'Electronic Engineering';
+                        if (clean.includes('IT')) return 'Information Technology';
+                        if (clean.includes('ME')) return 'Mechanical Engineering';
+                        if (clean.includes('AR') || clean.includes('AG')) return 'Architecture';
+                        return '';
+                    };
+
+                    const matchesDept = (studentDept, targetDept) => {
+                        if (!targetDept || targetDept === 'All' || !studentDept) return true;
+                        const s = studentDept.toLowerCase().trim();
+                        const t = targetDept.toLowerCase().trim();
+                        if (t.includes('mechatronics') || t.includes('mc')) return s.includes('mechatronics') || s.includes('mc');
+                        if (t.includes('civil') || t.includes('ce')) return s.includes('civil') || s.includes('ce');
+                        if (t.includes('electrical') || t.includes('ep')) return s.includes('electrical') || s.includes('ep');
+                        if (t.includes('electronic') || t.includes('ec')) return s.includes('electronic') || s.includes('ec');
+                        if (t.includes('information') || t.includes('it')) return s.includes('information') || s.includes('it');
+                        if (t.includes('mechanical') || t.includes('me')) return s.includes('mechanical') || s.includes('me');
+                        return s.includes(t) || t.includes(s);
+                    };
+
+                    const targetDept = course.department || deriveDepartmentFromCode(course.code || course.name || '');
+
+                    const yearAndDeptStudents = allStudents.filter(u => {
                         const uYearNorm = normalizeYear(u.year);
-                        return targetYearNorm === 'All' || uYearNorm === targetYearNorm;
+                        const yearMatches = targetYearNorm === 'All' || uYearNorm === targetYearNorm;
+                        const deptMatches = matchesDept(u.department || u.rollNo || '', targetDept);
+                        return yearMatches && deptMatches;
                     });
 
-                    // Use year-matched students if found, otherwise fallback to all students
-                    roster = yearStudents.length > 0 ? yearStudents : allStudents;
+                    if (yearAndDeptStudents.length > 0) {
+                        roster = yearAndDeptStudents;
+                    } else {
+                        const yearOnlyStudents = allStudents.filter(u => normalizeYear(u.year) === targetYearNorm);
+                        roster = yearOnlyStudents.length > 0 ? yearOnlyStudents : allStudents;
+                    }
                 } catch (uErr) {
                     console.error('Error fetching students:', uErr);
                 }
