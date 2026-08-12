@@ -416,12 +416,20 @@ const TimeTable = () => {
         formData.append('year', selectedYear);
         formData.append('semester', selectedSemester);
         formData.append('major', selectedMajor);
+        formData.append('category', selectedCategory);
         formData.append('sessionType', selectedCategory);
 
         try {
-            const { data } = await apiClient.post('/sessions/batch-import', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            // Import into both timetable slot engine and batch sessions for accurate UI sync
+            const [sessionRes] = await Promise.all([
+                apiClient.post('/sessions/batch-import', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                }),
+                apiClient.post('/timetable/import', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                }).catch(() => ({ data: {} }))
+            ]);
+            const data = sessionRes.data;
             setImportSuccess(data.message || 'Imported timetable successfully!');
             if (Array.isArray(data.warnings) && data.warnings.length > 0) {
                 setImportWarnings(data.warnings);
@@ -508,7 +516,7 @@ const TimeTable = () => {
                             </button>
                             <button className="btn btn-primary" onClick={handleFileUploadClick} disabled={importing}>
                                 <Upload size={18} />
-                                {importing ? 'Parsing...' : 'Import Excel'}
+                                {importing ? 'Parsing...' : `Import ${selectedCategory} Excel`}
                             </button>
                         </>
                     )}
