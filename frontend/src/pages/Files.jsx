@@ -34,6 +34,19 @@ const deriveYearTag = (code = '') => {
     return '1st Year';
 };
 
+const normalizeYear = (yr) => {
+    if (!yr) return 'All';
+    const str = String(yr).trim().toLowerCase();
+    if (str === 'all') return 'All';
+    if (str.includes('1') || str.includes('first')) return '1st Year';
+    if (str.includes('2') || str.includes('second')) return '2nd Year';
+    if (str.includes('3') || str.includes('third')) return '3rd Year';
+    if (str.includes('4') || str.includes('fourth')) return '4th Year';
+    if (str.includes('5') || str.includes('fifth')) return '5th Year';
+    if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
+    return yr;
+};
+
 const Files = () => {
     const { user } = useContext(AuthContext);
     const fileInputRef = useRef(null);
@@ -376,22 +389,33 @@ TU Hmawbi Smart Campus Management System
     };
 
     const filteredFolders = folders.filter(f => {
+        // Parent folder filter: inside a folder -> show subfolders; top level -> show top folders
+        const matchesParent = selectedFolder ? f.parentFolder === selectedFolder : !f.parentFolder;
+        if (!matchesParent) return false;
+
         const matchesSearch = f.name.toLowerCase().includes(searchTerm.toLowerCase());
         const folderFiles = files.filter(file => file.category === f.name);
-        const targetYear = isStudent ? studentYear : selectedYear;
-        const hasYearMatch = targetYear === 'All' ||
-            f.year === targetYear ||
-            f.year === 'All' ||
+
+        const targetYear = selectedYear;
+        const normTarget = normalizeYear(targetYear);
+        const normFolderYear = normalizeYear(f.year);
+
+        const hasYearMatch = normTarget === 'All' ||
+            normFolderYear === 'All' ||
+            normFolderYear === normTarget ||
             !f.year ||
-            folderFiles.some(file => file.year === targetYear || file.year === 'All');
+            folderFiles.some(file => normalizeYear(file.year) === normTarget || normalizeYear(file.year) === 'All');
+
         return matchesSearch && hasYearMatch;
     });
 
     const filteredFiles = files.filter(f => {
-        const targetYear = isStudent ? studentYear : selectedYear;
+        const normTarget = normalizeYear(selectedYear);
+        const normFileYear = normalizeYear(f.year);
+
         return (!selectedFolder || f.category === selectedFolder) &&
             f.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-            (targetYear === 'All' || f.year === targetYear || f.year === 'All');
+            (normTarget === 'All' || normFileYear === 'All' || normFileYear === normTarget || !f.year);
     });
 
     return (
