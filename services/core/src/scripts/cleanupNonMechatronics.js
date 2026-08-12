@@ -12,7 +12,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongo:27017/cms';
+const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://mongo:27017/core_db';
 
 async function cleanup() {
     await mongoose.connect(MONGO_URI);
