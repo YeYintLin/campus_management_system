@@ -33,7 +33,7 @@ const getAvatarUrl = (name, id) => {
     return `https://ui-avatars.com/api/?name=${initials}&background=1f2937&color=ffffff`;
 };
 
-const gradeYearFilters = ['All', ...yearLookup];
+const gradeYearFilters = [...yearLookup];
 
 const normalizeGradeRecords = (records) => {
     const map = { default: [] };
@@ -64,7 +64,7 @@ const Grades = () => {
     const [studentList, setStudentList] = useState([]);
     const [courses, setCourses] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
-    const [selectedYear, setSelectedYear] = useState('All');
+    const [selectedYear, setSelectedYear] = useState('5th Year');
     const [searchTerm, setSearchTerm] = useState('');
     const [gradesData, setGradesData] = useState({ default: [] });
     const [dataLoading, setDataLoading] = useState(true);
