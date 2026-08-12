@@ -2,8 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const XLSX = require('xlsx');
-const { parseTUHmawbiExcel } = require('../utils/excelParser');
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
@@ -16,121 +14,84 @@ if (!MONGODB_URI) {
 const Course = require('../models/Course');
 const User = require('../models/User');
 
-const deriveYearFromCourseCode = (code = '', fallbackYear = 4) => {
-    const clean = String(code).trim().toUpperCase();
-    const match = clean.match(/[-_\s]?(\d{1,5})/);
-    if (match) {
-        const digitNum = parseInt(match[1][0], 10);
-        if (digitNum >= 1 && digitNum <= 6) return digitNum;
-    }
-    return typeof fallbackYear === 'number' ? fallbackYear : 4;
-};
+const DAW_MYAT_THU_ZAR_COURSES = [
+    // 2nd Year
+    { code: 'McE-4049', name: 'Programmable Logic Controller', year: 2, yearLabel: '2nd Year', description: 'PLC Hardware, Ladder Logic Programming, and Relay Logic.' },
+    
+    // 3rd Year
+    { code: 'McE-32032', name: 'Electrical Machine and Control II', year: 3, yearLabel: '3rd Year', description: 'AC/DC Machines, Speed Control, and Industrial Drives.' },
+    { code: 'McE-32022', name: 'Programmable Logic Controller II', year: 3, yearLabel: '3rd Year', description: 'Advanced PLC Interfacing, Analog Modules, and Industrial HMI.' },
+    
+    // 4th Year
+    { code: 'McE-42026', name: 'Power Electronics II', year: 4, yearLabel: '4th Year', description: 'Power Inverters, Thyristor Control, and Motor Drivers.' },
+    
+    // 5th Year
+    { code: 'McE-51039', name: 'Industrial Automation I', year: 5, yearLabel: '5th Year', description: 'SCADA Systems, Factory Automation, and Fieldbus Protocols.' },
+    { code: 'McE-52039', name: 'Industrial Automation II', year: 5, yearLabel: '5th Year', description: 'Advanced Process Automation, Industrial Robotics, and Control Networks.' },
+    { code: 'McE-52018', name: 'Mechatronics System Design', year: 5, yearLabel: '5th Year', description: 'Comprehensive Mechatronic Engineering System Design & Integration.' },
+    { code: 'McE-51001', name: 'Control Systems Engineering', year: 5, yearLabel: '5th Year', description: 'State-space representation, PID control tuning, and stability analysis.' }
+];
 
-async function seedMasterTimetable() {
+async function seedMyatThuZarCourses() {
     try {
         console.log('Connecting to MongoDB...');
         await mongoose.connect(MONGODB_URI);
         console.log('Connected to MongoDB.');
 
-        const filePath = 'C:\\Users\\ASUS\\Downloads\\Time Table 2025-2026 (1.6.25).xlsx';
-        if (!fs.existsSync(filePath)) {
-            console.error('File not found:', filePath);
+        const teacher = await User.findOne({ email: 'myat.thu.zar@tuhmawbi.edu.mm' });
+        if (!teacher) {
+            console.error('Teacher Daw Myat Thu Zar not found in database.');
             process.exit(1);
         }
+        const teacherId = teacher._id;
+        console.log(`Linking 4-year subject curriculum for Daw Myat Thu Zar (${teacherId})...`);
 
-        const fileBuffer = fs.readFileSync(filePath);
-        const { parsedMatrix } = parseTUHmawbiExcel(fileBuffer, 'Academic');
-
-        const allTeachers = await User.find({ role: { $regex: /teacher/i } }).lean().exec();
-        const stripHonorifics = (name = '') => name.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim().toLowerCase();
-
-        const findTeacherByName = (tName) => {
-            if (!tName) return null;
-            const cleanT = stripHonorifics(tName);
-            if (cleanT.length < 3) return null;
-            return allTeachers.find(u => {
-                const cleanU = stripHonorifics(u.name || '');
-                return cleanU.includes(cleanT) || cleanT.includes(cleanU);
-            }) || null;
-        };
-
-        // 1. Purge corrupt blank course codes like 'McE-'
-        console.log('Purging corrupt course entries...');
+        // 1. Purge corrupt blank course entries like 'McE-'
         const allDbCourses = await Course.find({});
         for (const dbc of allDbCourses) {
             const clean = (dbc.code || '').toUpperCase().replace(/\s+/g, '');
-            if (!clean || clean === 'MCE-' || clean === 'MCE' || clean.length < 3) {
+            if (!clean || clean === 'MCE-' || clean === 'MCE') {
                 console.log(`[Purge] Deleting corrupt course record: '${dbc.code}' (${dbc._id})`);
                 await Course.deleteOne({ _id: dbc._id });
             }
         }
 
-        // 2. Build course map from master timetable matrix
-        const courseMap = new Map();
-        for (const slot of parsedMatrix) {
-            let rawCode = slot.courseCode ? slot.courseCode.trim() : '';
-            if (!rawCode) continue;
-
-            const cleanCode = rawCode.toUpperCase().replace(/\s+/g, '');
-            if (cleanCode.length > 20 || cleanCode === 'MCE-' || cleanCode === 'MCE') continue;
-
-            const teacherObj = findTeacherByName(slot.teacher || slot.familyTeacher);
-            const yearNum = deriveYearFromCourseCode(rawCode, slot.year ? parseInt(slot.year) : 4);
-            const yearLabel = `${yearNum}th Year`.replace('1th', '1st').replace('2th', '2nd').replace('3th', '3rd');
-
-            if (!courseMap.has(cleanCode)) {
-                courseMap.set(cleanCode, {
-                    code: rawCode,
-                    name: slot.courseName || rawCode,
-                    year: yearNum,
-                    yearLabel: yearLabel,
-                    teacherId: teacherObj ? teacherObj._id : null
-                });
-            } else {
-                if (teacherObj && !courseMap.get(cleanCode).teacherId) {
-                    courseMap.get(cleanCode).teacherId = teacherObj._id;
-                }
+        // 2. Insert or update Daw Myat Thu Zar's 4-Year Subjects
+        for (const c of DAW_MYAT_THU_ZAR_COURSES) {
+            let existing = await Course.findOne({ code: new RegExp(`^${c.code.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') });
+            if (!existing) {
+                const codeNoSpaces = c.code.replace(/\s+/g, '');
+                existing = await Course.findOne({ code: new RegExp(`^${codeNoSpaces.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&')}$`, 'i') });
             }
-        }
-
-        console.log(`Processing ${courseMap.size} unique courses from master timetable...`);
-        let created = 0;
-        let updated = 0;
-
-        for (const [cleanCode, info] of courseMap.entries()) {
-            let existing = await Course.findOne({ code: new RegExp(`^${info.code.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') });
 
             if (existing) {
-                existing.name = info.name || existing.name;
-                existing.year = info.year;
-                existing.yearLabel = info.yearLabel;
-                if (info.teacherId) existing.teacher = info.teacherId;
+                existing.name = c.name;
+                existing.year = c.year;
+                existing.yearLabel = c.yearLabel;
+                existing.description = c.description;
+                existing.teacher = teacherId;
                 await existing.save();
-                updated++;
+                console.log(`✓ Updated [${c.yearLabel}] ${c.code} - ${c.name}`);
             } else {
-                try {
-                    await Course.create({
-                        code: info.code,
-                        name: info.name,
-                        year: info.year,
-                        yearLabel: info.yearLabel,
-                        description: `Official subject offering for ${info.yearLabel}`,
-                        teacher: info.teacherId,
-                        students: []
-                    });
-                    created++;
-                } catch (cErr) {
-                    console.error(`Skipped course ${info.code}:`, cErr.message);
-                }
+                await Course.create({
+                    code: c.code,
+                    name: c.name,
+                    year: c.year,
+                    yearLabel: c.yearLabel,
+                    description: c.description,
+                    teacher: teacherId,
+                    students: []
+                });
+                console.log(`✓ Created [${c.yearLabel}] ${c.code} - ${c.name}`);
             }
         }
 
-        console.log(`✅ Master timetable seed complete! Created: ${created}, Updated: ${updated}.`);
+        console.log('\n✅ Successfully linked all 4 years of subjects for Daw Myat Thu Zar!');
         process.exit(0);
     } catch (err) {
-        console.error('Fatal Seed Error:', err);
+        console.error('Seed Error:', err);
         process.exit(1);
     }
 }
 
-seedMasterTimetable();
+seedMyatThuZarCourses();
