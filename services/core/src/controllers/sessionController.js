@@ -246,7 +246,7 @@ const batchImportSessions = async (req, res) => {
                             endTimeMinutes: session.endTimeMinutes,
                             place: session.place,
                             status: 'Draft',
-                            classSection: classSection._id
+                            classSection: createdSections.get(`${session.year || year}_${session.semester || semester}_${session.major || major}`)?. _id
                         }
                     },
                     upsert: true
@@ -256,13 +256,6 @@ const batchImportSessions = async (req, res) => {
             if (bulkOps.length > 0) {
                 await ScheduledSession.bulkWrite(bulkOps);
             }
-
-            const totalCount = (timetableBulk ? timetableBulk.length : 0) + bulkOps.length;
-
-            return res.json({
-                message: `Successfully imported ${totalCount} ${sessionType} sessions!`,
-                count: totalCount
-            });
 
             const Notification = require('../models/Notification');
             let notifType = 'system';
@@ -283,16 +276,20 @@ const batchImportSessions = async (req, res) => {
                 notifLink = '/timetable';
             }
 
-            await Notification.create({
-                user: null,
-                type: notifType,
-                message: notifMsg,
-                link: notifLink
-            });
+            if (notifMsg) {
+                await Notification.create({
+                    user: null,
+                    type: notifType,
+                    message: notifMsg,
+                    link: notifLink
+                });
+            }
+
+            const totalCount = (timetableBulk ? timetableBulk.length : 0) + bulkOps.length;
 
             return res.json({
-                message: `Successfully imported ${parsedSessions.length} ${sessionType} sessions for ${year} ${semester} (${major})`,
-                count: parsedSessions.length
+                message: `Successfully imported ${totalCount} ${sessionType} sessions!`,
+                count: totalCount
             });
         }
     } catch (error) {
