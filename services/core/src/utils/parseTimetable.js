@@ -277,7 +277,9 @@ function parseSheet(worksheet) {
     const rowCells = [];
     for (let col = 1; col <= worksheet.columnCount; col++) {
       const txt = cellText(worksheet, rr, col);
-      if (txt && txt.trim()) rowCells.push(txt.trim());
+      if (txt && txt.trim() && !rowCells.includes(txt.trim())) {
+        rowCells.push(txt.trim());
+      }
     }
 
     if (rowCells.length === 0) continue;
@@ -290,11 +292,11 @@ function parseSheet(worksheet) {
       let teacher = '';
 
       if (rowCells.length >= 3) {
-        code = m[2].trim().split(/\s+/)[0];
+        code = m[2].trim();
         subject = rowCells[1].trim();
         teacher = rowCells[rowCells.length - 1].trim();
       } else if (rowCells.length === 2) {
-        code = m[2].trim().split(/\s+/)[0];
+        code = m[2].trim();
         const subParts = rowCells[1].trim().split(/\s{2,}|\t/).map(p => p.trim()).filter(Boolean);
         if (subParts.length >= 2) {
           subject = subParts.slice(0, subParts.length - 1).join(' ');
