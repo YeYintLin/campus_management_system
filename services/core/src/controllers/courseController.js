@@ -8,7 +8,7 @@ const syncCourseCollectionWithTimetable = async () => {
         const semesters = await Semester.find({}).lean().exec();
         if (!semesters || semesters.length === 0) return;
 
-        const allTeachers = await User.find({ role: 'Teacher' }).lean().exec();
+        const allTeachers = await User.find({ role: { $regex: /teacher/i } }).lean().exec();
         const stripHonorifics = (name = '') => name.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim().toLowerCase();
 
         const findTeacherByName = (tName) => {
@@ -32,7 +32,7 @@ const syncCourseCollectionWithTimetable = async () => {
                         const subjectName = item.subject ? item.subject.trim() : codeStr;
                         const teacherObj = findTeacherByName(item.teacher);
 
-                        const existing = await Course.findOne({ code: new RegExp(`^${codeStr}$`, 'i') });
+                        const existing = await Course.findOne({ code: new RegExp(`^${codeStr.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') });
                         if (existing) {
                             existing.name = subjectName;
                             existing.year = yearNum;

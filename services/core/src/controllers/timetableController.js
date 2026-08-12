@@ -9,6 +9,13 @@ const getTimetable = async (req, res) => {
     try {
         const { year, semester, category, major } = req.query;
 
+        // If called without specific year/semester parameters, return all semester sheets for client-side scanning
+        if (!year && !semester) {
+            const Semester = require('../models/Semester');
+            const allSemDocs = await Semester.find().lean().exec();
+            return res.json(allSemDocs);
+        }
+
         const parseNum = (val) => {
             if (val === undefined || val === null || val === '') return null;
             if (typeof val === 'number') return val;
