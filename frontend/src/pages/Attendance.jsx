@@ -544,8 +544,34 @@ const Attendance = () => {
         }
     };
 
-    // Filter courses by selected year and search
+    // Filter courses by selected year, search, and teacher assignment
     const filteredCourses = courses.filter(c => {
+        if (isTeacher) {
+            const userTeacherId = user?._id ? String(user._id) : '';
+            const userTeacherName = (user?.name || '').toLowerCase().trim();
+            const userTeacherEmail = (user?.email || '').toLowerCase().trim();
+
+            const cTeacher = c.teacher;
+            let isMine = false;
+            if (cTeacher) {
+                if (typeof cTeacher === 'object') {
+                    const cId = cTeacher._id ? String(cTeacher._id) : '';
+                    const cName = (cTeacher.name || '').toLowerCase().trim();
+                    const cEmail = (cTeacher.email || '').toLowerCase().trim();
+
+                    if (cId && userTeacherId && cId === userTeacherId) isMine = true;
+                    else if (cEmail && userTeacherEmail && cEmail === userTeacherEmail) isMine = true;
+                    else if (cName && userTeacherName && (cName.includes(userTeacherName) || userTeacherName.includes(cName))) isMine = true;
+                } else if (typeof cTeacher === 'string') {
+                    const cStr = cTeacher.toLowerCase().trim();
+                    if (userTeacherId && cStr === userTeacherId.toLowerCase()) isMine = true;
+                    else if (userTeacherEmail && cStr === userTeacherEmail) isMine = true;
+                    else if (userTeacherName && (cStr.includes(userTeacherName) || userTeacherName.includes(cStr))) isMine = true;
+                }
+            }
+            if (!isMine) return false;
+        }
+
         const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             c.code.toLowerCase().includes(searchTerm.toLowerCase());
         return matchesSearch;

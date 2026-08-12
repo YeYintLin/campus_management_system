@@ -45,17 +45,31 @@ const normalizeYear = (yr) => {
     return yr;
 };
 
-const deriveYearFromCode = (code = '') => {
-    const digits = code.match(/\d+/);
-    if (!digits) return '1st Year';
-    const firstDigit = digits[0][0];
-    if (firstDigit === '1') return '1st Year';
-    if (firstDigit === '2') return '2nd Year';
-    if (firstDigit === '3') return '3rd Year';
-    if (firstDigit === '4') return '4th Year';
-    if (firstDigit === '5') return '5th Year';
-    if (firstDigit === '6') return '6th Year';
-    return '1st Year';
+const isCourseTaughtByTeacher = (course, user) => {
+    if (!user) return false;
+    const userTeacherId = user._id ? String(user._id) : '';
+    const userTeacherName = (user.name || '').toLowerCase().trim();
+    const userTeacherEmail = (user.email || '').toLowerCase().trim();
+
+    const courseTeacher = course.teacher;
+    if (!courseTeacher) return false;
+
+    if (typeof courseTeacher === 'object') {
+        const cId = courseTeacher._id ? String(courseTeacher._id) : '';
+        const cName = (courseTeacher.name || '').toLowerCase().trim();
+        const cEmail = (courseTeacher.email || '').toLowerCase().trim();
+
+        if (cId && userTeacherId && cId === userTeacherId) return true;
+        if (cEmail && userTeacherEmail && cEmail === userTeacherEmail) return true;
+        if (cName && userTeacherName && (cName.includes(userTeacherName) || userTeacherName.includes(cName))) return true;
+    } else if (typeof courseTeacher === 'string') {
+        const cStr = courseTeacher.toLowerCase().trim();
+        if (userTeacherId && cStr === userTeacherId.toLowerCase()) return true;
+        if (userTeacherEmail && cStr === userTeacherEmail) return true;
+        if (userTeacherName && (cStr.includes(userTeacherName) || userTeacherName.includes(cStr))) return true;
+    }
+
+    return false;
 };
 
 const initialCourseForm = {
@@ -342,15 +356,18 @@ TU Hmawbi Smart Campus Management System
     };
 
     const filteredCourses = courses.filter(course => {
+        // Teacher role filter: only show courses taught by this specific teacher
+        if (isTeacher && !isCourseTaughtByTeacher(course, user)) {
+            return false;
+        }
+
         const target = `${course.name} ${course.code} ${course.description || ''} ${course.teacher?.name || ''}`.toLowerCase();
         const matchesSearch = target.includes(searchTerm.toLowerCase());
 
         const courseYear = course.yearLabel ? normalizeYear(course.yearLabel) : normalizeYear(yearNumberToLabel(course.year || 1));
         const targetYear = normalizeYear(selectedYear);
 
-        const matchesYear = isStudent
-            ? (targetYear === 'All' || courseYear === 'All' || courseYear === targetYear)
-            : (targetYear === 'All' || courseYear === 'All' || courseYear === targetYear);
+        const matchesYear = targetYear === 'All' || courseYear === 'All' || courseYear === targetYear;
 
         return matchesSearch && matchesYear;
     });
