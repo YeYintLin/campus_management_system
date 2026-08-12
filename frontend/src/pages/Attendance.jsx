@@ -493,24 +493,43 @@ const Attendance = () => {
             // Start with enrolled students from course object
             let roster = [...(course.students || [])];
 
-            // Determine course academic year
-            const courseYearLabel = course.yearLabel || yearNumberToLabel(course.year || 1);
+            // Derive course academic year (checking yearLabel, year, and code digits e.g. McE-52039 -> 5th Year)
+            const deriveYearFromCourse = (c) => {
+                if (c.yearLabel) return c.yearLabel;
+                if (c.year && typeof c.year === 'string') return c.year;
+                if (c.year && typeof c.year === 'number' && c.year >= 1 && c.year <= 6) {
+                    return yearNumberToLabel(c.year);
+                }
+                const codeStr = c.code || c.name || '';
+                const digits = codeStr.replace(/[^0-9]/g, '');
+                if (digits.length > 0) {
+                    const firstDigit = digits.charAt(0);
+                    if (['1','2','3','4','5','6'].includes(firstDigit)) {
+                        return yearNumberToLabel(Number(firstDigit));
+                    }
+                }
+                return 'All';
+            };
+
+            const courseYearLabel = deriveYearFromCourse(course);
             const targetYearNorm = normalizeYear(courseYearLabel);
 
-            // If course has no explicit students list attached, fetch registered students matching the course's academic year
+            // If course has no explicit students list attached, fetch registered students
             if (roster.length === 0) {
                 try {
                     const usersRes = await apiClient.get('/users').catch(() => ({ data: [] }));
                     const allUsers = Array.isArray(usersRes.data) ? usersRes.data : [];
-                    const yearStudents = allUsers.filter(u => {
-                        const r = (u.role || '').toLowerCase();
-                        if (r !== 'student') return false;
+                    const allStudents = allUsers.filter(u => (u.role || '').toLowerCase() === 'student');
+
+                    const yearStudents = allStudents.filter(u => {
                         const uYearNorm = normalizeYear(u.year);
                         return targetYearNorm === 'All' || uYearNorm === targetYearNorm;
                     });
-                    roster = yearStudents;
+
+                    // Use year-matched students if found, otherwise fallback to all students
+                    roster = yearStudents.length > 0 ? yearStudents : allStudents;
                 } catch (uErr) {
-                    console.error('Error fetching students by year:', uErr);
+                    console.error('Error fetching students:', uErr);
                 }
             }
 
@@ -565,6 +584,7 @@ const Attendance = () => {
     const handleCourseSelect = (course) => {
         setSelectedCourse(course);
         setView('marking');
+        setSearchTerm(''); // Clear search term so student roster is not filtered by course code search
         loadCourseAttendance(course, selectedDate);
     };
 
