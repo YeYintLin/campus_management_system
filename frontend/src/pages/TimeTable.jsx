@@ -16,6 +16,60 @@ const TU_HMAWBI_PERIODS = [
     { period: 6, label: 'Period 6', time: '03:00 - 03:50 PM', slotKey: '03:00 PM' }
 ];
 
+const yearNumberToLabel = (num) => {
+    const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year' };
+    return labels[num] || '1st Year';
+};
+
+const normalizeYear = (yr) => {
+    if (!yr) return 'All';
+    const str = String(yr).trim().toLowerCase();
+    if (str === 'all') return 'All';
+    if (str.includes('1') || str.includes('first')) return '1st Year';
+    if (str.includes('2') || str.includes('second')) return '2nd Year';
+    if (str.includes('3') || str.includes('third')) return '3rd Year';
+    if (str.includes('4') || str.includes('fourth')) return '4th Year';
+    if (str.includes('5') || str.includes('fifth')) return '5th Year';
+    if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
+    return yr;
+};
+
+const isCourseTaughtByTeacher = (course, user) => {
+    if (!user) return false;
+    const userTeacherId = user._id ? String(user._id) : '';
+    const userTeacherName = (user.name || '').toLowerCase().trim();
+    const userTeacherEmail = (user.email || '').toLowerCase().trim();
+
+    const cTeacher = course.teacher;
+    if (!cTeacher) return false;
+
+    let cId = '';
+    let cName = '';
+    let cEmail = '';
+
+    if (typeof cTeacher === 'object') {
+        cId = cTeacher._id ? String(cTeacher._id) : '';
+        cName = (cTeacher.name || '').toLowerCase().trim();
+        cEmail = (cTeacher.email || '').toLowerCase().trim();
+    } else if (typeof cTeacher === 'string') {
+        cName = cTeacher.toLowerCase().trim();
+        if (cTeacher.includes('@')) cEmail = cTeacher.toLowerCase().trim();
+        else if (cTeacher.length > 15) cId = cTeacher;
+    }
+
+    if (userTeacherId && cId && userTeacherId === cId) return true;
+    if (userTeacherEmail && cEmail && userTeacherEmail === cEmail) return true;
+
+    const cleanUser = userTeacherName.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim();
+    const cleanCourse = cName.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim();
+
+    if (cleanUser.length >= 3 && cleanCourse.length >= 3) {
+        if (cleanCourse.includes(cleanUser) || cleanUser.includes(cleanCourse)) return true;
+    }
+
+    return false;
+};
+
 const TimeTable = () => {
     const { user } = useContext(AuthContext);
     const isAdmin = user?.role === 'Admin' || user?.role === 'SuperAdmin' || user?.role === 'AcademicAdmin';
@@ -30,6 +84,7 @@ const TimeTable = () => {
     const roleStr = (user?.role || '').toLowerCase().trim();
     const canManageTimetable = roleStr === 'admin' || roleStr === 'teacher' || roleStr === 'superadmin' || roleStr === 'academicadmin';
     const isStudent = roleStr === 'student';
+    const isTeacher = roleStr === 'teacher';
     const studentYear = getNormalizedUserYear(user);
 
     const getCurrentWeekday = () => {
@@ -40,7 +95,8 @@ const TimeTable = () => {
 
     const actualToday = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
 
-    const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : '6th Year');
+    const [teacherYears, setTeacherYears] = useState([]);
+    const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : '5th Year');
     const [selectedSemester, setSelectedSemester] = useState('Semester 1');
     const [selectedCategory, setSelectedCategory] = useState('Academic'); // 'Academic', 'Practical', 'Tutorial', 'Exam'
     const [selectedMajor, setSelectedMajor] = useState('MC');
@@ -57,7 +113,36 @@ const TimeTable = () => {
     const [importError, setImportError] = useState('');
     const [importSuccess, setImportSuccess] = useState('');
 
-    const years = isStudent ? [studentYear] : ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'];
+    useEffect(() => {
+        if (!isTeacher) return;
+        const fetchTeacherScope = async () => {
+            try {
+                const { data } = await apiClient.get('/courses').catch(() => ({ data: [] }));
+                const set = new Set();
+                (data || []).forEach(c => {
+                    if (isCourseTaughtByTeacher(c, user)) {
+                        const yLabel = c.yearLabel ? normalizeYear(c.yearLabel) : normalizeYear(yearNumberToLabel(c.year || 1));
+                        if (yLabel && yLabel !== 'All') set.add(yLabel);
+                    }
+                });
+                const order = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'];
+                const matched = order.filter(y => set.has(y));
+                if (matched.length > 0) {
+                    setTeacherYears(matched);
+                    setSelectedYear(matched[0]);
+                }
+            } catch (err) {
+                console.error('Error fetching teacher scope:', err);
+            }
+        };
+        fetchTeacherScope();
+    }, [isTeacher, user]);
+
+    const years = isStudent
+        ? [studentYear]
+        : isTeacher
+        ? (teacherYears.length > 0 ? teacherYears : ['5th Year'])
+        : ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'];
     const semesters = ['Semester 1', 'Semester 2'];
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     const majors = ['MC', 'EIE', 'CS', 'MECH', 'EE', 'EC', 'CE', 'ARCH'];
