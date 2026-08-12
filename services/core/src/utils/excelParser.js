@@ -299,9 +299,22 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 }
             });
         } else {
-            // Parse Date-Based Table (Practical, Tutorial, Exam)
-            let headerRowIdx = jsonRows.findIndex(r => Array.isArray(r) && r.some(c => String(c).toLowerCase().includes('subject code') || String(c).toLowerCase().includes('day & date')));
+            // Dynamic Column Header Detection for Practical, Tutorial & Exam Tables
+            let headerRowIdx = jsonRows.findIndex(r => Array.isArray(r) && r.some(c => {
+                const str = String(c).toLowerCase();
+                return str.includes('subject') || str.includes('code') || str.includes('date') || str.includes('title') || str.includes('exp') || str.includes('topic');
+            }));
             if (headerRowIdx === -1) headerRowIdx = 0;
+
+            const headerRow = (jsonRows[headerRowIdx] || []).map(c => String(c || '').toLowerCase().trim());
+            
+            let dateIdx = headerRow.findIndex(h => h.includes('date') || h.includes('day'));
+            let timeIdx = headerRow.findIndex(h => h.includes('time') || h.includes('period') || h.includes('hour'));
+            let codeIdx = headerRow.findIndex(h => h.includes('code') || h.includes('subject') || h.includes('course'));
+            let titleIdx = headerRow.findIndex(h => h.includes('title') || h.includes('exp') || h.includes('topic') || h.includes('name') || h.includes('lab'));
+            let groupIdx = headerRow.findIndex(h => h.includes('group') || h.includes('batch') || h.includes('sec'));
+            let placeIdx = headerRow.findIndex(h => h.includes('place') || h.includes('room') || h.includes('lab') || h.includes('loc'));
+            let teacherIdx = headerRow.findIndex(h => h.includes('teacher') || h.includes('instructor') || h.includes('staff') || h.includes('supervis'));
 
             for (let r = headerRowIdx + 1; r < jsonRows.length; r++) {
                 const row = jsonRows[r];
@@ -311,34 +324,37 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 if (rowText.includes('saturday') && !rowText.includes(':') && !rowText.includes('mc')) continue;
                 if (rowText.includes('sunday') && !rowText.includes(':')) continue;
 
-                const rawDate = row[1] || row[0] || row[5];
-                const rawTime = row[2] || row[6] || '08:30 AM to 11:30 AM';
-                const rawCode = row[1] || row[3] || row[0] || 'SUBJ101';
-                const rawTitle = row[2] || row[3] || 'Academic Session';
-                const rawPlace = row[7] || row[6] || '3/212-A';
-                const rawTeacher = row[3] || row[4] || 'Faculty Member';
-                const rawGroup = row[4] || 'All';
+                const rawDate = (dateIdx !== -1 && row[dateIdx]) ? row[dateIdx] : (row[1] || row[0] || row[5]);
+                const rawTime = (timeIdx !== -1 && row[timeIdx]) ? row[timeIdx] : (row[2] || row[6] || '08:30 AM to 11:30 AM');
+                const rawCode = (codeIdx !== -1 && row[codeIdx]) ? row[codeIdx] : (row[1] || row[3] || row[0] || 'SUBJ101');
+                const rawTitle = (titleIdx !== -1 && row[titleIdx]) ? row[titleIdx] : (row[2] || row[3] || 'Academic Session');
+                const rawGroup = (groupIdx !== -1 && row[groupIdx]) ? row[groupIdx] : (row[4] || 'All');
+                const rawPlace = (placeIdx !== -1 && row[placeIdx]) ? row[placeIdx] : (row[7] || row[6] || 'Mechatronics Lab');
+                const rawTeacher = (teacherIdx !== -1 && row[teacherIdx]) ? row[teacherIdx] : (row[3] || row[4] || 'Faculty Member');
 
-                const parsedDate = parseExcelDate({ v: rawDate });
-                if (!parsedDate) continue;
+                let parsedDate = parseExcelDate({ v: rawDate });
+                if (!parsedDate) parsedDate = new Date().toISOString();
 
-                const startMin = parseTimeToMinutes(String(rawTime).split('to')[0] || '08:30');
-                const endMin = parseTimeToMinutes(String(rawTime).split('to')[1] || '11:30') || (startMin + 180);
+                const timeStr = String(rawTime);
+                const startMin = parseTimeToMinutes(timeStr.split('to')[0] || timeStr.split('-')[0] || '08:30');
+                const endMin = parseTimeToMinutes(timeStr.split('to')[1] || timeStr.split('-')[1] || '11:30') || (startMin + 180);
+
+                const cleanCodeStr = String(rawCode).split(' ')[0].toUpperCase();
 
                 allSessions.push({
                     sessionType: targetCategory === 'Exam' ? 'Exam' : targetCategory === 'Tutorial' ? 'Tutorial' : 'Practical',
                     examType: targetCategory === 'Exam' ? 'Mid-Term' : 'N/A',
-                    courseCode: String(rawCode).split(' ')[0].toUpperCase(),
-                    courseName: String(rawTitle).trim(),
-                    title: String(rawTitle).trim(),
+                    courseCode: cleanCodeStr || 'MCE-PRACTICAL',
+                    courseName: String(rawTitle).trim() || cleanCodeStr,
+                    title: String(rawTitle).trim() || cleanCodeStr,
                     teacher: String(rawTeacher).trim(),
-                    groupTag: String(rawGroup).trim(),
+                    groupTag: String(rawGroup).trim() || 'All',
                     date: parsedDate,
-                    startTime: String(rawTime).split('to')[0]?.trim() || '08:30 AM',
-                    endTime: String(rawTime).split('to')[1]?.trim() || '11:30 AM',
+                    startTime: timeStr.split('to')[0]?.trim() || timeStr.split('-')[0]?.trim() || '08:30 AM',
+                    endTime: timeStr.split('to')[1]?.trim() || timeStr.split('-')[1]?.trim() || '11:30 AM',
                     startTimeMinutes: startMin,
                     endTimeMinutes: endMin,
-                    place: String(rawPlace).trim(),
+                    place: String(rawPlace).trim() || 'Mechatronics Lab',
                     status: 'Draft'
                 });
             }

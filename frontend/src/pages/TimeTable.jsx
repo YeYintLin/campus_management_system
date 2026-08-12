@@ -122,6 +122,7 @@ const TimeTable = () => {
     const [selectedSemester, setSelectedSemester] = useState('Semester 1');
     const [selectedCategory, setSelectedCategory] = useState('Academic'); // 'Academic', 'Practical', 'Tutorial', 'Exam'
     const [selectedMajor, setSelectedMajor] = useState('MC');
+    const [selectedGroup, setSelectedGroup] = useState('All');
     const [selectedMobileDay, setSelectedMobileDay] = useState(getCurrentWeekday);
 
     const [schedules, setSchedules] = useState({});
@@ -686,41 +687,95 @@ const TimeTable = () => {
                         </div>
                     )
                     ) : (
-                        <div className="table-container" style={{ padding: '1rem' }}>
-                            {dateSessions.length === 0 ? (
-                                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                    <p>No {selectedCategory} sessions scheduled.</p>
-                                </div>
-                            ) : (
-                                <table className="attendance-table" style={{ width: '100%' }}>
-                                    <thead>
-                                        <tr>
-                                            <th>Year</th>
-                                            <th>Subject Code</th>
-                                            <th>{selectedCategory} Title</th>
-                                            <th>Teacher</th>
-                                            <th>Group</th>
-                                            <th>Date</th>
-                                            <th>Time</th>
-                                            <th>Place</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {dateSessions.map((s, idx) => (
-                                            <tr key={s._id || idx}>
-                                                <td><span className="year-tag active" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>{s.year}</span></td>
-                                                <td><strong style={{ color: 'var(--primary-color)' }}>{s.courseCode}</strong></td>
-                                                <td><strong style={{ color: '#fff' }}>{s.title || s.courseName}</strong></td>
-                                                <td style={{ color: 'var(--text-muted)' }}>{s.teacher || 'Faculty'}</td>
-                                                <td><span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'rgba(255,255,255,0.06)' }}>{s.groupTag}</span></td>
-                                                <td style={{ color: 'var(--success)', fontWeight: '600' }}>{new Date(s.date).toLocaleDateString()}</td>
-                                                <td style={{ fontSize: '0.85rem' }}>{s.startTime} - {s.endTime}</td>
-                                                <td><span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--text-muted)' }}><MapPin size={12} />{s.place}</span></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
+                        <div className="practical-schedule-wrapper" style={{ padding: '1rem' }}>
+                            {/* Group / Batch Filter Bar */}
+                            <div className="group-filter-bar" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem', background: 'rgba(255,255,255,0.03)', padding: '0.6rem 1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>Filter Student Batch:</span>
+                                {['All', 'Group A', 'Group B', 'Group C', 'Group 1', 'Group 2'].map(grp => (
+                                    <button
+                                        key={grp}
+                                        className={`year-tag ${selectedGroup === grp ? 'active' : ''}`}
+                                        onClick={() => setSelectedGroup(grp)}
+                                        style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
+                                    >
+                                        {grp === 'All' ? 'All Batches' : grp}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {(() => {
+                                const filteredSessions = dateSessions.filter(s => {
+                                    if (selectedGroup === 'All') return true;
+                                    const gTag = (s.groupTag || '').toLowerCase();
+                                    return gTag === 'all' || gTag.includes(selectedGroup.toLowerCase());
+                                });
+
+                                if (filteredSessions.length === 0) {
+                                    return (
+                                        <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                            <Calendar size={48} style={{ opacity: 0.3, marginBottom: '1rem', color: '#a855f7' }} />
+                                            <h3 style={{ fontSize: '1.15rem', color: '#fff', marginBottom: '0.4rem' }}>No {selectedCategory} Sessions Found</h3>
+                                            <p style={{ fontSize: '0.88rem' }}>No practical lab experiments scheduled for {selectedYear} ({selectedSemester}) under {selectedGroup === 'All' ? 'all batches' : selectedGroup}.</p>
+                                            {canManageTimetable && (
+                                                <button className="btn btn-primary" onClick={handleFileUploadClick} disabled={importing} style={{ marginTop: '1rem' }}>
+                                                    <Upload size={16} />
+                                                    Upload Practical Excel Sheet
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div className="table-container">
+                                        <table className="attendance-table" style={{ width: '100%' }}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Year</th>
+                                                    <th>Course Code</th>
+                                                    <th>Practical / Experiment Topic</th>
+                                                    <th>Student Batch</th>
+                                                    <th>Date</th>
+                                                    <th>Time</th>
+                                                    <th>Lab Room / Location</th>
+                                                    <th>Instructor</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredSessions.map((s, idx) => (
+                                                    <tr key={s._id || idx}>
+                                                        <td><span className="year-tag active" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>{s.year || selectedYear}</span></td>
+                                                        <td><strong style={{ color: '#a855f7', fontFamily: 'monospace', fontSize: '0.95rem' }}>{s.courseCode}</strong></td>
+                                                        <td>
+                                                            <div style={{ fontWeight: '600', color: '#fff' }}>{s.title || s.courseName}</div>
+                                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.courseName !== s.title ? s.courseName : ''}</div>
+                                                        </td>
+                                                        <td>
+                                                            <span style={{ fontSize: '0.8rem', padding: '0.25rem 0.65rem', borderRadius: '6px', background: 'rgba(168,85,247,0.15)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.3)', fontWeight: '600' }}>
+                                                                {s.groupTag || 'All Batches'}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ color: '#4ade80', fontWeight: '600', fontSize: '0.88rem' }}>
+                                                            {s.date ? new Date(s.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Scheduled'}
+                                                        </td>
+                                                        <td style={{ fontSize: '0.85rem', color: '#e0e7ff', fontWeight: '500' }}>
+                                                            <Clock size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle', color: '#818cf8' }} />
+                                                            {s.startTime} - {s.endTime}
+                                                        </td>
+                                                        <td>
+                                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#6366f1', background: 'rgba(99,102,241,0.1)', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600' }}>
+                                                                <MapPin size={12} />
+                                                                {s.place || 'Mechatronics Lab'}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{s.teacher || 'Faculty Supervisor'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
                 </div>
