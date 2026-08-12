@@ -27,9 +27,15 @@ const deriveYearTag = (code = '') => {
     return '6th Year';
 };
 
+const yearNumberToLabel = (num) => {
+    const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year' };
+    return labels[num] || '1st Year';
+};
+
 const initialCourseForm = {
     name: '',
     code: '',
+    year: 1,
     description: '',
     teacher: '',
 };
@@ -188,6 +194,7 @@ TU Hmawbi Smart Campus Management System
             setFormData({
                 name: course.name,
                 code: course.code,
+                year: course.year || 1,
                 description: course.description || '',
                 teacher: course.teacher?._id || course.teacher || '',
             });
@@ -213,6 +220,7 @@ TU Hmawbi Smart Campus Management System
         const payload = {
             name: formData.name,
             code: formData.code,
+            year: Number(formData.year) || 1,
             description: formData.description,
             teacher: formData.teacher,
         };
@@ -243,7 +251,7 @@ TU Hmawbi Smart Campus Management System
     const filteredCourses = courses.filter(course => {
         const target = `${course.name} ${course.code} ${course.description || ''} ${course.teacher?.name || ''}`.toLowerCase();
         const matchesSearch = target.includes(searchTerm.toLowerCase());
-        const courseYear = deriveYearTag(course.code);
+        const courseYear = yearNumberToLabel(course.year || 1);
         const matchesYear = isStudent ? (courseYear === studentYear) : (selectedYear === 'All' || courseYear === selectedYear);
         return matchesSearch && matchesYear;
     });
@@ -303,7 +311,7 @@ TU Hmawbi Smart Campus Management System
                         const enrollmentPercentage = Math.min(100, Math.round((enrolled / capacity) * 100));
                         const status = enrollmentPercentage >= 100 ? 'Full' : 'Active';
                         const baseColor = palette[index % palette.length];
-                        const yearTag = deriveYearTag(course.code);
+                        const yearTag = yearNumberToLabel(course.year || 1);
                         const isManageable = canManageCourse(course);
 
                         return (
@@ -406,6 +414,23 @@ TU Hmawbi Smart Campus Management System
                                     onChange={handleFormChange}
                                     required
                                 />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Academic Year</label>
+                                <select
+                                    name="year"
+                                    className="form-input"
+                                    value={formData.year}
+                                    onChange={handleFormChange}
+                                    required
+                                >
+                                    <option value={1}>1st Year</option>
+                                    <option value={2}>2nd Year</option>
+                                    <option value={3}>3rd Year</option>
+                                    <option value={4}>4th Year</option>
+                                    <option value={5}>5th Year</option>
+                                    <option value={6}>6th Year</option>
+                                </select>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Instructor</label>

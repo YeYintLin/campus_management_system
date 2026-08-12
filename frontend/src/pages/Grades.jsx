@@ -502,21 +502,25 @@ const Grades = () => {
         return matchesSearch && matchesYear;
     });
 
-    const filteredStudentIds = new Set(filteredStudents.map(s => s.id));
+    // Helper: convert year number to label
+    const yearNumToLabel = (num) => {
+        const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year' };
+        return labels[num] || '1st Year';
+    };
 
-    // Get all unique subjects for table headers — only show courses where
-    // at least one filtered student is enrolled or has a grade record
+    // Get all unique subjects for table headers — filtered by course.year field
     const allSubjects = Array.from(new Set([
         ...courses
-            .filter(c => c.students?.some(sid => {
-                const studentId = typeof sid === 'object' ? (sid._id || sid) : sid;
-                return filteredStudentIds.has(String(studentId));
-            }))
+            .filter(c => selectedYear === 'All' || yearNumToLabel(c.year || 1) === selectedYear)
             .map(c => c.code),
-        ...Object.entries(gradesData)
-            .filter(([studentId]) => studentId !== 'default' && filteredStudentIds.has(studentId))
-            .flatMap(([, grades]) => grades.map(g => g.course))
-    ])).sort();
+        ...Object.values(gradesData).flat().map(g => g.course)
+    ]))
+    .filter(sub => {
+        if (selectedYear === 'All') return true;
+        const matchingCourse = courses.find(c => c.code === sub);
+        return matchingCourse ? yearNumToLabel(matchingCourse.year || 1) === selectedYear : false;
+    })
+    .sort();
 
     const ExportPreviewPanel = () => (
         <div className="preview-modal-overlay animate-fade-in" onClick={() => setShowPreview(false)}>
