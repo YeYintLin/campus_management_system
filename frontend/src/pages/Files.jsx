@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useContext, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Search, FileText, Download, Trash2, Upload, Folder, Filter, FileCode, FileImage, FileStack, ChevronRight, ArrowLeft, FolderPlus, X, ClipboardList, TrendingUp, Users, BarChart3 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';

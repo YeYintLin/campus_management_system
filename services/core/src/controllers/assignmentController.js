@@ -1,3 +1,4 @@
+const Assignment = require('../models/Assignment');
 const Course = require('../models/Course');
 
 // @desc    Get all assignments (role-scoped)
