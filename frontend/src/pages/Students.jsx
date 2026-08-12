@@ -196,12 +196,50 @@ const Students = () => {
         };
     });
 
+    const teacherDefaultDept = roleStr === 'teacher' && user?.department ? user.department : 'All';
+    const [selectedDepartment, setSelectedDepartment] = useState(teacherDefaultDept);
+
+    const availableDepartments = [
+        'All',
+        'Mechatronics Engineering',
+        'Civil Engineering',
+        'Electrical Power Engineering',
+        'Electronic Engineering',
+        'Information Technology',
+        'Mechanical Engineering'
+    ];
+
     const filteredStudents = enhancedStudents.filter(student => {
-        const fullText = `${student.displayName} ${student.user?.email || ''} ${student.enrollmentNumber || ''}`.toLowerCase();
+        const fullText = `${student.displayName} ${student.user?.email || ''} ${student.enrollmentNumber || ''} ${student.department || ''}`.toLowerCase();
         const matchesSearch = fullText.includes(searchTerm.toLowerCase());
         const targetYear = isStudent ? studentYear : selectedYear;
         const matchesYear = targetYear === 'All' || student.yearLabel === targetYear;
-        return matchesSearch && matchesYear;
+
+        // Department filter matching
+        let matchesDept = true;
+        if (selectedDepartment !== 'All') {
+            const sDept = (student.department || student.user?.department || '').toLowerCase().trim();
+            const rollStr = (student.enrollmentNumber || student.user?.rollNo || student.displayRoll || '').toUpperCase();
+            const target = selectedDepartment.toLowerCase().trim();
+
+            if (target.includes('mechatronics') || target.includes('mc')) {
+                matchesDept = sDept.includes('mechatronics') || sDept.includes('mc') || rollStr.includes('MC') || rollStr.includes('-MC-');
+            } else if (target.includes('civil') || target.includes('c')) {
+                matchesDept = sDept.includes('civil') || rollStr.includes('V-C') || rollStr.includes('-C-');
+            } else if (target.includes('electrical') || target.includes('ep')) {
+                matchesDept = sDept.includes('electrical') || sDept.includes('ep') || rollStr.includes('EP');
+            } else if (target.includes('electronic') || target.includes('ec')) {
+                matchesDept = sDept.includes('electronic') || sDept.includes('ec') || rollStr.includes('EC');
+            } else if (target.includes('information') || target.includes('it')) {
+                matchesDept = sDept.includes('information') || sDept.includes('it') || rollStr.includes('IT');
+            } else if (target.includes('mechanical') || target.includes('me')) {
+                matchesDept = sDept.includes('mechanical') || sDept.includes('me') || rollStr.includes('ME');
+            } else {
+                matchesDept = sDept.includes(target) || target.includes(sDept);
+            }
+        }
+
+        return matchesSearch && matchesYear && matchesDept;
     });
 
     useEffect(() => {
@@ -379,7 +417,7 @@ const Students = () => {
                 </div>
             </header>
 
-            <div className="year-filter-bar glass-panel">
+            <div className="year-filter-bar glass-panel" style={{ marginBottom: '0.75rem' }}>
                 {years.map(year => (
                     <button
                         key={year}
@@ -387,6 +425,19 @@ const Students = () => {
                         onClick={() => setSelectedYear(year)}
                     >
                         {year}
+                    </button>
+                ))}
+            </div>
+
+            <div className="year-filter-bar glass-panel" style={{ marginBottom: '1.5rem', background: 'rgba(99, 102, 241, 0.05)' }}>
+                {availableDepartments.map(dept => (
+                    <button
+                        key={dept}
+                        className={`year-tag ${selectedDepartment === dept ? 'active' : ''}`}
+                        onClick={() => setSelectedDepartment(dept)}
+                        style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
+                    >
+                        {dept === 'Mechatronics Engineering' ? 'Mechatronics (VMC)' : dept === 'Civil Engineering' ? 'Civil (VC)' : dept}
                     </button>
                 ))}
             </div>
