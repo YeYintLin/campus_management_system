@@ -251,20 +251,22 @@ function parseSheet(worksheet) {
   // ---- Legend: (n)CODE | subject | teacher ----
   const legend = [];
   for (let rr = r; rr <= worksheet.rowCount; rr++) {
-    const codeCell = cellText(worksheet, rr, 1);
-    if (!codeCell || !codeCell.trim()) continue;
-    const m = codeCell.trim().match(/^\((\d+)\)\s*(.+)$/);
-    if (!m) continue;
-    let code = m[2].trim();
-    let subject = cellTextIfOwn(worksheet, merges, rr, 3);
-    let teacher = cellTextIfOwn(worksheet, merges, rr, 6);
-    if (!subject && !teacher) {
-      const rest = codeCell.trim().replace(/^\(\d+\)\s*/, '');
-      const bits = rest.split(/\s{2,}|\t|\s+-\s+/).map((b) => b.trim()).filter(Boolean);
-      if (bits.length >= 3) { code = bits[0]; subject = bits[1]; teacher = bits[bits.length - 1]; }
-      else if (bits.length === 2) { code = bits[0]; subject = bits[1]; }
+    const rowCells = [];
+    for (let col = 1; col <= worksheet.columnCount; col++) {
+      const txt = cellText(worksheet, rr, col);
+      if (txt && txt.trim()) rowCells.push(txt.trim());
     }
-    legend.push({ code: code.trim(), subject: subject ? subject.trim() : null, teacher: teacher ? teacher.trim() : null });
+
+    if (rowCells.length === 0) continue;
+
+    const firstCell = rowCells[0];
+    const m = firstCell.match(/^\((\d+)\)\s*(.+)$/);
+    if (m) {
+      const code = m[2].trim();
+      const subject = rowCells[1] || null;
+      const teacher = rowCells[2] || (rowCells.length > 2 ? rowCells[rowCells.length - 1] : null);
+      legend.push({ code, subject, teacher });
+    }
   }
 
   return {

@@ -127,26 +127,21 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
             const courseLegend = {};
             jsonRows.forEach(row => {
                 if (!Array.isArray(row) || row.length === 0) return;
-                const text = row.filter(Boolean).map(c => String(c).trim()).join(' ');
-                const match = text.match(/^\((\d+)\)\s*([A-Za-z0-9\s-]+)\s{2,}(.+?)\s{2,}(.+)$/);
+                const nonEmp = row.filter(c => c !== null && c !== undefined && String(c).trim() !== '').map(c => String(c).trim());
+                if (nonEmp.length === 0) return;
+
+                const firstCell = nonEmp[0];
+                const match = firstCell.match(/^\((\d+)\)\s*(.+)$/);
                 if (match) {
                     const code = match[2].trim();
-                    courseLegend[code.replace(/\s+/g, '')] = {
+                    const cleanCodeKey = code.replace(/\s+/g, '').toUpperCase();
+                    const name = nonEmp[1] || code;
+                    const teacher = nonEmp[2] || (nonEmp.length > 2 ? nonEmp[nonEmp.length - 1] : '');
+                    courseLegend[cleanCodeKey] = {
                         code: code,
-                        name: match[3].trim(),
-                        teacher: match[4].trim()
+                        name: name,
+                        teacher: teacher
                     };
-                } else if (text.match(/^\(\d+\)/)) {
-                    const codeCell = String(row[0] || '').replace(/^\(\d+\)/, '').trim();
-                    const nameCell = String(row[2] || row[1] || '').trim();
-                    const teacherCell = String(row[row.length - 1] || '').trim();
-                    if (codeCell) {
-                        courseLegend[codeCell.replace(/\s+/g, '')] = {
-                            code: codeCell,
-                            name: nameCell || codeCell,
-                            teacher: teacherCell
-                        };
-                    }
                 }
             });
 
