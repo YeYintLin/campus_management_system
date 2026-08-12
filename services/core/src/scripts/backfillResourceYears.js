@@ -68,15 +68,12 @@ async function runBackfill() {
         for (const f of allFiles) {
             scannedCount++;
             const currentNormYear = normalizeYear(f.year);
-
-            // Check if untagged, missing, or needs backfill
             const isUntagged = !f.year || f.year === '' || !currentNormYear;
 
-            if (isUntagged) {
-                let proposedYear = null;
-                let matchedVia = 'no_match_fallback';
+            let proposedYear = currentNormYear || 'All';
+            let matchedVia = 'already_tagged';
 
-                // Look up matching course by category or file name code
+            if (isUntagged) {
                 const codeInCategory = extractCodeFromText(f.category);
                 const codeInName = extractCodeFromText(f.name);
                 const targetCode = codeInCategory || codeInName;
@@ -91,34 +88,33 @@ async function runBackfill() {
                     fallbackMatches++;
                 }
 
-                const logEntry = {
-                    id: String(f._id),
-                    collection: 'ResourceFile',
-                    name: f.name,
-                    category: f.category,
-                    currentYear: f.year || 'MISSING',
-                    proposedYear,
-                    matchedVia,
-                };
-                auditLogs.push(logEntry);
-
                 if (isCommit) {
                     await ResourceFile.updateOne({ _id: f._id }, { $set: { year: proposedYear } });
                 }
             }
+
+            auditLogs.push({
+                id: String(f._id),
+                collection: 'ResourceFile',
+                name: f.name,
+                category: f.category,
+                currentYear: f.year || 'MISSING',
+                proposedYear,
+                matchedVia: isUntagged ? matchedVia : 'already_tagged',
+                isUntagged
+            });
         }
 
         // Process Custom Folders
         for (const folder of allFolders) {
             scannedCount++;
             const currentNormYear = normalizeYear(folder.year);
-
             const isUntagged = !folder.year || folder.year === '' || !currentNormYear;
 
-            if (isUntagged) {
-                let proposedYear = null;
-                let matchedVia = 'no_match_fallback';
+            let proposedYear = currentNormYear || 'All';
+            let matchedVia = 'already_tagged';
 
+            if (isUntagged) {
                 const targetCode = extractCodeFromText(folder.name);
 
                 if (targetCode && courseMap.has(targetCode)) {
@@ -131,21 +127,21 @@ async function runBackfill() {
                     fallbackMatches++;
                 }
 
-                const logEntry = {
-                    id: String(folder._id),
-                    collection: 'CustomFolder',
-                    name: folder.name,
-                    category: folder.name,
-                    currentYear: folder.year || 'MISSING',
-                    proposedYear,
-                    matchedVia,
-                };
-                auditLogs.push(logEntry);
-
                 if (isCommit) {
                     await CustomFolder.updateOne({ _id: folder._id }, { $set: { year: proposedYear } });
                 }
             }
+
+            auditLogs.push({
+                id: String(folder._id),
+                collection: 'CustomFolder',
+                name: folder.name,
+                category: folder.name,
+                currentYear: folder.year || 'MISSING',
+                proposedYear,
+                matchedVia: isUntagged ? matchedVia : 'already_tagged',
+                isUntagged
+            });
         }
 
         console.log('--- AFFECTED DOCUMENTS LOG ---');
