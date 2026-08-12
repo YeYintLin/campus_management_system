@@ -65,6 +65,7 @@ const Grades = () => {
     const [courses, setCourses] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [selectedYear, setSelectedYear] = useState('5th Year');
+    const [selectedSemester, setSelectedSemester] = useState('Sem 1');
     const [searchTerm, setSearchTerm] = useState('');
     const [gradesData, setGradesData] = useState({ default: [] });
     const [dataLoading, setDataLoading] = useState(true);
@@ -618,17 +619,36 @@ const Grades = () => {
         return '1st Year';
     };
 
-    // Get all unique subjects for table headers — filtered by derived course academic year
+    // Helper: derive semester label from course (e.g. McE-51039 -> Sem 1, McE-52039 -> Sem 2)
+    const deriveCourseSemesterLabel = (subOrCourse) => {
+        let codeStr = '';
+        if (typeof subOrCourse === 'string') {
+            codeStr = subOrCourse;
+        } else if (subOrCourse) {
+            codeStr = subOrCourse.code || subOrCourse.name || '';
+        }
+        const digits = codeStr.replace(/[^0-9]/g, '');
+        if (digits.length >= 2) {
+            const semDigit = digits.charAt(1);
+            if (semDigit === '1') return 'Sem 1';
+            if (semDigit === '2') return 'Sem 2';
+        }
+        return 'Sem 1';
+    };
+
+    // Get all unique subjects for table headers — filtered by derived course academic year AND semester
     const allSubjects = Array.from(new Set([
         ...courses
             .filter(c => selectedYear === 'All' || deriveCourseYearLabel(c) === selectedYear)
+            .filter(c => selectedSemester === 'All Semesters' || deriveCourseSemesterLabel(c) === selectedSemester)
             .map(c => c.code),
         ...Object.values(gradesData).flat().map(g => g.course)
     ]))
     .filter(sub => {
-        if (selectedYear === 'All') return true;
-        const matchingCourse = courses.find(c => c.code === sub);
-        return matchingCourse ? deriveCourseYearLabel(matchingCourse) === selectedYear : false;
+        const matchingCourse = courses.find(c => (c.code || '').toUpperCase().replace(/\s+/g, '') === sub.toUpperCase().replace(/\s+/g, ''));
+        const yearOk = selectedYear === 'All' || (matchingCourse ? deriveCourseYearLabel(matchingCourse) === selectedYear : deriveCourseYearLabel({ code: sub }) === selectedYear);
+        const semOk = selectedSemester === 'All Semesters' || (matchingCourse ? deriveCourseSemesterLabel(matchingCourse) === selectedSemester : deriveCourseSemesterLabel(sub) === selectedSemester);
+        return yearOk && semOk;
     })
     .sort();
 
@@ -877,6 +897,19 @@ const Grades = () => {
                             onClick={() => setSelectedYear(year)}
                         >
                             {year}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="year-filter-bar glass-panel" style={{ marginTop: '0.5rem', background: 'rgba(99, 102, 241, 0.05)' }}>
+                    {['Sem 1', 'Sem 2', 'All Semesters'].map(sem => (
+                        <button
+                            key={sem}
+                            className={`year-tag ${selectedSemester === sem ? 'active' : ''}`}
+                            onClick={() => setSelectedSemester(sem)}
+                            style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
+                        >
+                            {sem === 'Sem 1' ? 'Semester 1' : sem === 'Sem 2' ? 'Semester 2' : 'All Semesters'}
                         </button>
                     ))}
                 </div>
