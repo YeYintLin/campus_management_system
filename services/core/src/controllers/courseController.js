@@ -48,7 +48,20 @@ const syncCourseCollectionWithTimetable = async () => {
 
         // Apply legendMap to Course collection: update year, name, AND teacher strictly
         for (const [cleanCode, info] of legendMap.entries()) {
-            const existing = await Course.findOne({ code: new RegExp(`^${info.code.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') });
+            // Normalize code by stripping all whitespace for matching
+            const codeNoSpaces = info.code.replace(/\s+/g, '');
+            // Try exact match first, then match ignoring spaces
+            let existing = await Course.findOne({ code: new RegExp(`^${info.code.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') });
+            if (!existing) {
+                // Try matching with spaces stripped (e.g., "McE- 51039" matches "McE-51039")
+                existing = await Course.findOne({ code: new RegExp(`^${codeNoSpaces.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&')}$`, 'i') });
+            }
+            if (!existing) {
+                // Try matching by inserting optional whitespace after dashes
+                const flexPattern = codeNoSpaces.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&').replace(/-/g, '-\\s*');
+                existing = await Course.findOne({ code: new RegExp(`^${flexPattern}$`, 'i') });
+            }
+
             if (existing) {
                 existing.name = info.name;
                 existing.year = info.year;
@@ -56,15 +69,29 @@ const syncCourseCollectionWithTimetable = async () => {
                 existing.teacher = info.teacherId;
                 await existing.save();
             } else {
-                await Course.create({
-                    code: info.code,
-                    name: info.name,
-                    year: info.year,
-                    yearLabel: info.yearLabel,
-                    description: `Official timetable subject offering for ${info.yearLabel}`,
-                    teacher: info.teacherId,
-                    students: []
-                });
+                try {
+                    await Course.create({
+                        code: codeNoSpaces.charAt(0).toUpperCase() === codeNoSpaces.charAt(0) ? info.code.replace(/\s+/g, '') : info.code.trim(),
+                        name: info.name,
+                        year: info.year,
+                        yearLabel: info.yearLabel,
+                        description: `Official timetable subject offering for ${info.yearLabel}`,
+                        teacher: info.teacherId,
+                        students: []
+                    });
+                } catch (createErr) {
+                    if (createErr.code === 11000) {
+                        // Duplicate key - try updating instead
+                        const dup = await Course.findOne({ code: new RegExp(codeNoSpaces.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&'), 'i') });
+                        if (dup) {
+                            dup.name = info.name;
+                            dup.year = info.year;
+                            dup.yearLabel = info.yearLabel;
+                            dup.teacher = info.teacherId;
+                            await dup.save();
+                        }
+                    }
+                }
             }
         }
 

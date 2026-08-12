@@ -406,12 +406,12 @@ const Attendance = () => {
                     }
                 });
 
-                // Deduplicate by code
-                const existingCodes = new Set(dbCourses.map(c => (c.code || '').toUpperCase().trim()));
+                // Deduplicate by code (strip all whitespace and dashes for matching)
+                const existingCodes = new Set(dbCourses.map(c => (c.code || '').replace(/[\s-]+/g, '').toUpperCase()));
                 let uniqueTimetableSubjects = [];
 
                 timetableSubjects.forEach(ts => {
-                    const cleanCode = (ts.code || '').toUpperCase().trim();
+                    const cleanCode = (ts.code || '').replace(/[\s-]+/g, '').toUpperCase();
                     if (cleanCode && !existingCodes.has(cleanCode)) {
                         existingCodes.add(cleanCode);
                         uniqueTimetableSubjects.push(ts);
@@ -425,7 +425,25 @@ const Attendance = () => {
                     uniqueTimetableSubjects = uniqueTimetableSubjects.filter(ts => isCourseTaughtByTeacher(ts, user));
                 }
 
-                setCourses([...filteredDbCourses, ...uniqueTimetableSubjects]);
+                // Final deduplication pass
+                const allCourses = [...filteredDbCourses, ...uniqueTimetableSubjects];
+                const finalDedup = new Map();
+                allCourses.forEach(c => {
+                    const key = (c.code || '').replace(/[\s-]+/g, '').toUpperCase();
+                    if (!key) return;
+                    if (finalDedup.has(key)) {
+                        const existing = finalDedup.get(key);
+                        const existingIsGeneric = (existing.description || '').includes('Official timetable subject offering');
+                        const newIsGeneric = (c.description || '').includes('Official timetable subject offering');
+                        if (existingIsGeneric && !newIsGeneric) {
+                            finalDedup.set(key, c);
+                        }
+                    } else {
+                        finalDedup.set(key, c);
+                    }
+                });
+
+                setCourses(Array.from(finalDedup.values()));
             } catch (err) {
                 console.error('Error fetching courses for attendance:', err);
             } finally {

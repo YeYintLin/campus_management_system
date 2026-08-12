@@ -323,7 +323,24 @@ TU Hmawbi Smart Campus Management System
                 finalCourses = mergedCourses.filter(c => isCourseTaughtByTeacher(c, user));
             }
 
-            setCourses(finalCourses);
+            // Final bulletproof deduplication by normalized code
+            const finalDedup = new Map();
+            finalCourses.forEach(c => {
+                const key = (c.code || '').replace(/[\s-]+/g, '').toUpperCase();
+                if (!key) return;
+                if (finalDedup.has(key)) {
+                    const existing = finalDedup.get(key);
+                    const existingIsGeneric = (existing.description || '').includes('Official timetable subject offering');
+                    const newIsGeneric = (c.description || '').includes('Official timetable subject offering');
+                    if (existingIsGeneric && !newIsGeneric) {
+                        finalDedup.set(key, c);
+                    }
+                } else {
+                    finalDedup.set(key, c);
+                }
+            });
+
+            setCourses(Array.from(finalDedup.values()));
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Failed to load courses');
         } finally {
