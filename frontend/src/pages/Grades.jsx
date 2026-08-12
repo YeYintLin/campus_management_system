@@ -494,20 +494,29 @@ const Grades = () => {
         return gradesData[studentId] || gradesData['default'];
     };
 
-    // Get all unique subjects for table headers, filtered by the selected year
-    const allSubjects = Array.from(new Set([
-        ...courses.map(c => c.code),
-        ...Object.values(gradesData).flat().map(g => g.course)
-    ]))
-    .filter(sub => selectedYear === 'All' || deriveYearTag(sub) === selectedYear)
-    .sort();
-
+    // Get filtered students first
     const filteredStudents = studentList.filter(s => {
         const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.id.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesYear = selectedYear === 'All' || s.year === selectedYear;
         return matchesSearch && matchesYear;
     });
+
+    const filteredStudentIds = new Set(filteredStudents.map(s => s.id));
+
+    // Get all unique subjects for table headers — only show courses where
+    // at least one filtered student is enrolled or has a grade record
+    const allSubjects = Array.from(new Set([
+        ...courses
+            .filter(c => c.students?.some(sid => {
+                const studentId = typeof sid === 'object' ? (sid._id || sid) : sid;
+                return filteredStudentIds.has(String(studentId));
+            }))
+            .map(c => c.code),
+        ...Object.entries(gradesData)
+            .filter(([studentId]) => studentId !== 'default' && filteredStudentIds.has(studentId))
+            .flatMap(([, grades]) => grades.map(g => g.course))
+    ])).sort();
 
     const ExportPreviewPanel = () => (
         <div className="preview-modal-overlay animate-fade-in" onClick={() => setShowPreview(false)}>
