@@ -22,7 +22,7 @@ const syncCourseCollectionWithTimetable = async () => {
         };
 
         for (const sem of semesters) {
-            const yearNum = sem.yearNumber || 1;
+            const yearNum = sem.yearNumber || 4;
             const yearLabel = sem.yearLabel || `${yearNum}th Year`;
 
             if (Array.isArray(sem.legend)) {
@@ -36,6 +36,7 @@ const syncCourseCollectionWithTimetable = async () => {
                         if (existing) {
                             existing.name = subjectName;
                             existing.year = yearNum;
+                            existing.yearLabel = yearLabel;
                             if (teacherObj) existing.teacher = teacherObj._id;
                             await existing.save();
                         } else {
@@ -43,6 +44,7 @@ const syncCourseCollectionWithTimetable = async () => {
                                 code: codeStr,
                                 name: subjectName,
                                 year: yearNum,
+                                yearLabel: yearLabel,
                                 description: `Official timetable subject offering for ${yearLabel}`,
                                 teacher: teacherObj ? teacherObj._id : null,
                                 students: []

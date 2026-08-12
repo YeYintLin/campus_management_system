@@ -8,23 +8,24 @@ import './Courses.css';
 const yearFilters = ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
 const palette = ['#6366f1', '#10b981', '#f97316', '#ec4899', '#0ea5e9'];
 
-const deriveYearTag = (code = '') => {
-    const digits = code.match(/\d+/);
-    if (!digits) return '1st Year';
-    const firstDigit = digits[0][0];
-    if (firstDigit === '1') return '1st Year';
-    if (firstDigit === '2') return '2nd Year';
-    if (firstDigit === '3') return '3rd Year';
-    if (firstDigit === '4') return '4th Year';
-    if (firstDigit === '5') return '5th Year';
-    if (firstDigit === '6') return '6th Year';
-    const number = parseInt(digits[0], 10);
-    if (number < 200) return '1st Year';
-    if (number < 300) return '2nd Year';
-    if (number < 400) return '3rd Year';
-    if (number < 500) return '4th Year';
-    if (number < 600) return '5th Year';
-    return '6th Year';
+const deriveYearTag = (code = '', defaultYear = null) => {
+    if (defaultYear) {
+        if (typeof defaultYear === 'number') return yearNumberToLabel(defaultYear);
+        if (typeof defaultYear === 'string' && defaultYear.includes('Year')) return defaultYear;
+    }
+    const clean = String(code).trim().toUpperCase();
+    const match = clean.match(/[-_\s]?(\d{1,5})/);
+    if (match) {
+        const numStr = match[1];
+        const firstDigit = numStr[0];
+        if (firstDigit === '5') return '5th Year';
+        if (firstDigit === '4') return '4th Year';
+        if (firstDigit === '3') return '3rd Year';
+        if (firstDigit === '2') return '2nd Year';
+        if (firstDigit === '1') return '1st Year';
+        if (firstDigit === '6') return '6th Year';
+    }
+    return '4th Year';
 };
 
 const yearNumberToLabel = (num) => {
@@ -229,8 +230,8 @@ TU Hmawbi Smart Campus Management System
             // Extract timetable legend items by code (timetable legend is authoritative)
             const timetableMap = new Map();
             timetableData.forEach(sheet => {
-                const sheetYear = sheet.yearLabel || (sheet.yearNumber ? yearNumberToLabel(sheet.yearNumber) : '1st Year');
-                const sheetYearNum = sheet.yearNumber || 1;
+                const sheetYear = sheet.yearLabel || (sheet.yearNumber ? yearNumberToLabel(sheet.yearNumber) : '4th Year');
+                const sheetYearNum = sheet.yearNumber || 4;
 
                 if (Array.isArray(sheet.legend)) {
                     sheet.legend.forEach(item => {
@@ -256,20 +257,26 @@ TU Hmawbi Smart Campus Management System
             dbCourses.forEach(dbc => {
                 const cleanCode = (dbc.code || '').trim().toUpperCase();
                 if (!cleanCode) return;
-                processedCodes.add(cleanCode);
 
                 const ttInfo = timetableMap.get(cleanCode);
                 if (ttInfo) {
+                    processedCodes.add(cleanCode);
                     mergedCourses.push({
                         ...dbc,
                         name: ttInfo.name || dbc.name,
-                        year: ttInfo.year || dbc.year,
+                        year: ttInfo.year,
                         yearLabel: ttInfo.yearLabel,
                         teacher: ttInfo.teacherName ? (dbc.teacher || { name: ttInfo.teacherName }) : dbc.teacher,
                         isFromTimetable: true
                     });
-                } else {
-                    mergedCourses.push(dbc);
+                } else if (dbc.teacher) {
+                    // Only keep dbCourse if it has an explicit teacher assigned and valid code
+                    processedCodes.add(cleanCode);
+                    const yLabel = dbc.yearLabel ? normalizeYear(dbc.yearLabel) : deriveYearTag(dbc.code, dbc.year);
+                    mergedCourses.push({
+                        ...dbc,
+                        yearLabel: yLabel
+                    });
                 }
             });
 
