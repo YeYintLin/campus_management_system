@@ -5,14 +5,7 @@ const Course = require('../models/Course');
 // @access  Private
 const getCourses = async (req, res) => {
     try {
-        let query = {};
-        if (req.user.role === 'Teacher') {
-            query = { teacher: req.user._id };
-        } else if (req.user.role === 'Student') {
-            query = { students: req.user._id };
-        }
-
-        const courses = await Course.find(query)
+        const courses = await Course.find({})
             .populate('teacher', 'name email')
             .populate('students', 'name email');
 
