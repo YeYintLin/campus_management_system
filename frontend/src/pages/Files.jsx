@@ -47,12 +47,49 @@ const normalizeYear = (yr) => {
     return yr;
 };
 
+const isCourseTaughtByTeacher = (course, user) => {
+    if (!user) return false;
+    const userTeacherId = user._id ? String(user._id) : '';
+    const userTeacherName = (user.name || '').toLowerCase().trim();
+    const userTeacherEmail = (user.email || '').toLowerCase().trim();
+
+    const cTeacher = course.teacher;
+    if (!cTeacher) return false;
+
+    let cId = '';
+    let cName = '';
+    let cEmail = '';
+
+    if (typeof cTeacher === 'object') {
+        cId = cTeacher._id ? String(cTeacher._id) : '';
+        cName = (cTeacher.name || '').toLowerCase().trim();
+        cEmail = (cTeacher.email || '').toLowerCase().trim();
+    } else if (typeof cTeacher === 'string') {
+        cName = cTeacher.toLowerCase().trim();
+        if (cTeacher.includes('@')) cEmail = cTeacher.toLowerCase().trim();
+        else if (cTeacher.length > 15) cId = cTeacher;
+    }
+
+    if (userTeacherId && cId && userTeacherId === cId) return true;
+    if (userTeacherEmail && cEmail && userTeacherEmail === cEmail) return true;
+
+    const cleanUser = userTeacherName.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim();
+    const cleanCourse = cName.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim();
+
+    if (cleanUser.length >= 3 && cleanCourse.length >= 3) {
+        if (cleanCourse.includes(cleanUser) || cleanUser.includes(cleanCourse)) return true;
+    }
+
+    return false;
+};
+
 const Files = () => {
     const { user } = useContext(AuthContext);
     const fileInputRef = useRef(null);
 
     const roleStr = (user?.role || '').toLowerCase().trim();
     const isAdmin = roleStr === 'admin' || roleStr === 'superadmin' || roleStr === 'academicadmin';
+    const isTeacher = roleStr === 'teacher';
     const canManageFiles = roleStr === 'admin' || roleStr === 'teacher' || roleStr === 'superadmin' || roleStr === 'academicadmin';
     const isStudent = roleStr === 'student';
     const studentYear = getNormalizedUserYear(user);
@@ -63,6 +100,7 @@ const Files = () => {
     const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
     const [viewMode, setViewMode] = useState('folders'); // 'folders' or 'files'
     const [selectedFolder, setSelectedFolder] = useState(null);
+    const [allCourses, setAllCourses] = useState([]);
 
     // Fetch custom folders, resource files, courses, AND timetable slots from backend DB on mount
     useEffect(() => {
@@ -74,6 +112,10 @@ const Files = () => {
                     apiClient.get('/courses').catch(() => ({ data: [] })),
                     apiClient.get('/timetable').catch(() => ({ data: [] })),
                 ]);
+
+                if (Array.isArray(coursesRes.data)) {
+                    setAllCourses(coursesRes.data);
+                }
 
                 const dbFolders = (foldersRes.data || []).map(f => ({
                     _id: f._id,
@@ -106,9 +148,10 @@ const Files = () => {
                     );
                 };
 
-                // Build subject folders from /courses
+                // Build subject folders from /courses (scoped for Teachers)
                 const subjectFolders = (coursesRes.data || [])
                     .filter(c => c.code && !isNonAcademic(c.code, c.name))
+                    .filter(c => !isTeacher || isCourseTaughtByTeacher(c, user))
                     .map(c => ({
                         name: `${c.code} - ${c.name}`,
                         code: c.code,
@@ -117,20 +160,23 @@ const Files = () => {
                         iconColor: '#6366f1'
                     }));
 
-                // Build subject folders from /timetable slots
+                // Build subject folders from /timetable slots (scoped for Teachers)
                 const timetableFolders = [];
                 if (Array.isArray(timetableRes.data)) {
                     timetableRes.data.forEach(slot => {
                         const code = slot.courseCode || slot.subjectCode || slot.code || '';
                         const name = slot.courseName || slot.subjectName || slot.subject || slot.name || '';
                         if (code && !isNonAcademic(code, name)) {
-                            timetableFolders.push({
-                                name: name ? `${code} - ${name}` : code,
-                                code: code,
-                                year: slot.year ? `${slot.year}${String(slot.year).endsWith('Year') ? '' : ' Year'}` : deriveYearTag(code),
-                                description: `Timetable course files for ${code}`,
-                                iconColor: '#10b981'
-                            });
+                            const isTaught = !isTeacher || isCourseTaughtByTeacher({ code, name, teacher: slot.teacher }, user);
+                            if (isTaught) {
+                                timetableFolders.push({
+                                    name: name ? `${code} - ${name}` : code,
+                                    code: code,
+                                    year: slot.year ? `${slot.year}${String(slot.year).endsWith('Year') ? '' : ' Year'}` : deriveYearTag(code),
+                                    description: `Timetable course files for ${code}`,
+                                    iconColor: '#10b981'
+                                });
+                            }
                         }
                     });
                 }
@@ -168,10 +214,25 @@ const Files = () => {
         };
 
         loadPersistedData();
-    }, []);
+    }, [isTeacher, user]);
+
+    const teacherYears = useMemo(() => {
+        if (!isTeacher) return [];
+        const set = new Set();
+        allCourses.forEach(c => {
+            if (isCourseTaughtByTeacher(c, user)) {
+                const yTag = deriveYearTag(c.code);
+                if (yTag) set.add(yTag);
+            }
+        });
+        const order = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+        return order.filter(y => set.has(y));
+    }, [isTeacher, allCourses, user]);
 
     const years = isStudent
         ? [studentYear]
+        : isTeacher
+        ? (teacherYears.length > 0 ? ['All', ...teacherYears] : ['All'])
         : ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
 
     // Modal states

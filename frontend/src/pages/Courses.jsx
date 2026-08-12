@@ -100,8 +100,23 @@ const Courses = () => {
     const canCreateCourses = isAdmin;
     const canEditCourses = isAdmin || isTeacher;
 
+    const teacherYears = useMemo(() => {
+        if (!isTeacher) return [];
+        const set = new Set();
+        courses.forEach(c => {
+            if (isCourseTaughtByTeacher(c, user)) {
+                const yLabel = c.yearLabel ? normalizeYear(c.yearLabel) : normalizeYear(yearNumberToLabel(c.year || 1));
+                if (yLabel && yLabel !== 'All') set.add(yLabel);
+            }
+        });
+        const order = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+        return order.filter(y => set.has(y));
+    }, [isTeacher, courses, user]);
+
     const yearFilters = isStudent
         ? [studentYear]
+        : isTeacher
+        ? (teacherYears.length > 0 ? ['All', ...teacherYears] : ['All'])
         : ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
 
     const canManageCourse = (course) => {
