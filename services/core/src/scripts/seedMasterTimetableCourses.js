@@ -14,6 +14,7 @@ if (!MONGODB_URI) {
 const Course = require('../models/Course');
 const User = require('../models/User');
 
+// Exact 4-year subject list for Daw Myat Thu Zar (excluding McE-52018 & McE-51001)
 const DAW_MYAT_THU_ZAR_COURSES = [
     // 2nd Year
     { code: 'McE-4049', name: 'Programmable Logic Controller', year: 2, yearLabel: '2nd Year', description: 'PLC Hardware, Ladder Logic Programming, and Relay Logic.' },
@@ -27,9 +28,7 @@ const DAW_MYAT_THU_ZAR_COURSES = [
     
     // 5th Year
     { code: 'McE-51039', name: 'Industrial Automation I', year: 5, yearLabel: '5th Year', description: 'SCADA Systems, Factory Automation, and Fieldbus Protocols.' },
-    { code: 'McE-52039', name: 'Industrial Automation II', year: 5, yearLabel: '5th Year', description: 'Advanced Process Automation, Industrial Robotics, and Control Networks.' },
-    { code: 'McE-52018', name: 'Mechatronics System Design', year: 5, yearLabel: '5th Year', description: 'Comprehensive Mechatronic Engineering System Design & Integration.' },
-    { code: 'McE-51001', name: 'Control Systems Engineering', year: 5, yearLabel: '5th Year', description: 'State-space representation, PID control tuning, and stability analysis.' }
+    { code: 'McE-52039', name: 'Industrial Automation II', year: 5, yearLabel: '5th Year', description: 'Advanced Process Automation, Industrial Robotics, and Control Networks.' }
 ];
 
 async function seedMyatThuZarCourses() {
@@ -44,9 +43,20 @@ async function seedMyatThuZarCourses() {
             process.exit(1);
         }
         const teacherId = teacher._id;
-        console.log(`Linking 4-year subject curriculum for Daw Myat Thu Zar (${teacherId})...`);
+        console.log(`Linking exact 4-year subject curriculum for Daw Myat Thu Zar (${teacherId})...`);
 
-        // 1. Purge corrupt blank course entries like 'McE-'
+        // 1. Unassign McE-52018 and McE-51001 from Daw Myat Thu Zar if assigned
+        const unassignedCodes = ['McE-52018', 'McE-51001'];
+        for (const unCode of unassignedCodes) {
+            const course = await Course.findOne({ code: new RegExp(`^${unCode.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') });
+            if (course && String(course.teacher) === String(teacherId)) {
+                course.teacher = null;
+                await course.save();
+                console.log(`✓ Unassigned [${unCode}] from Daw Myat Thu Zar.`);
+            }
+        }
+
+        // 2. Purge corrupt blank course entries like 'McE-'
         const allDbCourses = await Course.find({});
         for (const dbc of allDbCourses) {
             const clean = (dbc.code || '').toUpperCase().replace(/\s+/g, '');
@@ -56,7 +66,7 @@ async function seedMyatThuZarCourses() {
             }
         }
 
-        // 2. Insert or update Daw Myat Thu Zar's 4-Year Subjects
+        // 3. Insert or update Daw Myat Thu Zar's exact 6 subjects
         for (const c of DAW_MYAT_THU_ZAR_COURSES) {
             let existing = await Course.findOne({ code: new RegExp(`^${c.code.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') });
             if (!existing) {
@@ -86,7 +96,7 @@ async function seedMyatThuZarCourses() {
             }
         }
 
-        console.log('\n✅ Successfully linked all 4 years of subjects for Daw Myat Thu Zar!');
+        console.log('\n✅ Successfully linked exact subjects across 4 years for Daw Myat Thu Zar!');
         process.exit(0);
     } catch (err) {
         console.error('Seed Error:', err);
