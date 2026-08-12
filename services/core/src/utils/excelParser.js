@@ -82,31 +82,66 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 if (lineStr.toLowerCase().includes('timetable for')) titleText = lineStr;
             });
 
-            const combined = `${sheetName} ${titleText}`.toLowerCase().trim();
+            const rawTitle = titleText || sheetName;
+            const parenIndex = rawTitle.indexOf('(');
+            let yearPart = rawTitle;
+            let semPart = rawTitle;
 
-            // Robust Year and Semester Detection for TU Hmawbi Timetable Excel (e.g. V Year, IV Year, III Year)
-            const detectYearFromText = (text = '') => {
-                const cleaned = text.toLowerCase();
-                if (/\b(v\s*year|5th|fifth|v-mc|v\s*mc)\b/i.test(cleaned) && !/\b(iv|vi)\b/i.test(cleaned)) return '5th Year';
-                if (/\b(iv\s*year|4th|fourth|iv-mc|iv\s*mc)\b/i.test(cleaned)) return '4th Year';
-                if (/\b(iii\s*year|3rd|third|iii-mc|iii\s*mc)\b/i.test(cleaned)) return '3rd Year';
-                if (/\b(ii\s*year|2nd|second|ii-mc|ii\s*mc)\b/i.test(cleaned) && !/\b(iii)\b/i.test(cleaned)) return '2nd Year';
-                if (/\b(i\s*year|1st|first|i-mc|i\s*mc)\b/i.test(cleaned) && !/\b(ii|iii|iv|v|vi)\b/i.test(cleaned)) return '1st Year';
-                if (/\b(vi\s*year|6th|sixth|vi-mc|vi\s*mc)\b/i.test(cleaned)) return '6th Year';
-                if (/\b(me|master)\b/i.test(cleaned)) return 'ME Program';
-                return '4th Year';
-            };
-
-            const detectSemesterFromText = (text = '') => {
-                const cleaned = text.toLowerCase();
-                if (/\b(sem\s*2|sem\s*ii|semester\s*2|semester\s*ii|s2|2nd\s*sem|second\s*sem)\b/i.test(cleaned)) {
-                    return 'Semester 2';
+            if (parenIndex !== -1) {
+                yearPart = rawTitle.substring(0, parenIndex).trim();
+                const closeParenIndex = rawTitle.indexOf(')', parenIndex);
+                if (closeParenIndex !== -1) {
+                    semPart = rawTitle.substring(parenIndex + 1, closeParenIndex).trim();
+                } else {
+                    semPart = rawTitle.substring(parenIndex + 1).trim();
                 }
-                return 'Semester 1';
-            };
+            }
 
-            const detectedYear = detectYearFromText(combined);
-            const detectedSemester = detectSemesterFromText(combined);
+            // 1. Detect Year ONLY from text before parenthesis
+            const cleanY = yearPart.toUpperCase();
+            let detectedYear = '2nd Year';
+
+            if (/\bVI\b/.test(cleanY) || cleanY.includes('SIXTH') || cleanY.includes('6TH') || cleanY.includes('6')) {
+                detectedYear = '6th Year';
+            } else if (/\bV\b/.test(cleanY) || cleanY.includes('FIFTH') || cleanY.includes('5TH') || cleanY.includes('5')) {
+                detectedYear = '5th Year';
+            } else if (/\bIV\b/.test(cleanY) || cleanY.includes('FOURTH') || cleanY.includes('4TH') || cleanY.includes('4')) {
+                detectedYear = '4th Year';
+            } else if (/\bIII\b/.test(cleanY) || cleanY.includes('THIRD') || cleanY.includes('3RD') || cleanY.includes('3')) {
+                detectedYear = '3rd Year';
+            } else if (/\bII\b/.test(cleanY) || cleanY.includes('SECOND') || cleanY.includes('2ND') || cleanY.includes('2')) {
+                detectedYear = '2nd Year';
+            } else if (/\bI\b/.test(cleanY) || cleanY.includes('FIRST') || cleanY.includes('1ST') || cleanY.includes('1')) {
+                detectedYear = '1st Year';
+            } else if (cleanY.includes('ME') || cleanY.includes('MASTER')) {
+                detectedYear = 'ME Program';
+            }
+
+            // 2. Detect Semester ONLY from text inside parenthesis
+            const cleanS = semPart.toUpperCase();
+            let detectedSemester = 'Semester 2';
+
+            if (
+                /\b(2|4|6|8|10)\b/.test(cleanS) ||
+                /\b(II|IV|VI|VIII|X)\b/.test(cleanS) ||
+                cleanS.includes('SECOND') ||
+                cleanS.includes('SEM 2') ||
+                cleanS.includes('SEM 4') ||
+                cleanS.includes('S2') ||
+                cleanS.includes('S4')
+            ) {
+                detectedSemester = 'Semester 2';
+            } else if (
+                /\b(1|3|5|7|9)\b/.test(cleanS) ||
+                /\b(I|III|V|VII|IX)\b/.test(cleanS) ||
+                cleanS.includes('FIRST') ||
+                cleanS.includes('SEM 1') ||
+                cleanS.includes('SEM 3') ||
+                cleanS.includes('S1') ||
+                cleanS.includes('S3')
+            ) {
+                detectedSemester = 'Semester 1';
+            }
 
             jsonRows.forEach(row => {
                 if (!Array.isArray(row)) return;

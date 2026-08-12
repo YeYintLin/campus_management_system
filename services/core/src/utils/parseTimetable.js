@@ -98,51 +98,74 @@ function cellTextIfOwn(worksheet, merges, row, col) {
 }
 
 function parseRow4Title(text) {
-    if (!text) return { yearNum: 4, yearLabel: '4th Year', semNum: 1, semLabel: 'Semester 1' };
+    if (!text) return { yearNum: 2, yearLabel: '2nd Year', semNum: 2, semLabel: 'Semester 2' };
 
-    const match = text.match(/timetable\s+for\s+(.*?)(?:\(|\n|$)/i);
-    const semMatch = text.match(/\((.*?)\)/);
+    const parenIndex = text.indexOf('(');
+    let yearPart = text;
+    let semPart = text;
 
-    let yearStr = match ? match[1].trim() : text;
-    let semStr = semMatch ? semMatch[1].trim() : text;
+    if (parenIndex !== -1) {
+        yearPart = text.substring(0, parenIndex).trim();
+        const closeParenIndex = text.indexOf(')', parenIndex);
+        if (closeParenIndex !== -1) {
+            semPart = text.substring(parenIndex + 1, closeParenIndex).trim();
+        } else {
+            semPart = text.substring(parenIndex + 1).trim();
+        }
+    }
 
-    const cleanY = yearStr.toUpperCase();
+    // 1. Detect Year ONLY from text before parenthesis
+    const cleanY = yearPart.toUpperCase();
     let yearNum = null;
     let yearLabel = null;
 
-    if (/\bV\b/.test(cleanY) || cleanY.includes('FIFTH') || cleanY.includes('5TH') || cleanY.includes('5')) {
-        if (!/\bIV\b/.test(cleanY) && !/\bVI\b/.test(cleanY)) {
-            yearNum = 5; yearLabel = '5th Year';
-        }
-    }
-    if (!yearNum && (/\bIV\b/.test(cleanY) || cleanY.includes('FOURTH') || cleanY.includes('4TH') || cleanY.includes('4'))) {
-        yearNum = 4; yearLabel = '4th Year';
-    }
-    if (!yearNum && (/\bIII\b/.test(cleanY) || cleanY.includes('THIRD') || cleanY.includes('3RD') || cleanY.includes('3'))) {
-        yearNum = 3; yearLabel = '3rd Year';
-    }
-    if (!yearNum && (/\bII\b/.test(cleanY) || cleanY.includes('SECOND') || cleanY.includes('2ND') || cleanY.includes('2')) && !/\bIII\b/.test(cleanY)) {
-        yearNum = 2; yearLabel = '2nd Year';
-    }
-    if (!yearNum && (/\bI\b/.test(cleanY) || cleanY.includes('FIRST') || cleanY.includes('1ST') || cleanY.includes('1')) && !/\bII\b/.test(cleanY) && !/\bIII\b/.test(cleanY) && !/\bIV\b/.test(cleanY) && !/\bV\b/.test(cleanY) && !/\bVI\b/.test(cleanY)) {
-        yearNum = 1; yearLabel = '1st Year';
-    }
-    if (!yearNum && (/\bVI\b/.test(cleanY) || cleanY.includes('SIXTH') || cleanY.includes('6TH') || cleanY.includes('6'))) {
+    if (/\bVI\b/.test(cleanY) || cleanY.includes('SIXTH') || cleanY.includes('6TH') || cleanY.includes('6')) {
         yearNum = 6; yearLabel = '6th Year';
+    } else if (/\bV\b/.test(cleanY) || cleanY.includes('FIFTH') || cleanY.includes('5TH') || cleanY.includes('5')) {
+        yearNum = 5; yearLabel = '5th Year';
+    } else if (/\bIV\b/.test(cleanY) || cleanY.includes('FOURTH') || cleanY.includes('4TH') || cleanY.includes('4')) {
+        yearNum = 4; yearLabel = '4th Year';
+    } else if (/\bIII\b/.test(cleanY) || cleanY.includes('THIRD') || cleanY.includes('3RD') || cleanY.includes('3')) {
+        yearNum = 3; yearLabel = '3rd Year';
+    } else if (/\bII\b/.test(cleanY) || cleanY.includes('SECOND') || cleanY.includes('2ND') || cleanY.includes('2')) {
+        yearNum = 2; yearLabel = '2nd Year';
+    } else if (/\bI\b/.test(cleanY) || cleanY.includes('FIRST') || cleanY.includes('1ST') || cleanY.includes('1')) {
+        yearNum = 1; yearLabel = '1st Year';
+    } else if (cleanY.includes('ME') || cleanY.includes('MASTER')) {
+        yearNum = 7; yearLabel = 'ME Program';
     }
 
     if (!yearNum) {
-        yearNum = 4; yearLabel = '4th Year';
+        yearNum = 2; yearLabel = '2nd Year';
     }
 
-    let semNum = 1;
-    let semLabel = 'Semester 1';
-    const cleanS = semStr.toLowerCase();
+    // 2. Detect Semester ONLY from text inside parenthesis
+    const cleanS = semPart.toUpperCase();
+    let semNum = 2;
+    let semLabel = 'Semester 2';
 
-    if (cleanS.includes('second') || cleanS.includes('sem 2') || cleanS.includes('semester 2') || cleanS.includes('sem ii') || cleanS.includes('semester ii') || cleanS.includes('s2') || cleanS.includes('2')) {
-        semNum = 2; semLabel = 'Semester 2';
-    } else if (cleanS.includes('first') || cleanS.includes('sem 1') || cleanS.includes('semester 1') || cleanS.includes('sem i') || cleanS.includes('semester i') || cleanS.includes('s1') || cleanS.includes('1')) {
-        semNum = 1; semLabel = 'Semester 1';
+    if (
+        /\b(2|4|6|8|10)\b/.test(cleanS) ||
+        /\b(II|IV|VI|VIII|X)\b/.test(cleanS) ||
+        cleanS.includes('SECOND') ||
+        cleanS.includes('SEM 2') ||
+        cleanS.includes('SEM 4') ||
+        cleanS.includes('S2') ||
+        cleanS.includes('S4')
+    ) {
+        semNum = 2;
+        semLabel = 'Semester 2';
+    } else if (
+        /\b(1|3|5|7|9)\b/.test(cleanS) ||
+        /\b(I|III|V|VII|IX)\b/.test(cleanS) ||
+        cleanS.includes('FIRST') ||
+        cleanS.includes('SEM 1') ||
+        cleanS.includes('SEM 3') ||
+        cleanS.includes('S1') ||
+        cleanS.includes('S3')
+    ) {
+        semNum = 1;
+        semLabel = 'Semester 1';
     }
 
     return { yearNum, yearLabel, semNum, semLabel };
