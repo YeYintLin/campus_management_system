@@ -104,18 +104,22 @@ const batchImportSessions = async (req, res) => {
         const Course = require('../models/Course');
         const itemsToProcess = sessionType === 'Academic' ? (parsedMatrix || []) : (parsedSessions || []);
         for (const item of itemsToProcess) {
-            const cCode = (item.courseCode || '').trim();
-            if (cCode) {
-                const existingCourse = await Course.findOne({ code: cCode });
-                if (!existingCourse) {
-                    await Course.create({
-                        code: cCode,
-                        name: item.courseName || cCode,
-                        department: major,
-                        year: item.year || year,
-                        semester: item.semester || semester,
-                        teacher: req.user._id
-                    });
+            const cCode = (item.courseCode || '').trim().toUpperCase();
+            if (cCode && cCode.length >= 3 && !['DEPARTMENT', 'TECHNOLOGICAL', 'UNIVERSITY', 'MECHATRONICS', 'TIMETABLE'].includes(cCode)) {
+                try {
+                    const existingCourse = await Course.findOne({ code: cCode });
+                    if (!existingCourse) {
+                        await Course.create({
+                            code: cCode,
+                            name: item.courseName || cCode,
+                            department: major,
+                            year: item.year || year,
+                            semester: item.semester || semester,
+                            teacher: req.user._id
+                        });
+                    }
+                } catch (cErr) {
+                    console.error('Course auto-create skip:', cErr.message);
                 }
             }
         }

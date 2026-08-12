@@ -300,10 +300,14 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
             });
         } else {
             // Dynamic Column Header Detection for Practical, Tutorial & Exam Tables
-            let headerRowIdx = jsonRows.findIndex(r => Array.isArray(r) && r.some(c => {
-                const str = String(c).toLowerCase();
-                return str.includes('subject') || str.includes('code') || str.includes('date') || str.includes('title') || str.includes('exp') || str.includes('topic');
-            }));
+            let headerRowIdx = jsonRows.findIndex(r => {
+                if (!Array.isArray(r)) return false;
+                const matches = r.filter(c => {
+                    const s = String(c || '').toLowerCase();
+                    return s.includes('code') || s.includes('subject') || s.includes('date') || s.includes('time') || s.includes('title') || s.includes('exp') || s.includes('group') || s.includes('room') || s.includes('sr');
+                });
+                return matches.length >= 2;
+            });
             if (headerRowIdx === -1) headerRowIdx = 0;
 
             const headerRow = (jsonRows[headerRowIdx] || []).map(c => String(c || '').toLowerCase().trim());
@@ -323,14 +327,20 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 const rowText = row.join(' ').toLowerCase();
                 if (rowText.includes('saturday') && !rowText.includes(':') && !rowText.includes('mc')) continue;
                 if (rowText.includes('sunday') && !rowText.includes(':')) continue;
+                if (rowText.includes('technological university') || rowText.includes('department of') || rowText.includes('practical timetable')) continue;
 
                 const rawDate = (dateIdx !== -1 && row[dateIdx]) ? row[dateIdx] : (row[1] || row[0] || row[5]);
                 const rawTime = (timeIdx !== -1 && row[timeIdx]) ? row[timeIdx] : (row[2] || row[6] || '08:30 AM to 11:30 AM');
-                const rawCode = (codeIdx !== -1 && row[codeIdx]) ? row[codeIdx] : (row[1] || row[3] || row[0] || 'SUBJ101');
-                const rawTitle = (titleIdx !== -1 && row[titleIdx]) ? row[titleIdx] : (row[2] || row[3] || 'Academic Session');
+                const rawCode = (codeIdx !== -1 && row[codeIdx]) ? row[codeIdx] : (row[1] || row[3] || row[0] || 'MCE-PRACTICAL');
+                const rawTitle = (titleIdx !== -1 && row[titleIdx]) ? row[titleIdx] : (row[2] || row[3] || 'Practical Lab Session');
                 const rawGroup = (groupIdx !== -1 && row[groupIdx]) ? row[groupIdx] : (row[4] || 'All');
                 const rawPlace = (placeIdx !== -1 && row[placeIdx]) ? row[placeIdx] : (row[7] || row[6] || 'Mechatronics Lab');
                 const rawTeacher = (teacherIdx !== -1 && row[teacherIdx]) ? row[teacherIdx] : (row[3] || row[4] || 'Faculty Member');
+
+                const cleanCodeStr = String(rawCode).split(' ')[0].toUpperCase().replace(/[^A-Z0-9-]/g, '');
+                if (!cleanCodeStr || ['UNIVERSITY', 'DEPARTMENT', 'TIMETABLE', 'TECHNOLOGICAL', 'MECHATRONICS', 'SR', 'NO', 'NO.'].includes(cleanCodeStr)) {
+                    continue; // Skip title or header text rows
+                }
 
                 let parsedDate = parseExcelDate({ v: rawDate });
                 if (!parsedDate) parsedDate = new Date().toISOString();
@@ -339,12 +349,10 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 const startMin = parseTimeToMinutes(timeStr.split('to')[0] || timeStr.split('-')[0] || '08:30');
                 const endMin = parseTimeToMinutes(timeStr.split('to')[1] || timeStr.split('-')[1] || '11:30') || (startMin + 180);
 
-                const cleanCodeStr = String(rawCode).split(' ')[0].toUpperCase();
-
                 allSessions.push({
                     sessionType: targetCategory === 'Exam' ? 'Exam' : targetCategory === 'Tutorial' ? 'Tutorial' : 'Practical',
                     examType: targetCategory === 'Exam' ? 'Mid-Term' : 'N/A',
-                    courseCode: cleanCodeStr || 'MCE-PRACTICAL',
+                    courseCode: cleanCodeStr,
                     courseName: String(rawTitle).trim() || cleanCodeStr,
                     title: String(rawTitle).trim() || cleanCodeStr,
                     teacher: String(rawTeacher).trim(),
