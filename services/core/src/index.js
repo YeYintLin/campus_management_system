@@ -89,13 +89,46 @@ mongoose
     .then(() => {
         dbStatus = 'connected';
         console.log('Connected to MongoDB');
-        const Course = require('./models/Course');
-        Course.countDocuments().then(count => {
-            if (count === 0) {
-                console.log('No courses found; seeding official curriculum courses...');
-                const seedScript = require('./scripts/seedOfficialCourses');
+        
+        // Auto-purge stray non-official course documents & enforce official teacher assignments
+        (async () => {
+            try {
+                const Course = require('./models/Course');
+                const User = require('./models/User');
+
+                const OFFICIAL_CODES = new Set([
+                    'MCE-51039', 'MCE-52039', 'MCE-52018', 'MCE-51001',
+                    'MCE-42026', 'MCE-41026', 'MCE-4049',
+                    'MCE-32032', 'MCE-31032', 'MCE-31022', 'MCE-3027',
+                    'E-11001', 'MATH-11002', 'PHYSICS-11003', 'MCE-21005', 'MCE-22006', 'MCE-61011'
+                ]);
+
+                const teacher = await User.findOne({ email: 'myat.thu.zar@tuhmawbi.edu.mm' });
+                const myatThuZarId = teacher ? teacher._id : null;
+                const fifthYearCodes = new Set(['MCE-51039', 'MCE-52039', 'MCE-52018', 'MCE-51001']);
+
+                const allCourses = await Course.find({});
+                for (const c of allCourses) {
+                    const cleanCode = (c.code || '').toUpperCase().replace(/\s+/g, '');
+                    if (!OFFICIAL_CODES.has(cleanCode)) {
+                        console.log(`[Auto-Purge] Deleting stray course record: '${c.code}' (${c._id})`);
+                        await Course.deleteOne({ _id: c._id });
+                    } else if (myatThuZarId) {
+                        const shouldBeHer = fifthYearCodes.has(cleanCode);
+                        if (shouldBeHer && (!c.teacher || String(c.teacher._id || c.teacher) !== String(myatThuZarId))) {
+                            c.teacher = myatThuZarId;
+                            await c.save();
+                        } else if (!shouldBeHer && c.teacher && String(c.teacher._id || c.teacher) === String(myatThuZarId)) {
+                            c.teacher = null;
+                            await c.save();
+                        }
+                    }
+                }
+                console.log('Official curriculum course audit completed successfully.');
+            } catch (auditErr) {
+                console.error('Course auto-cleanup error:', auditErr.message);
             }
-        }).catch(() => {});
+        })();
     })
     .catch((err) => {
         dbStatus = 'error';
