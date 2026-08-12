@@ -32,38 +32,7 @@ function App() {
   const { user } = useContext(AuthContext);
   const inspectionRestricted = user && restrictedRoles.has(user.role);
 
-  useEffect(() => {
-    if (!inspectionRestricted) return undefined;
 
-    const preventAction = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-    };
-
-    const handleKeyDown = (event) => {
-      if (!inspectionRestricted) return;
-      const key = event.key.toUpperCase();
-      const ctrlOrMeta = event.ctrlKey || event.metaKey;
-
-      const isF12 = event.key === 'F12';
-      const isInspectShortcut = ctrlOrMeta && event.shiftKey && (key === 'I' || key === 'J' || key === 'C');
-      const isViewSource = ctrlOrMeta && key === 'U';
-
-      if (isF12 || isInspectShortcut || isViewSource) {
-        preventAction(event);
-      }
-    };
-
-    const handleContextMenu = (event) => preventAction(event);
-
-    window.addEventListener('keydown', handleKeyDown, true);
-    window.addEventListener('contextmenu', handleContextMenu, true);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown, true);
-      window.removeEventListener('contextmenu', handleContextMenu, true);
-    };
-  }, [inspectionRestricted]);
 
   return (
     <div className="app-container">
