@@ -33,7 +33,7 @@ async function importStudents() {
         let importedCount = 0;
         let existingCount = 0;
 
-        const defaultPasswordHash = await bcrypt.hash('password123', 10);
+        const defaultPasswordHash = await bcrypt.hash('password', 10);
 
         for (const s of studentsData) {
             const rollNoRaw = s.rollNo;
@@ -45,6 +45,7 @@ async function importStudents() {
             let existingUser = await User.findOne({ email });
 
             if (existingUser) {
+                await User.updateOne({ _id: existingUser._id }, { password: defaultPasswordHash });
                 existingCount++;
                 continue;
             }
