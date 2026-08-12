@@ -261,7 +261,7 @@ TU Hmawbi Smart Campus Management System
 
             // Combine and deduplicate by code
             const existingCodes = new Set(dbCourses.map(c => c.code.toUpperCase().trim()));
-            const uniqueTimetableSubjects = [];
+            let uniqueTimetableSubjects = [];
 
             timetableSubjects.forEach(ts => {
                 const cleanCode = ts.code.toUpperCase().trim();
@@ -270,6 +270,11 @@ TU Hmawbi Smart Campus Management System
                     uniqueTimetableSubjects.push(ts);
                 }
             });
+
+            // For teachers, filter timetable subjects to only show their own
+            if (isTeacher) {
+                uniqueTimetableSubjects = uniqueTimetableSubjects.filter(ts => isCourseTaughtByTeacher(ts, user));
+            }
 
             setCourses([...dbCourses, ...uniqueTimetableSubjects]);
         } catch (err) {

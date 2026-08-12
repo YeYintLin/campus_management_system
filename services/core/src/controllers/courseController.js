@@ -5,7 +5,15 @@ const Course = require('../models/Course');
 // @access  Private
 const getCourses = async (req, res) => {
     try {
-        const courses = await Course.find({})
+        let query = {};
+
+        // Teachers only see courses assigned to them
+        if (req.user.role === 'Teacher') {
+            query = { teacher: req.user._id };
+        }
+        // Admin sees all, Student sees all (frontend filters by year)
+
+        const courses = await Course.find(query)
             .populate('teacher', 'name email')
             .populate('students', 'name email');
 
