@@ -135,8 +135,8 @@ const getCourses = async (req, res) => {
         let query = {};
         const role = (req.user.role || '').toLowerCase().trim();
 
-        // Teachers only see courses assigned to them
-        if (role === 'teacher') {
+        // Filter to assigned courses only if explicitly requested (e.g. ?assignedOnly=true)
+        if (role === 'teacher' && req.query.assignedOnly === 'true') {
             query = {
                 $or: [
                     { teacher: req.user._id },

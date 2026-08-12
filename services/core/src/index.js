@@ -89,6 +89,13 @@ mongoose
     .then(() => {
         dbStatus = 'connected';
         console.log('Connected to MongoDB');
+        const Course = require('./models/Course');
+        Course.countDocuments().then(count => {
+            if (count === 0) {
+                console.log('No courses found; seeding official curriculum courses...');
+                const seedScript = require('./scripts/seedOfficialCourses');
+            }
+        }).catch(() => {});
     })
     .catch((err) => {
         dbStatus = 'error';
