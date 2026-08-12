@@ -238,7 +238,7 @@ TU Hmawbi Smart Campus Management System
                 if (Array.isArray(sheet.legend)) {
                     sheet.legend.forEach(item => {
                         if (item.code) {
-                            const cleanCode = item.code.trim().toUpperCase();
+                            const cleanCode = item.code.replace(/\s+/g, '').toUpperCase();
                             timetableMap.set(cleanCode, {
                                 code: item.code.trim(),
                                 name: item.subject || item.code,
@@ -256,7 +256,7 @@ TU Hmawbi Smart Campus Management System
             const mergedCoursesMap = new Map();
 
             dbCourses.forEach(dbc => {
-                const cleanCode = (dbc.code || '').trim().toUpperCase();
+                const cleanCode = (dbc.code || '').replace(/\s+/g, '').toUpperCase();
                 if (!cleanCode) return;
 
                 const ttInfo = timetableMap.get(cleanCode);
