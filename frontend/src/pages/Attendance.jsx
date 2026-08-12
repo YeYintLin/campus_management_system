@@ -493,6 +493,27 @@ const Attendance = () => {
             // Start with enrolled students from course object
             let roster = [...(course.students || [])];
 
+            // Determine course academic year
+            const courseYearLabel = course.yearLabel || yearNumberToLabel(course.year || 1);
+            const targetYearNorm = normalizeYear(courseYearLabel);
+
+            // If course has no explicit students list attached, fetch registered students matching the course's academic year
+            if (roster.length === 0) {
+                try {
+                    const usersRes = await apiClient.get('/users').catch(() => ({ data: [] }));
+                    const allUsers = Array.isArray(usersRes.data) ? usersRes.data : [];
+                    const yearStudents = allUsers.filter(u => {
+                        const r = (u.role || '').toLowerCase();
+                        if (r !== 'student') return false;
+                        const uYearNorm = normalizeYear(u.year);
+                        return targetYearNorm === 'All' || uYearNorm === targetYearNorm;
+                    });
+                    roster = yearStudents;
+                } catch (uErr) {
+                    console.error('Error fetching students by year:', uErr);
+                }
+            }
+
             // Fetch existing attendance logs for this course on date (using course.code || course._id)
             const courseKey = course.code || course._id;
             const { data } = await apiClient.get(`/attendance/course/${courseKey}?date=${date}`);
@@ -514,7 +535,7 @@ const Attendance = () => {
                 });
             }
 
-            // Default remaining enrolled students without a status
+            // Default remaining enrolled/year students to empty status
             roster.forEach(s => {
                 const sId = (s._id || s).toString();
                 if (existingSheet[sId] === undefined) {
