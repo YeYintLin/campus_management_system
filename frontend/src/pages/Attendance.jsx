@@ -276,14 +276,75 @@ const Attendance = () => {
         }
     };
 
-    // Load courses for Teacher / Admin
+    // Load courses for Teacher / Admin (combining /courses and /timetable)
     useEffect(() => {
         if (!canManageAttendance) return;
         const fetchCourses = async () => {
             setLoading(true);
             try {
-                const { data } = await apiClient.get('/courses');
-                setCourses(data);
+                const [coursesRes, timetableRes] = await Promise.all([
+                    apiClient.get('/courses').catch(() => ({ data: [] })),
+                    apiClient.get('/timetable').catch(() => ({ data: [] })),
+                ]);
+
+                const dbCourses = Array.isArray(coursesRes.data) ? coursesRes.data : [];
+                const timetableData = Array.isArray(timetableRes.data) ? timetableRes.data : [];
+
+                // Extract subjects from timetable legends & sessions
+                const timetableSubjects = [];
+                timetableData.forEach(sheet => {
+                    const sheetYear = sheet.yearNumber ? `${sheet.yearNumber}${sheet.yearNumber === 1 ? 'st' : sheet.yearNumber === 2 ? 'nd' : sheet.yearNumber === 3 ? 'rd' : 'th'} Year` : (sheet.yearLabel || 'All');
+
+                    if (Array.isArray(sheet.legend)) {
+                        sheet.legend.forEach(item => {
+                            if (item.code) {
+                                timetableSubjects.push({
+                                    _id: `tt_${item.code}`,
+                                    code: item.code,
+                                    name: item.subject ? `${item.code} - ${item.subject}` : item.code,
+                                    title: item.subject || item.code,
+                                    year: sheetYear,
+                                    department: sheet.department || 'Mechatronics Engineering',
+                                    teacher: item.teacher ? { name: item.teacher } : null,
+                                });
+                            }
+                        });
+                    }
+
+                    if (Array.isArray(sheet.days)) {
+                        sheet.days.forEach(day => {
+                            if (Array.isArray(day.sessions)) {
+                                day.sessions.forEach(sess => {
+                                    if (sess.code) {
+                                        timetableSubjects.push({
+                                            _id: `tt_${sess.code}`,
+                                            code: sess.code,
+                                            name: sess.raw || sess.code,
+                                            title: sess.raw || sess.code,
+                                            year: sheetYear,
+                                            department: sheet.department || 'Mechatronics Engineering',
+                                            teacher: sess.teacher ? { name: sess.teacher } : null,
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+
+                // Deduplicate by code
+                const existingCodes = new Set(dbCourses.map(c => (c.code || '').toUpperCase().trim()));
+                const uniqueTimetableSubjects = [];
+
+                timetableSubjects.forEach(ts => {
+                    const cleanCode = (ts.code || '').toUpperCase().trim();
+                    if (cleanCode && !existingCodes.has(cleanCode)) {
+                        existingCodes.add(cleanCode);
+                        uniqueTimetableSubjects.push(ts);
+                    }
+                });
+
+                setCourses([...dbCourses, ...uniqueTimetableSubjects]);
             } catch (err) {
                 console.error('Error fetching courses for attendance:', err);
             } finally {
