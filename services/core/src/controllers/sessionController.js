@@ -120,7 +120,6 @@ const batchImportSessions = async (req, res) => {
             }
         }
 
-        // In-memory validation pass before DB writes
         if (sessionType === 'Academic') {
             if (!parsedMatrix || parsedMatrix.length === 0) {
                 return res.status(400).json({ message: 'No valid Academic matrix slots found in uploaded Excel file.' });
@@ -150,9 +149,9 @@ const batchImportSessions = async (req, res) => {
                             courseCode: slot.courseCode,
                             courseName: slot.courseName,
                             room: slot.room || slot.majorRoom || '3/212-A',
-                            type: slot.type || 'Lecture',
-                            sessionLabel: slot.sessionLabel || 'Lecture',
-                            classSection: createdSections.get(`${slot.year || year}_${slot.semester || semester}_${slot.major || major}`)?. _id
+                            type: 'Lecture',
+                            sessionLabel: 'Lecture',
+                            classSection: createdSections.get(`${slot.year || year}_${slot.semester || semester}_${slot.major || major}`)?._id
                         }
                     },
                     upsert: true
@@ -174,133 +173,77 @@ const batchImportSessions = async (req, res) => {
                 count: parsedMatrix.length
             });
         } else {
-            if ((!parsedSessions || parsedSessions.length === 0) && (!parsedMatrix || parsedMatrix.length === 0)) {
+            const validSessions = (parsedSessions || []).filter(s => s && s.courseCode && s.date && !isNaN(new Date(s.date).getTime()));
+            if (validSessions.length === 0) {
                 return res.status(400).json({ message: `No valid ${sessionType} sessions found in uploaded Excel file.` });
             }
 
-            // Write matrix slots to Timetable model if present
-            let timetableBulk = [];
-            if (Array.isArray(parsedMatrix) && parsedMatrix.length > 0) {
-                timetableBulk = parsedMatrix.map(slot => ({
+            const bulkOps = validSessions.map(session => {
+                const normType = ['Practical', 'Tutorial', 'Exam'].includes(session.sessionType) 
+                    ? session.sessionType 
+                    : (['Practical', 'Tutorial', 'Exam'].includes(sessionType) ? sessionType : 'Practical');
+
+                return {
                     updateOne: {
                         filter: {
-                            year: slot.year || year,
-                            semester: slot.semester || semester,
-                            major: slot.major || major,
-                            day: slot.day,
-                            periodNumber: slot.periodNumber,
-                            startTimeMinutes: slot.startTimeMinutes
+                            year: session.year || year,
+                            semester: session.semester || semester,
+                            major: session.major || major,
+                            sessionType: normType,
+                            courseCode: session.courseCode,
+                            date: session.date,
+                            startTimeMinutes: session.startTimeMinutes || 540
                         },
                         update: {
                             $set: {
-                                year: slot.year || year,
-                                semester: slot.semester || semester,
-                                major: slot.major || major,
-                                day: slot.day,
-                                periodNumber: slot.periodNumber,
-                                startTime: slot.startTime,
-                                endTime: slot.endTime,
-                                time: slot.startTime,
-                                startTimeMinutes: slot.startTimeMinutes,
-                                endTimeMinutes: slot.endTimeMinutes,
-                                courseCode: slot.courseCode,
-                                courseName: slot.courseName,
-                                room: slot.room || slot.majorRoom || '3/212-A',
-                                type: sessionType,
-                                sessionLabel: sessionType,
-                            }
-                        },
-                        upsert: true
-                    }
-                }));
-                if (timetableBulk.length > 0) {
-                    await Timetable.bulkWrite(timetableBulk);
-                }
-            }
-
-            const validSessions = (parsedSessions || []).filter(s => s && s.courseCode && s.date && !isNaN(new Date(s.date).getTime()));
-
-            let sessionBulkCount = 0;
-            if (validSessions.length > 0) {
-                const bulkOps = validSessions.map(session => {
-                    const normType = ['Practical', 'Tutorial', 'Exam'].includes(session.sessionType) 
-                        ? session.sessionType 
-                        : (['Practical', 'Tutorial', 'Exam'].includes(sessionType) ? sessionType : 'Practical');
-
-                    return {
-                        updateOne: {
-                            filter: {
                                 year: session.year || year,
                                 semester: session.semester || semester,
                                 major: session.major || major,
                                 sessionType: normType,
+                                examType: session.examType || 'N/A',
                                 courseCode: session.courseCode,
+                                courseName: session.courseName || session.courseCode,
+                                title: session.title || session.courseName || session.courseCode,
+                                teacher: session.teacher || 'Faculty Member',
+                                groupTag: session.groupTag || 'All',
                                 date: session.date,
-                                startTimeMinutes: session.startTimeMinutes || 540
-                            },
-                            update: {
-                                $set: {
-                                    year: session.year || year,
-                                    semester: session.semester || semester,
-                                    major: session.major || major,
-                                    sessionType: normType,
-                                    examType: session.examType || 'N/A',
-                                    courseCode: session.courseCode,
-                                    courseName: session.courseName || session.courseCode,
-                                    title: session.title || session.courseName || session.courseCode,
-                                    teacher: session.teacher || 'Faculty Member',
-                                    groupTag: session.groupTag || 'All',
-                                    date: session.date,
-                                    startTime: session.startTime || '08:30 AM',
-                                    endTime: session.endTime || '11:30 AM',
-                                    startTimeMinutes: session.startTimeMinutes || 540,
-                                    endTimeMinutes: session.endTimeMinutes || 710,
-                                    place: session.place || '3/212-A',
-                                    status: 'Draft',
-                                    classSection: createdSections.get(`${session.year || year}_${session.semester || semester}_${session.major || major}`)?._id
-                                }
-                            },
-                            upsert: true
-                        }
-                    };
-                });
-                await ScheduledSession.bulkWrite(bulkOps);
-                sessionBulkCount = bulkOps.length;
-            }
+                                startTime: session.startTime || '08:30 AM',
+                                endTime: session.endTime || '11:30 AM',
+                                startTimeMinutes: session.startTimeMinutes || 540,
+                                endTimeMinutes: session.endTimeMinutes || 710,
+                                place: session.place || '3/212-A',
+                                status: 'Draft',
+                                classSection: createdSections.get(`${session.year || year}_${session.semester || semester}_${session.major || major}`)?._id
+                            }
+                        },
+                        upsert: true
+                    }
+                };
+            });
+
+            await ScheduledSession.bulkWrite(bulkOps);
 
             const Notification = require('../models/Notification');
-            let notifType = 'system';
-            let notifMsg = '';
+            let notifType = sessionType.toLowerCase();
+            let notifMsg = `🔬 ${sessionType} Timetable Uploaded: ${year} (${semester}) ${major} ${sessionType.toLowerCase()} schedule has been updated!`;
             let notifLink = '/timetable';
 
             if (sessionType === 'Exam') {
                 notifType = 'exam';
-                notifMsg = `📝 Exam Schedule Published: ${year} (${semester}) ${major} exam dates have been uploaded! Check your Exam Schedule now.`;
+                notifMsg = `📝 Exam Schedule Published: ${year} (${semester}) ${major} exam dates have been uploaded!`;
                 notifLink = '/exams';
-            } else if (sessionType === 'Practical') {
-                notifType = 'practical';
-                notifMsg = `🔬 Practical Timetable Uploaded: ${year} (${semester}) ${major} practical experiment sessions are now scheduled!`;
-                notifLink = '/timetable';
-            } else if (sessionType === 'Tutorial') {
-                notifType = 'tutorial';
-                notifMsg = `✍️ Tutorial Timetable Uploaded: ${year} (${semester}) ${major} tutorial sessions are now scheduled!`;
-                notifLink = '/timetable';
             }
 
-            if (notifMsg) {
-                await Notification.create({
-                    user: null,
-                    type: notifType,
-                    message: notifMsg,
-                    link: notifLink
-                });
-            }
-
-            const totalCount = (timetableBulk ? timetableBulk.length : 0) + sessionBulkCount;
+            await Notification.create({
+                user: null,
+                type: notifType,
+                message: notifMsg,
+                link: notifLink
+            });
 
             return res.json({
-                message: `Successfully imported ${totalCount} ${sessionType} sessions!`,
-                count: totalCount
+                message: `Successfully imported ${bulkOps.length} ${sessionType} sessions!`,
+                count: bulkOps.length
             });
         }
     } catch (error) {
