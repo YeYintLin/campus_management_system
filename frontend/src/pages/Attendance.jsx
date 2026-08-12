@@ -364,71 +364,94 @@ const Attendance = () => {
                 const dbCourses = Array.isArray(coursesRes.data) ? coursesRes.data : [];
                 const timetableData = Array.isArray(timetableRes.data) ? timetableRes.data : [];
 
-                // Extract subjects from timetable legends & sessions
-                const timetableSubjects = [];
+                // Extract timetable legend items by clean code
+                const timetableMap = new Map();
                 timetableData.forEach(sheet => {
-                    const sheetYear = sheet.yearNumber ? `${sheet.yearNumber}${sheet.yearNumber === 1 ? 'st' : sheet.yearNumber === 2 ? 'nd' : sheet.yearNumber === 3 ? 'rd' : 'th'} Year` : (sheet.yearLabel || 'All');
+                    const sheetYear = sheet.yearLabel || (sheet.yearNumber ? yearNumberToLabel(sheet.yearNumber) : '4th Year');
+                    const sheetYearNum = sheet.yearNumber || 4;
 
                     if (Array.isArray(sheet.legend)) {
                         sheet.legend.forEach(item => {
                             if (item.code) {
-                                timetableSubjects.push({
-                                    _id: `tt_${item.code}`,
-                                    code: item.code,
-                                    name: item.subject ? `${item.code} - ${item.subject}` : item.code,
-                                    title: item.subject || item.code,
-                                    year: sheetYear,
-                                    department: sheet.department || 'Mechatronics Engineering',
-                                    teacher: item.teacher ? { name: item.teacher } : null,
-                                });
-                            }
-                        });
-                    }
+                                let rawCode = item.code.trim();
+                                const codeMatch = rawCode.match(/^[A-Za-z]{1,5}-?\s*\d{3,6}/);
+                                if (codeMatch) {
+                                    rawCode = codeMatch[0].replace(/\s+/g, '');
+                                }
+                                if (rawCode.length > 20) return;
 
-                    if (Array.isArray(sheet.days)) {
-                        sheet.days.forEach(day => {
-                            if (Array.isArray(day.sessions)) {
-                                day.sessions.forEach(sess => {
-                                    if (sess.code) {
-                                        timetableSubjects.push({
-                                            _id: `tt_${sess.code}`,
-                                            code: sess.code,
-                                            name: sess.raw || sess.code,
-                                            title: sess.raw || sess.code,
-                                            year: sheetYear,
-                                            department: sheet.department || 'Mechatronics Engineering',
-                                            teacher: sess.teacher ? { name: sess.teacher } : null,
-                                        });
-                                    }
+                                const cleanCode = rawCode.replace(/[\s-]+/g, '').toUpperCase();
+                                timetableMap.set(cleanCode, {
+                                    _id: `tt_${rawCode}`,
+                                    code: rawCode,
+                                    name: item.subject ? item.subject.trim() : rawCode,
+                                    year: sheetYearNum,
+                                    yearLabel: sheetYear,
+                                    teacher: item.teacher ? { name: item.teacher.trim() } : null,
+                                    isFromTimetable: true
                                 });
                             }
                         });
                     }
                 });
 
-                // Deduplicate by code (strip all whitespace and dashes for matching)
-                const existingCodes = new Set(dbCourses.map(c => (c.code || '').replace(/[\s-]+/g, '').toUpperCase()));
-                let uniqueTimetableSubjects = [];
+                // Process DB Courses & override with Timetable legend info if available
+                const mergedCoursesMap = new Map();
 
-                timetableSubjects.forEach(ts => {
-                    const cleanCode = (ts.code || '').replace(/[\s-]+/g, '').toUpperCase();
-                    if (cleanCode && !existingCodes.has(cleanCode)) {
-                        existingCodes.add(cleanCode);
-                        uniqueTimetableSubjects.push(ts);
+                dbCourses.forEach(dbc => {
+                    const cleanCode = (dbc.code || '').replace(/[\s-]+/g, '').toUpperCase();
+                    if (!cleanCode) return;
+
+                    const ttInfo = timetableMap.get(cleanCode);
+                    let newCourseObj = null;
+
+                    if (ttInfo) {
+                        newCourseObj = {
+                            ...dbc,
+                            name: dbc.name || ttInfo.name,
+                            year: ttInfo.year,
+                            yearLabel: ttInfo.yearLabel,
+                            teacher: dbc.teacher || ttInfo.teacher,
+                            isFromTimetable: true
+                        };
+                    } else if (dbc.teacher) {
+                        newCourseObj = { ...dbc };
+                    }
+
+                    if (newCourseObj) {
+                        if (mergedCoursesMap.has(cleanCode)) {
+                            const existing = mergedCoursesMap.get(cleanCode);
+                            const existingIsGeneric = (existing.description || '').includes('Official timetable subject offering');
+                            const newIsGeneric = (newCourseObj.description || '').includes('Official timetable subject offering');
+                            if (existingIsGeneric && !newIsGeneric) {
+                                mergedCoursesMap.set(cleanCode, newCourseObj);
+                            }
+                        } else {
+                            mergedCoursesMap.set(cleanCode, newCourseObj);
+                        }
                     }
                 });
 
-                let filteredDbCourses = dbCourses;
-                // For teachers, filter both dbCourses and timetable subjects to only show their own
+                const mergedCourses = Array.from(mergedCoursesMap.values());
+                const processedCodes = new Set(mergedCoursesMap.keys());
+
+                // Add remaining timetable subjects not yet in DB
+                timetableMap.forEach((ttInfo, cleanCode) => {
+                    if (!processedCodes.has(cleanCode)) {
+                        processedCodes.add(cleanCode);
+                        mergedCourses.push(ttInfo);
+                    }
+                });
+
+                // For Teachers, strictly filter courses assigned to them
+                let finalCourses = mergedCourses;
                 if (isTeacher) {
-                    filteredDbCourses = dbCourses.filter(c => isCourseTaughtByTeacher(c, user));
-                    uniqueTimetableSubjects = uniqueTimetableSubjects.filter(ts => isCourseTaughtByTeacher(ts, user));
+                    finalCourses = mergedCourses.filter(c => isCourseTaughtByTeacher(c, user));
                 }
 
                 // Final deduplication pass
-                const allCourses = [...filteredDbCourses, ...uniqueTimetableSubjects];
                 const finalDedup = new Map();
-                allCourses.forEach(c => {
+                finalCourses.forEach(c => {
                     const key = (c.code || '').replace(/[\s-]+/g, '').toUpperCase();
                     if (!key) return;
                     if (finalDedup.has(key)) {
