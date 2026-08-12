@@ -84,30 +84,29 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
 
             const combined = `${sheetName} ${titleText}`.toLowerCase().trim();
 
-            let detectedYear = '4th Year';
-            let detectedSemester = 'Semester 2';
-            let majorRoom = '3/212-A';
-            let familyTeacher = 'Faculty Member';
+            // Robust Year and Semester Detection for TU Hmawbi Timetable Excel (e.g. V Year, IV Year, III Year)
+            const detectYearFromText = (text = '') => {
+                const cleaned = text.toLowerCase();
+                if (/\b(v\s*year|5th|fifth|v-mc|v\s*mc)\b/i.test(cleaned) && !/\b(iv|vi)\b/i.test(cleaned)) return '5th Year';
+                if (/\b(iv\s*year|4th|fourth|iv-mc|iv\s*mc)\b/i.test(cleaned)) return '4th Year';
+                if (/\b(iii\s*year|3rd|third|iii-mc|iii\s*mc)\b/i.test(cleaned)) return '3rd Year';
+                if (/\b(ii\s*year|2nd|second|ii-mc|ii\s*mc)\b/i.test(cleaned) && !/\b(iii)\b/i.test(cleaned)) return '2nd Year';
+                if (/\b(i\s*year|1st|first|i-mc|i\s*mc)\b/i.test(cleaned) && !/\b(ii|iii|iv|v|vi)\b/i.test(cleaned)) return '1st Year';
+                if (/\b(vi\s*year|6th|sixth|vi-mc|vi\s*mc)\b/i.test(cleaned)) return '6th Year';
+                if (/\b(me|master)\b/i.test(cleaned)) return 'ME Program';
+                return '4th Year';
+            };
 
-            if (combined.match(/\b(me|master)\b/i) || combined.match(/\bme\s*mc\b/i)) {
-                detectedYear = 'ME Program';
-            } else if (combined.match(/\b(fifth|5th)\b/i) || combined.match(/\bv\s*mc\b/i)) {
-                detectedYear = '5th Year';
-            } else if (combined.match(/\b(fourth|4th)\b/i) || combined.match(/\biv\s*mc\b/i)) {
-                detectedYear = '4th Year';
-            } else if (combined.match(/\b(third|3rd)\b/i) || combined.match(/\biii\s*mc\b/i)) {
-                detectedYear = '3rd Year';
-            } else if (combined.match(/\b(second|2nd)\b/i) || combined.match(/\bii\s*mc\b/i)) {
-                detectedYear = '2nd Year';
-            } else if (combined.match(/\b(first|1st)\b/i) || combined.match(/\bi\s*mc\b/i)) {
-                detectedYear = '1st Year';
-            }
+            const detectSemesterFromText = (text = '') => {
+                const cleaned = text.toLowerCase();
+                if (/\b(sem\s*2|sem\s*ii|semester\s*2|semester\s*ii|s2|2nd\s*sem|second\s*sem)\b/i.test(cleaned)) {
+                    return 'Semester 2';
+                }
+                return 'Semester 1';
+            };
 
-            if (combined.match(/\b(s1|sem\s*1|sem\s*i|first\s*semester|sem\s*iii|sem\s*v|sem\s*vii)\b/i)) {
-                detectedSemester = 'Semester 1';
-            } else {
-                detectedSemester = 'Semester 2';
-            }
+            const detectedYear = detectYearFromText(combined);
+            const detectedSemester = detectSemesterFromText(combined);
 
             jsonRows.forEach(row => {
                 if (!Array.isArray(row)) return;

@@ -116,12 +116,23 @@ function parseSheet(worksheet) {
     else if (lower.includes('major room')) majorRoomRaw = line;
   }
 
-  let yearLabel = null, semesterLabel = null;
-  if (yearSemesterRaw) {
-    const m = yearSemesterRaw.match(/for\s+(.*?)\s*MC/i);
-    if (m) yearLabel = m[1].trim();
-    const m2 = yearSemesterRaw.match(/\((.*?)\)/);
-    if (m2) semesterLabel = m2[1].trim();
+  const combinedTitle = `${worksheet.name} ${yearSemesterRaw || ''} ${titleLines.join(' ')}`.toLowerCase();
+
+  let yearLabel = '4th Year';
+  let yearNum = 4;
+  if (/\b(v\s*year|5th|fifth|v-mc|v\s*mc)\b/i.test(combinedTitle) && !/\b(iv|vi)\b/i.test(combinedTitle)) { yearLabel = '5th Year'; yearNum = 5; }
+  else if (/\b(iv\s*year|4th|fourth|iv-mc|iv\s*mc)\b/i.test(combinedTitle)) { yearLabel = '4th Year'; yearNum = 4; }
+  else if (/\b(iii\s*year|3rd|third|iii-mc|iii\s*mc)\b/i.test(combinedTitle)) { yearLabel = '3rd Year'; yearNum = 3; }
+  else if (/\b(ii\s*year|2nd|second|ii-mc|ii\s*mc)\b/i.test(combinedTitle) && !/\b(iii)\b/i.test(combinedTitle)) { yearLabel = '2nd Year'; yearNum = 2; }
+  else if (/\b(i\s*year|1st|first|i-mc|i\s*mc)\b/i.test(combinedTitle) && !/\b(ii|iii|iv|v|vi)\b/i.test(combinedTitle)) { yearLabel = '1st Year'; yearNum = 1; }
+  else if (/\b(vi\s*year|6th|sixth|vi-mc|vi\s*mc)\b/i.test(combinedTitle)) { yearLabel = '6th Year'; yearNum = 6; }
+  else if (/\b(me|master)\b/i.test(combinedTitle)) { yearLabel = 'ME Program'; yearNum = 7; }
+
+  let semesterLabel = 'Semester 1';
+  let semesterNum = 1;
+  if (/\b(sem\s*2|sem\s*ii|semester\s*2|semester\s*ii|s2|2nd\s*sem|second\s*sem)\b/i.test(combinedTitle)) {
+    semesterLabel = 'Semester 2';
+    semesterNum = 2;
   }
 
   let majorRoom = null, combinedRoom = null;
@@ -222,9 +233,9 @@ function parseSheet(worksheet) {
     academic_year: academicYear,
     department,
     year_label: yearLabel,
-    year_number: (yearLabel && yearLabel.toUpperCase() === 'ME') ? null : extractNumber(yearLabel),
+    year_number: yearNum,
     semester_label: semesterLabel,
-    semester_number: extractNumber(semesterLabel),
+    semester_number: semesterNum,
     major_room: majorRoom,
     combined_room: combinedRoom,
     family_teacher: familyTeacher,
