@@ -187,16 +187,65 @@ const Grades = () => {
 
     useEffect(() => {
         if (!user) return;
-        const fetchCourses = async () => {
+        const fetchCoursesAndTimetable = async () => {
             try {
-                const { data } = await apiClient.get('/courses');
-                setCourses(data);
+                const [coursesRes, timetableRes] = await Promise.all([
+                    apiClient.get('/courses').catch(() => ({ data: [] })),
+                    apiClient.get('/timetable').catch(() => ({ data: [] })),
+                ]);
+
+                const dbCourses = Array.isArray(coursesRes.data) ? coursesRes.data : [];
+                const timetableData = Array.isArray(timetableRes.data) ? timetableRes.data : [];
+
+                const combinedMap = new Map();
+
+                // 1. Process DB courses
+                dbCourses.forEach(dbc => {
+                    const cleanCode = (dbc.code || '').replace(/\s+/g, '').toUpperCase();
+                    if (cleanCode) {
+                        combinedMap.set(cleanCode, dbc);
+                    }
+                });
+
+                // 2. Extract timetable legend subjects and add if missing or update details
+                timetableData.forEach(sheet => {
+                    const sheetYearNum = sheet.yearNumber || 4;
+                    const sheetYearLabel = sheet.yearLabel || `${sheetYearNum}th Year`;
+
+                    if (Array.isArray(sheet.legend)) {
+                        sheet.legend.forEach(item => {
+                            if (item && item.code) {
+                                let rawCode = item.code.trim();
+                                const codeMatch = rawCode.match(/^[A-Za-z]{1,5}-?\s*\d{3,6}/);
+                                if (codeMatch) {
+                                    rawCode = codeMatch[0].replace(/\s+/g, '');
+                                }
+                                const cleanCode = rawCode.toUpperCase();
+                                const existing = combinedMap.get(cleanCode);
+
+                                const ttCourseObj = {
+                                    _id: existing?._id || `tt_${cleanCode}`,
+                                    code: cleanCode,
+                                    name: item.subject ? item.subject.trim() : (existing?.name || cleanCode),
+                                    year: sheetYearNum,
+                                    yearLabel: sheetYearLabel,
+                                    teacher: item.teacher ? { name: item.teacher.trim() } : (existing?.teacher || null),
+                                    students: existing?.students || [],
+                                };
+
+                                combinedMap.set(cleanCode, ttCourseObj);
+                            }
+                        });
+                    }
+                });
+
+                setCourses(Array.from(combinedMap.values()));
             } catch (error) {
-                console.error('Unable to load courses', error);
+                console.error('Unable to load courses and timetable', error);
             }
         };
 
-        fetchCourses();
+        fetchCoursesAndTimetable();
     }, [user]);
 
     useEffect(() => {
