@@ -51,14 +51,15 @@ const Files = () => {
     const [viewMode, setViewMode] = useState('folders'); // 'folders' or 'files'
     const [selectedFolder, setSelectedFolder] = useState(null);
 
-    // Fetch custom folders and resource files from backend DB on mount
+    // Fetch custom folders, resource files, courses, AND timetable slots from backend DB on mount
     useEffect(() => {
         const loadPersistedData = async () => {
             try {
-                const [foldersRes, filesRes, coursesRes] = await Promise.all([
+                const [foldersRes, filesRes, coursesRes, timetableRes] = await Promise.all([
                     apiClient.get('/files/folders').catch(() => ({ data: [] })),
                     apiClient.get('/files/resources').catch(() => ({ data: [] })),
                     apiClient.get('/courses').catch(() => ({ data: [] })),
+                    apiClient.get('/timetable').catch(() => ({ data: [] })),
                 ]);
 
                 const dbFolders = (foldersRes.data || []).map(f => ({
@@ -67,6 +68,7 @@ const Files = () => {
                     description: f.description,
                     iconColor: f.iconColor || '#6366f1',
                     year: f.year || 'All',
+                    parentFolder: f.parentFolder || null,
                 }));
 
                 const dbFiles = (filesRes.data || []).map(f => ({
@@ -91,6 +93,7 @@ const Files = () => {
                     );
                 };
 
+                // Build subject folders from /courses
                 const subjectFolders = (coursesRes.data || [])
                     .filter(c => c.code && !isNonAcademic(c.code, c.name))
                     .map(c => ({
@@ -100,6 +103,24 @@ const Files = () => {
                         description: `Syllabus, reference materials & study files for ${c.code}`,
                         iconColor: '#6366f1'
                     }));
+
+                // Build subject folders from /timetable slots
+                const timetableFolders = [];
+                if (Array.isArray(timetableRes.data)) {
+                    timetableRes.data.forEach(slot => {
+                        const code = slot.courseCode || slot.subjectCode || slot.code || '';
+                        const name = slot.courseName || slot.subjectName || slot.subject || slot.name || '';
+                        if (code && !isNonAcademic(code, name)) {
+                            timetableFolders.push({
+                                name: name ? `${code} - ${name}` : code,
+                                code: code,
+                                year: slot.year ? `${slot.year}${String(slot.year).endsWith('Year') ? '' : ' Year'}` : deriveYearTag(code),
+                                description: `Timetable course files for ${code}`,
+                                iconColor: '#10b981'
+                            });
+                        }
+                    });
+                }
 
                 setFolders(prev => {
                     const combined = [...initialFolders, ...dbFolders];
@@ -111,10 +132,11 @@ const Files = () => {
                         ]).filter(Boolean)
                     );
 
-                    const uniqueNew = subjectFolders.filter(sf => {
-                        const sfCode = sf.code.toUpperCase().trim();
+                    const allNewSubjects = [...subjectFolders, ...timetableFolders];
+                    const uniqueNew = allNewSubjects.filter(sf => {
+                        const sfCode = (sf.code || '').toUpperCase().trim();
                         const sfName = sf.name.toUpperCase().trim();
-                        return !existingIdentifiers.has(sfCode) && !existingIdentifiers.has(sfName);
+                        return sfCode && !existingIdentifiers.has(sfCode) && !existingIdentifiers.has(sfName);
                     });
 
                     return [...combined, ...uniqueNew];
@@ -263,6 +285,7 @@ TU Hmawbi Smart Campus Management System
             description: newFolderDesc || 'Custom collection',
             iconColor: randomColor,
             year: selectedYear !== 'All' ? selectedYear : 'All',
+            parentFolder: selectedFolder || null,
         };
 
         try {
@@ -401,10 +424,10 @@ TU Hmawbi Smart Campus Management System
                             {showAuditPanel ? 'Close Logs' : 'Download Logs'}
                         </button>
                     )}
-                    {canManageFiles && viewMode === 'folders' && (
+                    {canManageFiles && (
                         <button className="btn btn-secondary" onClick={() => setIsFolderModalOpen(true)}>
                             <FolderPlus size={18} />
-                            New Folder
+                            {selectedFolder ? 'New Subfolder' : 'New Folder'}
                         </button>
                     )}
                     {canManageFiles && viewMode === 'files' && (

@@ -19,6 +19,10 @@ const customFolderSchema = new mongoose.Schema(
             type: String,
             default: 'All',
         },
+        parentFolder: {
+            type: String,
+            default: null,
+        },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',

@@ -158,7 +158,7 @@ const getCustomFolders = async (req, res) => {
 // Create a new custom folder
 const createCustomFolder = async (req, res) => {
     try {
-        const { name, description, iconColor, year } = req.body;
+        const { name, description, iconColor, year, parentFolder } = req.body;
         if (!name || !name.trim()) {
             return res.status(400).json({ message: 'Folder name is required' });
         }
@@ -168,6 +168,7 @@ const createCustomFolder = async (req, res) => {
             description: description || 'Custom collection',
             iconColor: iconColor || '#6366f1',
             year: year || 'All',
+            parentFolder: parentFolder || null,
             createdBy: req.user._id,
         });
 
