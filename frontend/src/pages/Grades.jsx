@@ -502,23 +502,52 @@ const Grades = () => {
         return matchesSearch && matchesYear;
     });
 
-    // Helper: convert year number to label
-    const yearNumToLabel = (num) => {
-        const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year' };
-        return labels[num] || '1st Year';
+    // Robust helper: derive academic year label from course object (yearLabel, year string/num, or course code digits e.g. McE-52039 -> 5th Year)
+    const deriveCourseYearLabel = (c) => {
+        if (!c) return '1st Year';
+        if (c.yearLabel) {
+            const str = String(c.yearLabel).trim().toLowerCase();
+            if (str.includes('1') || str.includes('first')) return '1st Year';
+            if (str.includes('2') || str.includes('second')) return '2nd Year';
+            if (str.includes('3') || str.includes('third')) return '3rd Year';
+            if (str.includes('4') || str.includes('fourth')) return '4th Year';
+            if (str.includes('5') || str.includes('fifth')) return '5th Year';
+            if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
+        }
+        if (c.year) {
+            if (typeof c.year === 'number') {
+                const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year' };
+                if (labels[c.year]) return labels[c.year];
+            }
+            const str = String(c.year).trim().toLowerCase();
+            if (str.includes('1') || str.includes('first')) return '1st Year';
+            if (str.includes('2') || str.includes('second')) return '2nd Year';
+            if (str.includes('3') || str.includes('third')) return '3rd Year';
+            if (str.includes('4') || str.includes('fourth')) return '4th Year';
+            if (str.includes('5') || str.includes('fifth')) return '5th Year';
+            if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
+        }
+        const codeStr = c.code || c.name || '';
+        const digits = codeStr.replace(/[^0-9]/g, '');
+        if (digits.length > 0) {
+            const firstDigit = digits.charAt(0);
+            const labels = { '1': '1st Year', '2': '2nd Year', '3': '3rd Year', '4': '4th Year', '5': '5th Year', '6': '6th Year' };
+            if (labels[firstDigit]) return labels[firstDigit];
+        }
+        return '1st Year';
     };
 
-    // Get all unique subjects for table headers — filtered by course.year field
+    // Get all unique subjects for table headers — filtered by derived course academic year
     const allSubjects = Array.from(new Set([
         ...courses
-            .filter(c => selectedYear === 'All' || yearNumToLabel(c.year || 1) === selectedYear)
+            .filter(c => selectedYear === 'All' || deriveCourseYearLabel(c) === selectedYear)
             .map(c => c.code),
         ...Object.values(gradesData).flat().map(g => g.course)
     ]))
     .filter(sub => {
         if (selectedYear === 'All') return true;
         const matchingCourse = courses.find(c => c.code === sub);
-        return matchingCourse ? yearNumToLabel(matchingCourse.year || 1) === selectedYear : false;
+        return matchingCourse ? deriveCourseYearLabel(matchingCourse) === selectedYear : false;
     })
     .sort();
 
