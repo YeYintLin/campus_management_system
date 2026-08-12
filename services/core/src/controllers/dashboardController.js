@@ -350,8 +350,45 @@ const getDashboardStats = async (req, res) => {
                 }
             }
 
+            let myStudentCount = myStudentIds.size;
+
+            if (myStudentCount === 0) {
+                // Fallback: count active students in teacher's department
+                let teacherDept = req.user.department || '';
+                if (!teacherDept && req.user.email) {
+                    const parts = req.user.email.split('@')[0].toLowerCase().split('.');
+                    if (parts.length >= 2) {
+                        const d = parts[1];
+                        if (d === 'mc' || d === 'mce') teacherDept = 'Mechatronics Engineering';
+                        else if (d === 'c' || d === 'ce') teacherDept = 'Civil Engineering';
+                        else if (d === 'ep') teacherDept = 'Electrical Power Engineering';
+                        else if (d === 'ec' || d === 'ece') teacherDept = 'Electronic Engineering';
+                        else if (d === 'it') teacherDept = 'Information Technology';
+                        else if (d === 'me') teacherDept = 'Mechanical Engineering';
+                    }
+                }
+                if (!teacherDept) teacherDept = 'Mechatronics Engineering';
+
+                const deptKeyword = teacherDept.split(' ')[0].toLowerCase();
+                const deptUsers = await User.find({
+                    role: 'Student',
+                    $or: [
+                        { department: new RegExp(deptKeyword, 'i') },
+                        { email: new RegExp(`\\.${deptKeyword.substring(0, 2)}\\.`, 'i') },
+                        { email: new RegExp(`\\.${deptKeyword}\\.`, 'i') }
+                    ]
+                }).select('_id');
+
+                myStudentCount = await Student.countDocuments({
+                    $or: [
+                        { user: { $in: deptUsers.map(u => u._id) } },
+                        { department: new RegExp(deptKeyword, 'i') }
+                    ]
+                });
+            }
+
             stats.activeCourses = myCourses.length;
-            stats.myStudentCount = myStudentIds.size;
+            stats.myStudentCount = myStudentCount;
             stats.pendingGrading = pendingGrading;
             stats.todaySchedule = scheduleWithNames;
 
