@@ -6,7 +6,7 @@ const Semester = require('../models/Semester');
 const Course = require('../models/Course');
 const User = require('../models/User');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/cms';
+const MONGO_URI = process.env.MONGO_URI || process.env.DATABASE_URL || 'mongodb://mongodb:27017/cms';
 
 async function runSync() {
     try {
