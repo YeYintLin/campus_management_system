@@ -35,42 +35,35 @@ const getTimetable = async (req, res) => {
         const isFirstSemTab = sNum === 1 || sStr.toLowerCase().includes('1');
 
         const allSemDocs = await Semester.find().lean().exec();
-        const semesterDoc = allSemDocs.find(d => {
-            const dY = d.yearNumber || parseNum(d.yearLabel) || parseNum(d.sheetName);
-            const sName = d.sheetName.toLowerCase();
 
-            if (yNum === 1 || yStr.includes('1')) {
-                if (dY !== 1 && !sName.includes('first')) return false;
-                if (isFirstSemTab) return d.semesterNumber === 1 || (sName.includes('sem i') && !sName.includes('sem ii'));
-                if (isSecondSemTab) return d.semesterNumber === 2 || sName.includes('sem ii') || sName.includes('second');
+        let semesterDoc = allSemDocs.find(d => {
+            const dY = d.yearNumber || parseNum(d.yearLabel) || parseNum(d.sheetName);
+            if (yNum && dY && dY !== yNum) return false;
+
+            const sNumDoc = d.semesterNumber;
+            const sName = (String(d.sheetName || '') + ' ' + String(d.semesterLabel || '')).toLowerCase();
+
+            if (isFirstSemTab) {
+                if (sNumDoc === 1 || sName.includes('sem 1') || sName.includes('first') || sName.includes('s1') || sName.includes('15') || sName.includes('13')) return true;
             }
-            if (yNum === 2 || yStr.includes('2')) {
-                if (dY !== 2 && !sName.includes('second year')) return false;
-                if (isFirstSemTab) return d.semesterNumber === 1 || d.semesterNumber === 3 || sName.includes('sem iii');
-                if (isSecondSemTab) return d.semesterNumber === 2 || d.semesterNumber === 4 || sName.includes('sem iv') || sName.includes('second');
-            }
-            if (yNum === 3 || yStr.includes('3')) {
-                if (dY !== 3 && !sName.includes('third')) return false;
-                if (isFirstSemTab) return d.semesterNumber === 1 || d.semesterNumber === 5 || sName.includes('first sem');
-                if (isSecondSemTab) return d.semesterNumber === 2 || d.semesterNumber === 6 || sName.includes('second sem');
-            }
-            if (yNum === 4 || yStr.includes('4')) {
-                if (dY !== 4 && !sName.includes('fourth')) return false;
-                if (isFirstSemTab) return d.semesterNumber === 1 || d.semesterNumber === 7 || sName.includes('first');
-                if (isSecondSemTab) return d.semesterNumber === 2 || d.semesterNumber === 8 || sName.includes('second');
-            }
-            if (yNum === 5 || yStr.includes('5')) {
-                if (dY !== 5 && !sName.includes('fifth')) return false;
-                if (isFirstSemTab) return d.sheetName.includes('S1') || (dY === 5 && d.semesterNumber === 1);
-                if (isSecondSemTab) return d.sheetName.includes('S2') || (dY === 5 && d.semesterNumber === 2);
-            }
-            if (yStr.includes('ME')) {
-                if (!d.sheetName.includes('ME') && d.yearLabel !== 'ME') return false;
-                if (isFirstSemTab) return d.semesterNumber === 1 || sName.includes('s1') || sName.includes('first');
-                if (isSecondSemTab) return d.semesterNumber === 2 || sName.includes('s2') || sName.includes('second') || !sName.includes('s1');
+            if (isSecondSemTab) {
+                if (sNumDoc === 2 || sName.includes('sem 2') || sName.includes('second') || sName.includes('s2') || sName.includes('2')) return true;
             }
             return false;
-        }) || null;
+        });
+
+        // Fallback 1: Match any sheet for that year
+        if (!semesterDoc && yNum) {
+            semesterDoc = allSemDocs.find(d => {
+                const dY = d.yearNumber || parseNum(d.yearLabel) || parseNum(d.sheetName);
+                return dY === yNum;
+            }) || null;
+        }
+
+        // Fallback 2: Pick first available semester document if any exists
+        if (!semesterDoc && allSemDocs.length > 0) {
+            semesterDoc = allSemDocs[0];
+        }
 
         // Build query for Timetable slots model
         let timetableQuery = {
