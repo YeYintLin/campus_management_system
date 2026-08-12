@@ -253,12 +253,44 @@ const Grades = () => {
         const fetchStudents = async () => {
             try {
                 const { data } = await apiClient.get('/students');
+
+                const resolveYearLabel = (s) => {
+                    if (s.year && String(s.year).trim()) {
+                        const str = String(s.year).trim().toLowerCase();
+                        if (str.includes('1') || str.includes('first')) return '1st Year';
+                        if (str.includes('2') || str.includes('second')) return '2nd Year';
+                        if (str.includes('3') || str.includes('third')) return '3rd Year';
+                        if (str.includes('4') || str.includes('fourth')) return '4th Year';
+                        if (str.includes('5') || str.includes('fifth')) return '5th Year';
+                        if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
+                    }
+                    if (s.user?.year && String(s.user.year).trim()) {
+                        const str = String(s.user.year).trim().toLowerCase();
+                        if (str.includes('1') || str.includes('first')) return '1st Year';
+                        if (str.includes('2') || str.includes('second')) return '2nd Year';
+                        if (str.includes('3') || str.includes('third')) return '3rd Year';
+                        if (str.includes('4') || str.includes('fourth')) return '4th Year';
+                        if (str.includes('5') || str.includes('fifth')) return '5th Year';
+                        if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
+                    }
+                    if (s.user?.email) {
+                        const prefix = s.user.email.split('@')[0].toLowerCase();
+                        if (prefix.startsWith('i.') || prefix.startsWith('imc') || prefix.startsWith('i-')) return '1st Year';
+                        if (prefix.startsWith('ii.') || prefix.startsWith('iimc') || prefix.startsWith('ii-')) return '2nd Year';
+                        if (prefix.startsWith('iii.') || prefix.startsWith('iiimc') || prefix.startsWith('iii-')) return '3rd Year';
+                        if (prefix.startsWith('iv.') || prefix.startsWith('ivmc') || prefix.startsWith('iv-')) return '4th Year';
+                        if (prefix.startsWith('v.') || prefix.startsWith('vmc') || prefix.startsWith('v-')) return '5th Year';
+                        if (prefix.startsWith('vi.') || prefix.startsWith('vimc') || prefix.startsWith('vi-')) return '6th Year';
+                    }
+                    return semesterToYearLabel(s.semester);
+                };
+
                 const mapped = data.map(student => ({
                     id: student.user?._id || student._id,
-                    displayId: student.enrollmentNumber,
+                    displayId: student.enrollmentNumber || student.user?.rollNo,
                     name: student.user?.name || 'Student',
-                    major: student.department || 'Undeclared',
-                    year: semesterToYearLabel(student.semester),
+                    major: student.department || student.user?.department || 'Mechatronics Engineering',
+                    year: resolveYearLabel(student),
                     avatar: getAvatarUrl(student.user?.name, student.user?._id),
                     semester: student.semester,
                     user: student.user,
