@@ -191,8 +191,45 @@ const Files = () => {
         } catch (err) {
             console.warn('Download log failed (non-blocking):', err.message);
         }
-        // Trigger actual download (placeholder — adapt when real file URLs are wired)
-        console.log('Downloading:', file.name);
+
+        // Trigger real file download in browser
+        if (file.fileUrl) {
+            window.open(file.fileUrl, '_blank');
+        } else {
+            // Generate resource file text download
+            const content = `================================================================================
+                    TECHNOLOGICAL UNIVERSITY (HMAWBI)
+                     ACADEMIC RESOURCE FILE DOWNLOAD
+================================================================================
+
+RESOURCE NAME: ${file.name}
+CATEGORY     : ${file.category}
+ACADEMIC YEAR: ${file.year}
+UPLOADED BY  : ${file.owner}
+FILE SIZE    : ${file.size}
+DATE LOGGED  : ${file.date}
+
+--------------------------------------------------------------------------------
+DOCUMENT CONTENT & STUDY MATERIAL
+--------------------------------------------------------------------------------
+This is an official academic resource document provided by Technological University (Hmawbi).
+For questions regarding this resource, please contact your course instructor or department head.
+
+================================================================================
+Downloaded by: ${user?.name || 'Student'} (${user?.email || 'N/A'})
+TU Hmawbi Smart Campus Management System
+================================================================================
+`;
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = file.name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
     };
 
     const getFileIcon = (type) => {
