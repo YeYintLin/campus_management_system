@@ -90,39 +90,22 @@ mongoose
         dbStatus = 'connected';
         console.log('Connected to MongoDB');
         
-        // Auto-purge invalid blank courses & ensure official teacher subject assignments across years
+        // Purge corrupt blank courses & run dynamic timetable course sync across all years
         (async () => {
             try {
                 const Course = require('./models/Course');
-                const User = require('./models/User');
-
-                const teacher = await User.findOne({ email: 'myat.thu.zar@tuhmawbi.edu.mm' });
-                const myatThuZarId = teacher ? teacher._id : null;
-                const herSubjectCodes = new Set([
-                    'MCE-51039', 'MCE-52039', 'MCE-52018', 'MCE-51001',
-                    'MCE-42026', 'MCE-41026', 'MCE-4049'
-                ]);
-
                 const allCourses = await Course.find({});
                 for (const c of allCourses) {
                     const cleanCode = (c.code || '').toUpperCase().replace(/\s+/g, '');
-
-                    // Delete incomplete corrupt course codes (e.g. 'MCE-' or empty)
                     if (!cleanCode || cleanCode === 'MCE-' || cleanCode === 'MCE') {
                         console.log(`[Auto-Purge] Deleting corrupt course record: '${c.code}' (${c._id})`);
                         await Course.deleteOne({ _id: c._id });
-                        continue;
-                    }
-
-                    // Assign 4th & 5th Year Mechatronics subjects to Daw Myat Thu Zar
-                    if (myatThuZarId && herSubjectCodes.has(cleanCode)) {
-                        if (!c.teacher || String(c.teacher._id || c.teacher) !== String(myatThuZarId)) {
-                            c.teacher = myatThuZarId;
-                            await c.save();
-                        }
                     }
                 }
-                console.log('Official course audit completed: 4th & 5th Year subjects linked for Daw Myat Thu Zar.');
+
+                const { syncCourseCollectionWithTimetable } = require('./controllers/courseController');
+                await syncCourseCollectionWithTimetable();
+                console.log('Dynamic multi-year course timetable sync completed successfully.');
             } catch (auditErr) {
                 console.error('Course audit error:', auditErr.message);
             }

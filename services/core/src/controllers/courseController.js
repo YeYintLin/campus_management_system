@@ -71,6 +71,26 @@ const syncCourseCollectionWithTimetable = async () => {
             }
         }
 
+        // Scan ScheduledSession documents for teacher assignments across all years
+        const ScheduledSession = require('../models/ScheduledSession');
+        const scheduledSessions = await ScheduledSession.find({}).lean().exec();
+        for (const sess of scheduledSessions) {
+            if (sess && sess.courseCode) {
+                const cleanCode = sess.courseCode.toUpperCase().replace(/\s+/g, '');
+                const teacherObj = findTeacherByName(sess.teacher);
+                if (teacherObj) {
+                    const existingEntry = legendMap.get(cleanCode) || {
+                        code: sess.courseCode,
+                        name: sess.courseName || sess.title || sess.courseCode,
+                        year: parseInt(sess.year) || 4,
+                        yearLabel: sess.year || '4th Year'
+                    };
+                    existingEntry.teacherId = teacherObj._id;
+                    legendMap.set(cleanCode, existingEntry);
+                }
+            }
+        }
+
         // Apply legendMap to Course collection: update year, name, AND teacher strictly
         for (const [cleanCode, info] of legendMap.entries()) {
             // Normalize code by stripping all whitespace for matching
