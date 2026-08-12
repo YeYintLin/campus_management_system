@@ -168,18 +168,48 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 const firstCell = nonEmp[0];
                 const match = firstCell.match(/^\((\d+)\)\s*(.+)$/);
                 if (match) {
-                    let code = match[2].trim().split(/\s+/)[0];
-                    const cleanCodeKey = code.replace(/\s+/g, '').toUpperCase();
-                    let name = nonEmp[1] || code;
-                    let teacher = nonEmp[2] || (nonEmp.length > 2 ? nonEmp[nonEmp.length - 1] : '');
+                    let code = '';
+                    let name = '';
+                    let teacher = '';
 
+                    if (nonEmp.length >= 3) {
+                        code = match[2].trim().split(/\s+/)[0];
+                        name = nonEmp[1].trim();
+                        teacher = nonEmp[nonEmp.length - 1].trim();
+                    } else if (nonEmp.length === 2) {
+                        code = match[2].trim().split(/\s+/)[0];
+                        name = nonEmp[1].trim();
+                    } else {
+                        const rest = match[2].trim();
+                        const parts = rest.split(/\s{2,}|\t/).map(p => p.trim()).filter(Boolean);
+                        if (parts.length >= 3) {
+                            code = parts[0];
+                            name = parts.slice(1, parts.length - 1).join(' ');
+                            teacher = parts[parts.length - 1];
+                        } else if (parts.length === 2) {
+                            code = parts[0];
+                            name = parts[1];
+                        } else {
+                            const subParts = rest.split(/\s+/);
+                            code = subParts[0];
+                            if (subParts.length > 2 && /^(daw|u|dr|prof)/i.test(subParts[subParts.length - 1])) {
+                                teacher = subParts.slice(-3).join(' ');
+                                name = subParts.slice(1, -3).join(' ');
+                            } else {
+                                name = subParts.slice(1).join(' ');
+                            }
+                        }
+                    }
+
+                    code = code.replace(/^\(\d+\)\s*/, '').trim();
+                    const cleanCodeKey = code.replace(/\s+/g, '').toUpperCase();
                     if (name) {
                         name = name.replace(/^\(\d+\)\s*/, '');
                         if (name.toUpperCase().startsWith(code.toUpperCase())) {
                             name = name.substring(code.length).trim();
                         }
-                        if (teacher && name.endsWith(teacher.trim())) {
-                            name = name.substring(0, name.length - teacher.trim().length).trim();
+                        if (teacher && name.toLowerCase().endsWith(teacher.toLowerCase())) {
+                            name = name.substring(0, name.length - teacher.length).trim();
                         }
                     }
 

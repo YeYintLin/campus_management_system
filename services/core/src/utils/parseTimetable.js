@@ -285,21 +285,56 @@ function parseSheet(worksheet) {
     const firstCell = rowCells[0];
     const m = firstCell.match(/^\((\d+)\)\s*(.+)$/);
     if (m) {
-      let code = m[2].trim().split(/\s+/)[0];
-      let subject = rowCells[1] ? rowCells[1].trim() : null;
-      let teacher = rowCells[2] || (rowCells.length > 2 ? rowCells[rowCells.length - 1] : null);
+      let code = '';
+      let subject = '';
+      let teacher = '';
 
+      if (rowCells.length >= 3) {
+        code = m[2].trim().split(/\s+/)[0];
+        subject = rowCells[1].trim();
+        teacher = rowCells[rowCells.length - 1].trim();
+      } else if (rowCells.length === 2) {
+        code = m[2].trim().split(/\s+/)[0];
+        subject = rowCells[1].trim();
+        teacher = '';
+      } else {
+        const rest = m[2].trim();
+        const parts = rest.split(/\s{2,}|\t/).map(p => p.trim()).filter(Boolean);
+        if (parts.length >= 3) {
+          code = parts[0];
+          subject = parts.slice(1, parts.length - 1).join(' ');
+          teacher = parts[parts.length - 1];
+        } else if (parts.length === 2) {
+          code = parts[0];
+          subject = parts[1];
+        } else {
+          const subParts = rest.split(/\s+/);
+          code = subParts[0];
+          if (subParts.length > 2 && /^(daw|u|dr|prof)/i.test(subParts[subParts.length - 1])) {
+            teacher = subParts.slice(-3).join(' ');
+            subject = subParts.slice(1, -3).join(' ');
+          } else {
+            subject = subParts.slice(1).join(' ');
+          }
+        }
+      }
+
+      code = code.replace(/^\(\d+\)\s*/, '').trim();
       if (subject) {
         subject = subject.replace(/^\(\d+\)\s*/, '');
         if (subject.toUpperCase().startsWith(code.toUpperCase())) {
           subject = subject.substring(code.length).trim();
         }
-        if (teacher && subject.endsWith(teacher.trim())) {
-          subject = subject.substring(0, subject.length - teacher.trim().length).trim();
+        if (teacher && subject.toLowerCase().endsWith(teacher.toLowerCase())) {
+          subject = subject.substring(0, subject.length - teacher.length).trim();
         }
       }
 
-      legend.push({ code, subject: subject || code, teacher: teacher ? teacher.trim() : null });
+      legend.push({
+        code: code,
+        subject: subject || code,
+        teacher: teacher ? teacher.trim() : null
+      });
     }
   }
 
