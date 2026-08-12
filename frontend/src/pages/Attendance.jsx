@@ -93,6 +93,56 @@ const Attendance = () => {
     const [startingSession, setStartingSession] = useState(false);
     const [showQRModal, setShowQRModal] = useState(false); // Teacher QR enlarged view
 
+    // State for Excel Export Modal
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [exportConfig, setExportConfig] = useState({
+        courseId: '',
+        year: '5th Year',
+        month: 'ဇန်နဝါရီ (Jan)',
+        templateType: 'daily',
+        semester: '1'
+    });
+    const [exporting, setExporting] = useState(false);
+    const [exportError, setExportError] = useState('');
+
+    const handleDownloadRollCallExcel = async () => {
+        setExporting(true);
+        setExportError('');
+        try {
+            const { courseId, year, month, templateType, semester } = exportConfig;
+            const targetCourse = courseId || (courses[0]?.code || courses[0]?._id || 'McE-52039');
+            const response = await apiClient.get('/attendance/export-excel', {
+                params: { courseId: targetCourse, year, month, templateType, semester },
+                responseType: 'blob'
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Roll_Call_${targetCourse}_${templateType}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+
+            setShowExportModal(false);
+        } catch (err) {
+            console.error('Excel Export Error:', err);
+            let msg = 'Failed to export Roll Call Excel';
+            if (err.response?.data instanceof Blob) {
+                try {
+                    const text = await err.response.data.text();
+                    const parsed = JSON.parse(text);
+                    if (parsed.message) msg = parsed.message;
+                } catch (e) {}
+            } else if (err.response?.data?.message) {
+                msg = err.response.data.message;
+            }
+            setExportError(msg);
+        } finally {
+            setExporting(false);
+        }
+    };
+
     // Live 20-second Countdown Timer
     useEffect(() => {
         if (!activeSession?.expiresAt) {
@@ -895,7 +945,7 @@ const Attendance = () => {
                                         Live Attendance Active: <span style={{ color: '#a78bfa' }}>{activeSession.courseName || activeSession.courseId}</span>
                                     </h3>
                                     <p style={{ margin: 0, fontSize: '0.8rem', color: secondsLeft > 0 ? '#f59e0b' : '#f87171', fontWeight: '600' }}>
-                                        {secondsLeft > 0 ? 'Scan QR or enter 4-digit code within 20s or you will be marked Absent!' : '⚠️ 20-second window closed! Unsubmitted students marked Absent.'}
+                                        {secondsLeft > 0 ? 'Scan QR or enter 4-digit code within 30s or you will be marked Absent!' : '⚠️ 30-second window closed! Unsubmitted students marked Absent.'}
                                     </p>
                                 </div>
                             </div>
@@ -1197,7 +1247,7 @@ const Attendance = () => {
                                     <span>Active Session: <span style={{ color: '#2dd4bf' }}>{activeSession.courseName || activeSession.courseId}</span></span>
                                 </h3>
                                 <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: secondsLeft > 0 ? '#2dd4bf' : '#f87171', fontWeight: '600' }}>
-                                    {secondsLeft > 0 ? 'Project this QR / Passcode. Unsubmitted students automatically marked Absent in 20s!' : '⚠️ 20-second window closed! Unsubmitted students marked Absent.'}
+                                    {secondsLeft > 0 ? 'Project this QR / Passcode. Unsubmitted students automatically marked Absent in 30s!' : '⚠️ 30-second window closed! Unsubmitted students marked Absent.'}
                                 </p>
                             </div>
                         </div>
@@ -1236,16 +1286,35 @@ const Attendance = () => {
             )}
 
             {view === 'courses' && (
-                <div className="year-filter-bar glass-panel" style={{ marginBottom: '1.5rem' }}>
-                    {years.map(year => (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div className="year-filter-bar glass-panel" style={{ marginBottom: 0 }}>
+                        {years.map(year => (
+                            <button
+                                key={year}
+                                className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                                onClick={() => setSelectedYear(year)}
+                            >
+                                {year}
+                            </button>
+                        ))}
+                    </div>
+                    {canManageAttendance && (
                         <button
-                            key={year}
-                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                            onClick={() => setSelectedYear(year)}
+                            className="btn btn-secondary"
+                            onClick={() => {
+                                setExportConfig(prev => ({
+                                    ...prev,
+                                    courseId: courses[0]?.code || courses[0]?._id || '',
+                                    year: selectedYear !== 'All' ? selectedYear : '5th Year'
+                                }));
+                                setShowExportModal(true);
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(16,185,129,0.1))', border: '1px solid rgba(34,197,94,0.4)', color: '#4ade80' }}
                         >
-                            {year}
+                            <Award size={18} style={{ color: '#22c55e' }} />
+                            <span>Export Official Roll Call Excel</span>
                         </button>
-                    ))}
+                    )}
                 </div>
             )}
 
@@ -1468,6 +1537,106 @@ const Attendance = () => {
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
                             Scan with mobile camera or enter code on app
                         </p>
+                    </div>
+                </div>
+            )}
+
+            {/* ── OFFICIAL ROLL CALL EXCEL EXPORT MODAL ── */}
+            {showExportModal && (
+                <div className="modal-overlay" onClick={() => setShowExportModal(false)} style={{ zIndex: 1100 }}>
+                    <div className="modal-content glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', padding: '1.75rem' }}>
+                        <div className="modal-header" style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Award size={20} style={{ color: '#22c55e' }} />
+                                <span>Export Official Roll Call Excel</span>
+                            </h3>
+                            <button className="close-btn" onClick={() => setShowExportModal(false)}><X size={20} /></button>
+                        </div>
+
+                        {exportError && (
+                            <div className="alert alert-danger" style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+                                {exportError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Subject / Course Code</label>
+                                <select
+                                    value={exportConfig.courseId}
+                                    onChange={(e) => setExportConfig({ ...exportConfig, courseId: e.target.value })}
+                                    style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--surface-border)' }}
+                                >
+                                    {courses.map(c => (
+                                        <option key={c._id} value={c.code || c._id} style={{ background: '#1e293b' }}>
+                                            {c.code ? `${c.code} - ${c.name}` : c.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Academic Year</label>
+                                    <select
+                                        value={exportConfig.year}
+                                        onChange={(e) => setExportConfig({ ...exportConfig, year: e.target.value })}
+                                        style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--surface-border)' }}
+                                    >
+                                        <option value="1st Year" style={{ background: '#1e293b' }}>1st Year</option>
+                                        <option value="2nd Year" style={{ background: '#1e293b' }}>2nd Year</option>
+                                        <option value="3rd Year" style={{ background: '#1e293b' }}>3rd Year</option>
+                                        <option value="4th Year" style={{ background: '#1e293b' }}>4th Year</option>
+                                        <option value="5th Year" style={{ background: '#1e293b' }}>5th Year</option>
+                                        <option value="6th Year" style={{ background: '#1e293b' }}>6th Year</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Semester</label>
+                                    <select
+                                        value={exportConfig.semester}
+                                        onChange={(e) => setExportConfig({ ...exportConfig, semester: e.target.value })}
+                                        style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--surface-border)' }}
+                                    >
+                                        <option value="1" style={{ background: '#1e293b' }}>Semester I</option>
+                                        <option value="2" style={{ background: '#1e293b' }}>Semester II</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Template Format</label>
+                                    <select
+                                        value={exportConfig.templateType}
+                                        onChange={(e) => setExportConfig({ ...exportConfig, templateType: e.target.value })}
+                                        style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--surface-border)' }}
+                                    >
+                                        <option value="daily" style={{ background: '#1e293b' }}>Daily Roll Call (Sheet V)</option>
+                                        <option value="tutorial" style={{ background: '#1e293b' }}>Tutorial Sign-off (Sheet1)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Month</label>
+                                    <input
+                                        type="text"
+                                        value={exportConfig.month}
+                                        onChange={(e) => setExportConfig({ ...exportConfig, month: e.target.value })}
+                                        placeholder="e.g. ဇန်နဝါရီ"
+                                        style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--surface-border)' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleDownloadRollCallExcel}
+                                disabled={exporting}
+                                style={{ marginTop: '0.5rem', width: '100%', padding: '0.8rem' }}
+                            >
+                                {exporting ? 'Generating Spreadsheet...' : 'Download Roll Call (.xlsx)'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

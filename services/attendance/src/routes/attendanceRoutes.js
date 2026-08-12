@@ -9,6 +9,8 @@ const {
     submitAttendanceCode,
     createSessionOverride,
     getSessionOverrides,
+    getAttendanceSummary,
+    exportRollCallExcel,
 } = require('../controllers/attendanceController');
 const { protect, teacher } = require('../middleware/authMiddleware');
 
@@ -23,6 +25,10 @@ router.post('/submit-code', protect, submitAttendanceCode);
 // Overrides (Cancel / Reschedule)
 router.post('/override', protect, teacher, createSessionOverride);
 router.get('/overrides', protect, getSessionOverrides);
+
+// Summary & Excel Export
+router.get('/summary', protect, getAttendanceSummary);
+router.get('/export-excel', protect, teacher, exportRollCallExcel);
 
 // Standard Attendance CRUD
 router.route('/')
