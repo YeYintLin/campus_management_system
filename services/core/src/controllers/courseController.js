@@ -68,18 +68,6 @@ const syncCourseCollectionWithTimetable = async () => {
             }
         }
 
-        // Unassign teacher from any course in MongoDB that is NOT in legendMap for that teacher
-        const allDbCourses = await Course.find({});
-        for (const dbc of allDbCourses) {
-            const cleanCode = (dbc.code || '').trim().toUpperCase();
-            if (!legendMap.has(cleanCode)) {
-                // If this course is not in the uploaded timetable legend, clear its teacher assignment
-                if (dbc.teacher) {
-                    dbc.teacher = null;
-                    await dbc.save();
-                }
-            }
-        }
     } catch (err) {
         console.error('Course sync notice:', err.message);
     }

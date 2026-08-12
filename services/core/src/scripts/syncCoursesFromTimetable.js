@@ -82,18 +82,6 @@ async function runSync() {
             }
         }
 
-        const allDbCourses = await Course.find({});
-        for (const dbc of allDbCourses) {
-            const cleanCode = (dbc.code || '').trim().toUpperCase();
-            if (!legendMap.has(cleanCode)) {
-                if (dbc.teacher) {
-                    dbc.teacher = null;
-                    await dbc.save();
-                    console.log(`Unassigned teacher from non-timetable course [${dbc.code}]`);
-                }
-            }
-        }
-
         console.log('Course sync completed successfully.');
         process.exit(0);
     } catch (err) {
