@@ -59,13 +59,18 @@ async function seedCourses() {
         let createdCount = 0;
         let updatedCount = 0;
 
+        const myatThuZarCourseCodes = new Set(['McE-51039', 'McE-52039', 'McE-52018', 'McE-51001']);
+
         for (const c of OFFICIAL_COURSES) {
+            const isHerSubject = myatThuZarCourseCodes.has(c.code);
+            const assignedTeacher = isHerSubject ? teacherId : null;
+
             const existing = await Course.findOne({ code: c.code });
             if (existing) {
                 existing.name = c.name;
                 existing.year = c.year;
                 existing.description = c.description;
-                if (teacherId) existing.teacher = teacherId;
+                existing.teacher = assignedTeacher;
                 await existing.save();
                 updatedCount++;
             } else {
@@ -74,7 +79,7 @@ async function seedCourses() {
                     name: c.name,
                     year: c.year,
                     description: c.description,
-                    teacher: teacherId,
+                    teacher: assignedTeacher,
                     students: [],
                 });
                 createdCount++;
