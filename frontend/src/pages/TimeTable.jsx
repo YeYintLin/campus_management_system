@@ -420,17 +420,11 @@ const TimeTable = () => {
         formData.append('sessionType', selectedCategory);
 
         try {
-            // Import into both timetable slot engine and batch sessions for accurate UI sync
-            const [sessionRes] = await Promise.all([
-                apiClient.post('/sessions/batch-import', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                }),
-                apiClient.post('/timetable/import', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                }).catch(() => ({ data: {} }))
-            ]);
-            const data = sessionRes.data;
-            setImportSuccess(data.message || 'Imported timetable successfully!');
+            const endpoint = selectedCategory === 'Academic' ? '/timetable/import' : '/sessions/batch-import';
+            const { data } = await apiClient.post(endpoint, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setImportSuccess(data.message || `Imported ${selectedCategory} timetable successfully!`);
             if (Array.isArray(data.warnings) && data.warnings.length > 0) {
                 setImportWarnings(data.warnings);
             }

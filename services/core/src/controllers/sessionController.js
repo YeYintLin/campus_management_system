@@ -212,6 +212,7 @@ const batchImportSessions = async (req, res) => {
                         upsert: true
                     }
                 }));
+            if (Array.isArray(timetableBulk) && timetableBulk.length > 0) {
                 await Timetable.bulkWrite(timetableBulk);
             }
 
@@ -252,7 +253,16 @@ const batchImportSessions = async (req, res) => {
                 }
             }));
 
-            await ScheduledSession.bulkWrite(bulkOps);
+            if (bulkOps.length > 0) {
+                await ScheduledSession.bulkWrite(bulkOps);
+            }
+
+            const totalCount = (timetableBulk ? timetableBulk.length : 0) + bulkOps.length;
+
+            return res.json({
+                message: `Successfully imported ${totalCount} ${sessionType} sessions!`,
+                count: totalCount
+            });
 
             const Notification = require('../models/Notification');
             let notifType = 'system';
