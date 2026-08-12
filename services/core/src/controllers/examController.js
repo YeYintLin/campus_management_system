@@ -1,3 +1,4 @@
+const Exam = require('../models/Exam');
 const Course = require('../models/Course');
 const User = require('../models/User');
 
@@ -22,11 +23,13 @@ const getExams = async (req, res) => {
             const myCourseCodes = myCourses.map(c => c.code);
             query.course = { $in: myCourseCodes };
         } else if (role === 'Student') {
-            if (!year || year === 'All') {
-                const userDoc = await User.findById(userId).select('year');
-                if (userDoc && userDoc.year) {
-                    query.year = `${userDoc.year}${userDoc.year === 1 ? 'st' : userDoc.year === 2 ? 'nd' : userDoc.year === 3 ? 'rd' : 'th'} Year`;
-                }
+            // Lock student query to student's academic year, discarding any client query parameter bypass attempt
+            const studentYear = req.user.year;
+            if (studentYear) {
+                const normYear = (typeof studentYear === 'number' || !String(studentYear).includes('Year'))
+                    ? `${studentYear}${String(studentYear) === '1' ? 'st' : String(studentYear) === '2' ? 'nd' : String(studentYear) === '3' ? 'rd' : 'th'} Year`
+                    : studentYear;
+                query.year = normYear;
             }
         }
 

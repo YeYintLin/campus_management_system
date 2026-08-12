@@ -14,9 +14,27 @@ const getAllAssignments = async (req, res) => {
             const myCourseIds = myCourses.map(c => c._id);
             filter.course = req.query.course || { $in: myCourseIds };
         } else if (role === 'Student') {
-            const enrolledCourses = await Course.find({ students: userId }).select('_id');
+            const studentYearNorm = req.user.year || '';
+            const flexPattern = studentYearNorm.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&');
+            const yearNum = parseInt(studentYearNorm.replace(/[^0-9]/g, ''), 10) || null;
+
+            const enrolledCourses = await Course.find({
+                $or: [
+                    { students: userId },
+                    ...(flexPattern ? [{ yearLabel: new RegExp(`^${flexPattern}$`, 'i') }] : []),
+                    ...(yearNum ? [{ year: yearNum }] : [])
+                ]
+            }).select('_id');
             const enrolledCourseIds = enrolledCourses.map(c => c._id);
-            filter.course = req.query.course || { $in: enrolledCourseIds };
+
+            // If student passes ?course=..., verify the requested course is in their enrolled/year courses
+            if (req.query.course) {
+                const requestedIdStr = String(req.query.course);
+                const isAllowed = enrolledCourseIds.some(id => String(id) === requestedIdStr);
+                filter.course = isAllowed ? req.query.course : { $in: enrolledCourseIds };
+            } else {
+                filter.course = { $in: enrolledCourseIds };
+            }
         } else if (req.query.course) {
             filter.course = req.query.course;
         }

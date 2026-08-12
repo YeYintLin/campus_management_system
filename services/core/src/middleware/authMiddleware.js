@@ -33,6 +33,20 @@ const protect = async (req, res, next) => {
                 department: decoded.department,
             };
 
+            // Stale Session Mitigation: If year claim is missing in older JWT tokens, look up user.year from DB
+            if (!req.user.year && req.user.id) {
+                try {
+                    const User = require('../models/User');
+                    const userDoc = await User.findById(req.user.id).select('year department');
+                    if (userDoc) {
+                        req.user.year = userDoc.year;
+                        req.user.department = userDoc.department;
+                    }
+                } catch (dbErr) {
+                    console.error('Fallback user lookup error:', dbErr.message);
+                }
+            }
+
             next();
         } catch (error) {
             console.error('Stateless Auth Token Verification Failed:', error.message);
