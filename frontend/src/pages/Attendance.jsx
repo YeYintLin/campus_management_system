@@ -293,6 +293,8 @@ const Attendance = () => {
             const { data } = await apiClient.post('/attendance/create-session', {
                 courseId: course.code || course._id,
                 courseName: course.title || course.name || course.code,
+                department: course.department || user?.department || 'Mechatronics Engineering',
+                year: course.year || course.yearLabel || '',
                 durationSeconds: 20
             });
             setActiveSession(data);

@@ -15,10 +15,23 @@ const getActiveSession = async (req, res) => {
         const now = new Date();
 
         // Find currently active, non-expired session
-        let session = await AttendanceSession.findOne({
+        const sessionQuery = {
             status: 'active',
             expiresAt: { $gt: now },
-        }).sort({ createdAt: -1 });
+        };
+
+        // Department scoping for Student role
+        if (role === 'Student' && req.user.department) {
+            const userDept = req.user.department.trim();
+            sessionQuery.$or = [
+                { department: { $regex: new RegExp(userDept, 'i') } },
+                { department: 'All' },
+                { department: '' },
+                { department: { $exists: false } }
+            ];
+        }
+
+        let session = await AttendanceSession.findOne(sessionQuery).sort({ createdAt: -1 });
 
         if (!session) {
             return res.json(null);
@@ -53,7 +66,7 @@ const getActiveSession = async (req, res) => {
 // ─────────────────────────────────────────────
 const createSession = async (req, res) => {
     try {
-        const { courseId, courseName, durationSeconds = 20 } = req.body;
+        const { courseId, courseName, durationSeconds = 20, department, year } = req.body;
 
         if (!courseId) {
             return res.status(400).json({ message: 'courseId is required' });
@@ -75,6 +88,8 @@ const createSession = async (req, res) => {
         const session = await AttendanceSession.create({
             courseId,
             courseName: courseName || courseId,
+            department: department || req.user.department || 'Mechatronics Engineering',
+            year: year || req.user.year || '',
             code,
             qrToken,
             expiresAt,
@@ -140,6 +155,19 @@ const scanQRAttendance = async (req, res) => {
                 errorCode: 'SESSION_EXPIRED',
                 message: 'Attendance session has expired',
             });
+        }
+
+        // 3b. Validate Student Department Scope
+        if (req.user.role === 'Student' && req.user.department && session.department && session.department !== 'All' && session.department !== '') {
+            const userDept = req.user.department.toLowerCase().trim();
+            const sessDept = session.department.toLowerCase().trim();
+            if (!userDept.includes(sessDept) && !sessDept.includes(userDept)) {
+                return res.status(403).json({
+                    success: false,
+                    errorCode: 'DEPARTMENT_MISMATCH',
+                    message: `This session is restricted to ${session.department} students. Your department is ${req.user.department}.`,
+                });
+            }
         }
 
         // 4. Record attendance in DB for today
@@ -228,6 +256,17 @@ const submitAttendanceCode = async (req, res) => {
 
         if (courseId && session.courseId !== courseId) {
             return res.status(400).json({ message: 'Code does not match this course session' });
+        }
+
+        // Validate Student Department Scope
+        if (req.user.role === 'Student' && req.user.department && session.department && session.department !== 'All' && session.department !== '') {
+            const userDept = req.user.department.toLowerCase().trim();
+            const sessDept = session.department.toLowerCase().trim();
+            if (!userDept.includes(sessDept) && !sessDept.includes(userDept)) {
+                return res.status(403).json({
+                    message: `This session is restricted to ${session.department} students. Your department is ${req.user.department}.`,
+                });
+            }
         }
 
         // 2. Mark attendance in DB for today's date

@@ -164,6 +164,8 @@ const checkAndTriggerAttendance = async () => {
                 await AttendanceSession.create({
                     courseId: slot.course,
                     courseName: slot.course,
+                    department: slot.department || 'Mechatronics Engineering',
+                    year: slot.year || '',
                     code,
                     qrToken,
                     generatedAt: now,

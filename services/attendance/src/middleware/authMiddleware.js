@@ -23,12 +23,14 @@ const protect = async (req, res, next) => {
                 getJwtSecret()
             );
 
-            // Stateless: Attach both _id (for backward compatibility) and id
+            // Stateless: Attach both _id (for backward compatibility) and id, plus department & year
             req.user = {
                 _id: decoded.id,
                 id: decoded.id,
                 role: decoded.role,
-                email: decoded.email
+                email: decoded.email,
+                department: decoded.department,
+                year: decoded.year
             };
 
             next();

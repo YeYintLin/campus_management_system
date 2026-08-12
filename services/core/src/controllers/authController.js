@@ -11,8 +11,8 @@ const getJwtSecret = () => {
     return secret;
 };
 
-const generateToken = (id, role, email) => {
-    return jwt.sign({ id, role, email }, getJwtSecret(), {
+const generateToken = (id, role, email, department, year) => {
+    return jwt.sign({ id, role, email, department, year }, getJwtSecret(), {
         expiresIn: '30d',
     });
 };
@@ -263,7 +263,7 @@ const loginUser = async (req, res) => {
             department: user.department,
             rollNo: user.rollNo,
             status: user.status,
-            token: generateToken(user._id, user.role, user.email),
+            token: generateToken(user._id, user.role, user.email, user.department, user.year),
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

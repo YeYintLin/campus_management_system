@@ -12,6 +12,16 @@ const attendanceSessionSchema = new mongoose.Schema(
             trim: true,
             default: '',
         },
+        department: {
+            type: String,
+            trim: true,
+            default: '',
+        },
+        year: {
+            type: String,
+            trim: true,
+            default: '',
+        },
         code: {
             type: String,
             required: true,
