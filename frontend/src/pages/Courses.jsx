@@ -9,22 +9,24 @@ const yearFilters = ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th
 const palette = ['#6366f1', '#10b981', '#f97316', '#ec4899', '#0ea5e9'];
 
 const deriveYearTag = (code = '', defaultYear = null) => {
-    if (defaultYear) {
-        if (typeof defaultYear === 'number') return yearNumberToLabel(defaultYear);
-        if (typeof defaultYear === 'string' && defaultYear.includes('Year')) return defaultYear;
-    }
     const clean = String(code).trim().toUpperCase();
     const match = clean.match(/[-_\s]?(\d{1,5})/);
     if (match) {
         const numStr = match[1];
         const firstDigit = numStr[0];
+        if (firstDigit === '6') return '6th Year';
         if (firstDigit === '5') return '5th Year';
         if (firstDigit === '4') return '4th Year';
         if (firstDigit === '3') return '3rd Year';
         if (firstDigit === '2') return '2nd Year';
         if (firstDigit === '1') return '1st Year';
-        if (firstDigit === '6') return '6th Year';
     }
+    
+    if (defaultYear) {
+        if (typeof defaultYear === 'number') return yearNumberToLabel(defaultYear);
+        if (typeof defaultYear === 'string' && defaultYear.includes('Year')) return defaultYear;
+    }
+    
     return '4th Year';
 };
 
