@@ -220,20 +220,31 @@ const Students = () => {
         if (selectedDepartment !== 'All') {
             const sDept = (student.department || student.user?.department || '').toLowerCase().trim();
             const rollStr = (student.enrollmentNumber || student.user?.rollNo || student.displayRoll || '').toUpperCase();
+            const emailStr = (student.user?.email || '').toLowerCase();
             const target = selectedDepartment.toLowerCase().trim();
 
-            if (target.includes('mechatronics') || target.includes('mc')) {
-                matchesDept = sDept.includes('mechatronics') || sDept.includes('mc') || rollStr.includes('MC') || rollStr.includes('-MC-');
-            } else if (target.includes('civil') || target.includes('c')) {
-                matchesDept = sDept.includes('civil') || rollStr.includes('V-C') || rollStr.includes('-C-');
-            } else if (target.includes('electrical') || target.includes('ep')) {
-                matchesDept = sDept.includes('electrical') || sDept.includes('ep') || rollStr.includes('EP');
-            } else if (target.includes('electronic') || target.includes('ec')) {
-                matchesDept = sDept.includes('electronic') || sDept.includes('ec') || rollStr.includes('EC');
-            } else if (target.includes('information') || target.includes('it')) {
-                matchesDept = sDept.includes('information') || sDept.includes('it') || rollStr.includes('IT');
-            } else if (target.includes('mechanical') || target.includes('me')) {
-                matchesDept = sDept.includes('mechanical') || sDept.includes('me') || rollStr.includes('ME');
+            // Extract department code from roll number (e.g. "V-MC-1" → "MC", "III-C-5" → "C")
+            const rollDeptMatch = rollStr.match(/^[IVX]+-([A-Z]+)-/);
+            const rollDeptCode = rollDeptMatch ? rollDeptMatch[1] : '';
+
+            // Extract department code from email prefix (e.g. "v.mc.1@" → "mc", "iii.c.5@" → "c")
+            const emailParts = emailStr.split('@')[0].split('.');
+            const emailDeptCode = emailParts.length >= 2 ? emailParts[1].toLowerCase() : '';
+
+            if (target.includes('mechatronics')) {
+                matchesDept = sDept.includes('mechatronics') || rollDeptCode === 'MC' || rollDeptCode === 'MCE' || emailDeptCode === 'mc' || emailDeptCode === 'mce';
+            } else if (target.includes('civil')) {
+                matchesDept = sDept.includes('civil') || rollDeptCode === 'C' || rollDeptCode === 'CE' || emailDeptCode === 'c' || emailDeptCode === 'ce';
+            } else if (target.includes('electrical power')) {
+                matchesDept = sDept.includes('electrical power') || sDept.includes('electrical') || rollDeptCode === 'EP' || emailDeptCode === 'ep';
+            } else if (target.includes('electronic')) {
+                matchesDept = sDept.includes('electronic') || rollDeptCode === 'EC' || rollDeptCode === 'ECE' || emailDeptCode === 'ec' || emailDeptCode === 'ece';
+            } else if (target.includes('information')) {
+                matchesDept = sDept.includes('information') || rollDeptCode === 'IT' || emailDeptCode === 'it';
+            } else if (target.includes('mechanical')) {
+                matchesDept = (sDept.includes('mechanical') && !sDept.includes('mechatronics')) || rollDeptCode === 'ME' || rollDeptCode === 'MECH' || emailDeptCode === 'me';
+            } else if (target.includes('architecture')) {
+                matchesDept = sDept.includes('architecture') || rollDeptCode === 'AR' || rollDeptCode === 'ARCH' || emailDeptCode === 'arch' || emailDeptCode === 'ar';
             } else {
                 matchesDept = sDept.includes(target) || target.includes(sDept);
             }
