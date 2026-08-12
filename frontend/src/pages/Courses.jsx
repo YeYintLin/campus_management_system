@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import apiClient from '../api/apiClient';
 import { AuthContext } from '../context/AuthContext';
 import { X, BookOpen, FileText, CheckCircle, Calendar, Award, Download } from 'lucide-react';
@@ -100,6 +100,17 @@ const Courses = () => {
     const canCreateCourses = isAdmin;
     const canEditCourses = isAdmin || isTeacher;
 
+    const [courses, setCourses] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [teachers, setTeachers] = useState([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalCourse, setModalCourse] = useState(null);
+    const [formData, setFormData] = useState({ ...initialCourseForm });
+    const [savingCourse, setSavingCourse] = useState(false);
+
     const teacherYears = useMemo(() => {
         if (!isTeacher) return [];
         const set = new Set();
@@ -127,17 +138,6 @@ const Courses = () => {
         }
         return false;
     };
-
-    const [courses, setCourses] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [teachers, setTeachers] = useState([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalCourse, setModalCourse] = useState(null);
-    const [formData, setFormData] = useState({ ...initialCourseForm });
-    const [savingCourse, setSavingCourse] = useState(false);
     const [modalError, setModalError] = useState('');
     const [selectedSyllabus, setSelectedSyllabus] = useState(null);
     const [downloadConfirmCourse, setDownloadConfirmCourse] = useState(null);
