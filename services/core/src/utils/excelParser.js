@@ -246,15 +246,15 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                     if (periodIdx < periodTimes.length) {
                         const pInfo = periodTimes[periodIdx];
 
-                        let sessionType = 'Lecture';
+                        let sessionType = targetCategory || 'Lecture';
                         let cleanCode = cellVal;
-                        if (cellVal.includes('(L)')) { sessionType = 'Lecture'; cleanCode = cellVal.replace('(L)', '').trim(); }
-                        else if (cellVal.includes('(T)')) { sessionType = 'Tutorial'; cleanCode = cellVal.replace('(T)', '').trim(); }
-                        else if (cellVal.includes('(P)')) { sessionType = 'Practical'; cleanCode = cellVal.replace('(P)', '').trim(); }
+                        if (cellVal.includes('(L)')) { sessionType = targetCategory === 'Academic' ? 'Lecture' : targetCategory; cleanCode = cellVal.replace('(L)', '').trim(); }
+                        else if (cellVal.includes('(T)')) { sessionType = targetCategory === 'Academic' ? 'Tutorial' : targetCategory; cleanCode = cellVal.replace('(T)', '').trim(); }
+                        else if (cellVal.includes('(P)')) { sessionType = targetCategory === 'Academic' ? 'Practical' : targetCategory; cleanCode = cellVal.replace('(P)', '').trim(); }
 
                         const legendInfo = courseLegend[cleanCode.replace(/\s+/g, '')] || {};
 
-                        allMatrix.push({
+                        const slotItem = {
                             year: detectedYear,
                             semester: detectedSemester,
                             major: 'MC',
@@ -272,6 +272,27 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                             room: majorRoom,
                             type: sessionType,
                             sessionLabel: sessionType
+                        };
+
+                        allMatrix.push(slotItem);
+
+                        // Also populate allSessions so non-Academic imports accept matrix slots
+                        allSessions.push({
+                            sessionType: sessionType,
+                            examType: 'N/A',
+                            courseCode: cleanCode,
+                            courseName: legendInfo.name || cleanCode,
+                            title: legendInfo.name || cleanCode,
+                            teacher: legendInfo.teacher || familyTeacher,
+                            groupTag: 'All',
+                            date: new Date().toISOString(),
+                            day: matchedDay,
+                            startTime: pInfo.start,
+                            endTime: pInfo.end,
+                            startTimeMinutes: pInfo.startMin,
+                            endTimeMinutes: pInfo.endMin,
+                            place: majorRoom,
+                            status: 'Draft'
                         });
                         periodIdx++;
                     }

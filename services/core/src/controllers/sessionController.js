@@ -174,8 +174,45 @@ const batchImportSessions = async (req, res) => {
                 count: parsedMatrix.length
             });
         } else {
-            if (!parsedSessions || parsedSessions.length === 0) {
+            if ((!parsedSessions || parsedSessions.length === 0) && (!parsedMatrix || parsedMatrix.length === 0)) {
                 return res.status(400).json({ message: `No valid ${sessionType} sessions found in uploaded Excel file.` });
+            }
+
+            // Write matrix slots to Timetable model if present
+            if (Array.isArray(parsedMatrix) && parsedMatrix.length > 0) {
+                const timetableBulk = parsedMatrix.map(slot => ({
+                    updateOne: {
+                        filter: {
+                            year: slot.year || year,
+                            semester: slot.semester || semester,
+                            major: slot.major || major,
+                            day: slot.day,
+                            periodNumber: slot.periodNumber,
+                            startTimeMinutes: slot.startTimeMinutes
+                        },
+                        update: {
+                            $set: {
+                                year: slot.year || year,
+                                semester: slot.semester || semester,
+                                major: slot.major || major,
+                                day: slot.day,
+                                periodNumber: slot.periodNumber,
+                                startTime: slot.startTime,
+                                endTime: slot.endTime,
+                                time: slot.startTime,
+                                startTimeMinutes: slot.startTimeMinutes,
+                                endTimeMinutes: slot.endTimeMinutes,
+                                courseCode: slot.courseCode,
+                                courseName: slot.courseName,
+                                room: slot.room || slot.majorRoom || '3/212-A',
+                                type: sessionType,
+                                sessionLabel: sessionType,
+                            }
+                        },
+                        upsert: true
+                    }
+                }));
+                await Timetable.bulkWrite(timetableBulk);
             }
 
             const bulkOps = parsedSessions.map(session => ({
