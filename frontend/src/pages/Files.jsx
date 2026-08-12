@@ -21,16 +21,23 @@ const initialFolders = [
     { name: 'Reference Books', description: 'Recommended textbooks and academic journals', iconColor: '#10b981' },
 ];
 
-const deriveYearTag = (code = '') => {
-    const digits = code.match(/\d+/);
-    if (!digits) return '1st Year';
-    const firstDigit = digits[0][0];
-    if (firstDigit === '1') return '1st Year';
-    if (firstDigit === '2') return '2nd Year';
-    if (firstDigit === '3') return '3rd Year';
-    if (firstDigit === '4') return '4th Year';
-    if (firstDigit === '5') return '5th Year';
-    if (firstDigit === '6') return '6th Year';
+const deriveYearTag = (code = '', defaultYear = null) => {
+    const clean = String(code).trim().toUpperCase();
+    const match = clean.match(/[-_\s]?(\d{1,5})/);
+    if (match) {
+        const numStr = match[1];
+        const firstDigit = numStr[0];
+        if (firstDigit === '6') return '6th Year';
+        if (firstDigit === '5') return '5th Year';
+        if (firstDigit === '4') return '4th Year';
+        if (firstDigit === '3') return '3rd Year';
+        if (firstDigit === '2') return '2nd Year';
+        if (firstDigit === '1') return '1st Year';
+    }
+    if (defaultYear) {
+        if (typeof defaultYear === 'number') return `${defaultYear}${defaultYear === 1 ? 'st' : defaultYear === 2 ? 'nd' : defaultYear === 3 ? 'rd' : 'th'} Year`;
+        if (typeof defaultYear === 'string' && defaultYear.includes('Year')) return defaultYear;
+    }
     return '1st Year';
 };
 
@@ -148,57 +155,39 @@ const Files = () => {
                     );
                 };
 
-                // Build subject folders from /courses (scoped for Teachers)
+                // Build clean subject folders from /courses (synced from timetable)
                 const subjectFolders = (coursesRes.data || [])
                     .filter(c => c.code && !isNonAcademic(c.code, c.name))
                     .filter(c => !isTeacher || isCourseTaughtByTeacher(c, user))
-                    .map(c => ({
-                        name: `${c.code} - ${c.name}`,
-                        code: c.code,
-                        year: deriveYearTag(c.code),
-                        description: `Syllabus, reference materials & study files for ${c.code}`,
-                        iconColor: '#6366f1'
-                    }));
-
-                // Build subject folders from /timetable slots (scoped for Teachers)
-                const timetableFolders = [];
-                if (Array.isArray(timetableRes.data)) {
-                    timetableRes.data.forEach(slot => {
-                        const code = slot.courseCode || slot.subjectCode || slot.code || '';
-                        const name = slot.courseName || slot.subjectName || slot.subject || slot.name || '';
-                        if (code && !isNonAcademic(code, name)) {
-                            const isTaught = !isTeacher || isCourseTaughtByTeacher({ code, name, teacher: slot.teacher }, user);
-                            if (isTaught) {
-                                timetableFolders.push({
-                                    name: name ? `${code} - ${name}` : code,
-                                    code: code,
-                                    year: slot.year ? `${slot.year}${String(slot.year).endsWith('Year') ? '' : ' Year'}` : deriveYearTag(code),
-                                    description: `Timetable course files for ${code}`,
-                                    iconColor: '#10b981'
-                                });
-                            }
-                        }
+                    .map(c => {
+                        const cleanCode = (c.code || '').trim();
+                        const cleanName = (c.name || '').trim();
+                        const folderName = `${cleanCode} - ${cleanName}`;
+                        const yLabel = c.yearLabel ? normalizeYear(c.yearLabel) : deriveYearTag(cleanCode, c.year);
+                        return {
+                            name: folderName,
+                            code: cleanCode,
+                            year: yLabel,
+                            description: c.description || `Syllabus, reference materials & study files for ${cleanCode}`,
+                            iconColor: '#6366f1',
+                            isSubjectFolder: true
+                        };
                     });
-                }
 
                 setFolders(prev => {
                     const combined = [...initialFolders, ...dbFolders];
-                    const existingIdentifiers = new Set(
-                        combined.flatMap(f => [
-                            f.name.toUpperCase().trim(),
-                            (f.code || '').toUpperCase().trim(),
-                            f.name.split(' - ')[0].toUpperCase().trim()
-                        ]).filter(Boolean)
-                    );
+                    const existingCodes = new Set(combined.map(f => (f.code || f.name.split(' - ')[0] || '').replace(/[\s-]+/g, '').toUpperCase()));
 
-                    const allNewSubjects = [...subjectFolders, ...timetableFolders];
-                    const uniqueNew = allNewSubjects.filter(sf => {
-                        const sfCode = (sf.code || '').toUpperCase().trim();
-                        const sfName = sf.name.toUpperCase().trim();
-                        return sfCode && !existingIdentifiers.has(sfCode) && !existingIdentifiers.has(sfName);
+                    const uniqueSubjectFolders = [];
+                    subjectFolders.forEach(sf => {
+                        const normCode = sf.code.replace(/[\s-]+/g, '').toUpperCase();
+                        if (normCode && !existingCodes.has(normCode)) {
+                            existingCodes.add(normCode);
+                            uniqueSubjectFolders.push(sf);
+                        }
                     });
 
-                    return [...combined, ...uniqueNew];
+                    return [...combined, ...uniqueSubjectFolders];
                 });
 
                 if (dbFiles.length > 0) {
@@ -399,10 +388,14 @@ TU Hmawbi Smart Campus Management System
         const file = e.target.files[0];
         if (!file) return;
 
+        const defaultTargetFolder = selectedFolder || (folders.length > 0 ? folders[0].name : 'Unsorted');
+        const matchedFolder = folders.find(f => f.name === defaultTargetFolder);
+        const folderYear = matchedFolder?.year && matchedFolder.year !== 'All' ? matchedFolder.year : (selectedYear !== 'All' ? selectedYear : '1st Year');
+
         setUploadMetadata({
             file: file,
-            year: selectedYear !== 'All' ? selectedYear : '1st Year',
-            folder: selectedFolder || (folders.length > 0 ? folders[0].name : 'Unsorted')
+            year: folderYear,
+            folder: defaultTargetFolder
         });
         setIsUploadModalOpen(true);
 
@@ -734,12 +727,27 @@ TU Hmawbi Smart Campus Management System
                                         required
                                         className="form-input"
                                         value={uploadMetadata.folder}
-                                        onChange={(e) => setUploadMetadata({ ...uploadMetadata, folder: e.target.value })}
+                                        onChange={(e) => {
+                                            const targetFolderName = e.target.value;
+                                            const matchedFolder = folders.find(f => f.name === targetFolderName);
+                                            setUploadMetadata({
+                                                ...uploadMetadata,
+                                                folder: targetFolderName,
+                                                year: matchedFolder?.year && matchedFolder.year !== 'All' ? matchedFolder.year : uploadMetadata.year
+                                            });
+                                        }}
                                     >
-                                        {folders.map(f => (
-                                            <option key={f.name} value={f.name}>{f.name}</option>
-                                        ))}
-                                        {folders.every(f => f.name !== 'Unsorted') && <option value="Unsorted">Unsorted</option>}
+                                        <optgroup label="Academic Subject Folders">
+                                            {folders.filter(f => f.isSubjectFolder || f.code).map(f => (
+                                                <option key={f.name} value={f.name}>{f.name} ({f.year})</option>
+                                            ))}
+                                        </optgroup>
+                                        <optgroup label="General Folders">
+                                            {folders.filter(f => !f.isSubjectFolder && !f.code).map(f => (
+                                                <option key={f.name} value={f.name}>{f.name}</option>
+                                            ))}
+                                            {folders.every(f => f.name !== 'Unsorted') && <option value="Unsorted">Unsorted</option>}
+                                        </optgroup>
                                     </select>
                                 </div>
                             </div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { AuthContext } from '../context/AuthContext';
-import { X, BookOpen, FileText, CheckCircle, Calendar, Award, Download } from 'lucide-react';
+import { X, BookOpen, FileText, CheckCircle, Calendar, Award, Download, Folder } from 'lucide-react';
 import { getNormalizedUserYear } from '../utils/userYear';
 import './Courses.css';
 
@@ -94,6 +95,7 @@ const initialCourseForm = {
 };
 
 const Courses = () => {
+    const navigate = useNavigate();
     const { user } = useContext(AuthContext);
     const roleStr = (user?.role || '').toLowerCase().trim();
     const isAdmin = roleStr === 'admin' || roleStr === 'superadmin' || roleStr === 'academicadmin';
@@ -584,6 +586,14 @@ TU Hmawbi Smart Campus Management System
                                 <div className="course-card-footer">
                                     <button className="btn btn-secondary btn-sm" onClick={() => setSelectedSyllabus(course)}>
                                         View Syllabus
+                                    </button>
+                                    <button
+                                        className="btn btn-secondary btn-sm"
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                        onClick={() => navigate(`/files?folder=${encodeURIComponent(`${course.code} - ${course.name}`)}`)}
+                                    >
+                                        <Folder size={14} />
+                                        Files
                                     </button>
                                     {isManageable && (
                                         <button
