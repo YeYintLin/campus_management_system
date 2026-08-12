@@ -432,6 +432,8 @@ TU Hmawbi Smart Campus Management System
         } finally {
             setSavingCourse(false);
         }
+    };
+
     const handleDeleteCourse = async (courseId) => {
         if (!window.confirm('Are you sure you want to delete this subject? This action cannot be undone.')) return;
         
