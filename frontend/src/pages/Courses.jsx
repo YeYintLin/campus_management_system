@@ -470,15 +470,35 @@ TU Hmawbi Smart Campus Management System
                         const enrollmentPercentage = Math.min(100, Math.round((enrolled / capacity) * 100));
                         const status = enrollmentPercentage >= 100 ? 'Full' : 'Active';
                         const baseColor = palette[index % palette.length];
-                        const yearTag = yearNumberToLabel(course.year || 1);
+                        const yearTag = course.yearLabel || (course.year ? yearNumberToLabel(course.year) : deriveYearTag(course.code));
                         const isManageable = canManageCourse(course);
+
+                        // Clean display code and title
+                        let displayCode = (course.code || '').trim().replace(/^\(\d+\)\s*/, '');
+                        if (displayCode.includes(' ')) {
+                            displayCode = displayCode.split(' ')[0];
+                        }
+
+                        let displayName = (course.name || '').trim().replace(/^\(\d+\)\s*/, '');
+                        // Strip repeated code from start of name if present
+                        if (displayName.toUpperCase().startsWith(displayCode.toUpperCase())) {
+                            displayName = displayName.substring(displayCode.length).trim();
+                        }
+                        // Strip teacher name from end of name if present
+                        if (course.teacher?.name) {
+                            const tName = course.teacher.name.trim();
+                            if (displayName.endsWith(tName)) {
+                                displayName = displayName.substring(0, displayName.length - tName.length).trim();
+                            }
+                        }
+                        if (!displayName) displayName = course.code;
 
                         return (
                             <div key={course._id} className="glass-card course-card">
                                 <div className="course-color-strip" style={{ backgroundColor: baseColor }}></div>
                                 <div className="course-card-header">
                                     <div className="header-left">
-                                        <span className="course-code">{course.code}</span>
+                                        <span className="course-code">{displayCode}</span>
                                         <span className="year-badge">{yearTag}</span>
                                     </div>
                                     <span className={`badge ${status === 'Full' ? 'badge-warning' : 'badge-success'}`}>
@@ -487,7 +507,7 @@ TU Hmawbi Smart Campus Management System
                                 </div>
 
                                 <div className="course-card-body">
-                                    <h3>{course.name}</h3>
+                                    <h3>{displayName}</h3>
                                     <p className="course-instructor">Instructor: {course.teacher?.name || 'TBA'}</p>
                                     <p className="course-description">{course.description || 'No description yet.'}</p>
 

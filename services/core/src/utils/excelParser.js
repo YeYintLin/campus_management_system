@@ -168,14 +168,25 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 const firstCell = nonEmp[0];
                 const match = firstCell.match(/^\((\d+)\)\s*(.+)$/);
                 if (match) {
-                    const code = match[2].trim();
+                    let code = match[2].trim().split(/\s+/)[0];
                     const cleanCodeKey = code.replace(/\s+/g, '').toUpperCase();
-                    const name = nonEmp[1] || code;
-                    const teacher = nonEmp[2] || (nonEmp.length > 2 ? nonEmp[nonEmp.length - 1] : '');
+                    let name = nonEmp[1] || code;
+                    let teacher = nonEmp[2] || (nonEmp.length > 2 ? nonEmp[nonEmp.length - 1] : '');
+
+                    if (name) {
+                        name = name.replace(/^\(\d+\)\s*/, '');
+                        if (name.toUpperCase().startsWith(code.toUpperCase())) {
+                            name = name.substring(code.length).trim();
+                        }
+                        if (teacher && name.endsWith(teacher.trim())) {
+                            name = name.substring(0, name.length - teacher.trim().length).trim();
+                        }
+                    }
+
                     courseLegend[cleanCodeKey] = {
                         code: code,
-                        name: name,
-                        teacher: teacher
+                        name: name || code,
+                        teacher: teacher ? teacher.trim() : ''
                     };
                 }
             });

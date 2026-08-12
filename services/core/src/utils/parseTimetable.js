@@ -285,10 +285,21 @@ function parseSheet(worksheet) {
     const firstCell = rowCells[0];
     const m = firstCell.match(/^\((\d+)\)\s*(.+)$/);
     if (m) {
-      const code = m[2].trim();
-      const subject = rowCells[1] || null;
-      const teacher = rowCells[2] || (rowCells.length > 2 ? rowCells[rowCells.length - 1] : null);
-      legend.push({ code, subject, teacher });
+      let code = m[2].trim().split(/\s+/)[0];
+      let subject = rowCells[1] ? rowCells[1].trim() : null;
+      let teacher = rowCells[2] || (rowCells.length > 2 ? rowCells[rowCells.length - 1] : null);
+
+      if (subject) {
+        subject = subject.replace(/^\(\d+\)\s*/, '');
+        if (subject.toUpperCase().startsWith(code.toUpperCase())) {
+          subject = subject.substring(code.length).trim();
+        }
+        if (teacher && subject.endsWith(teacher.trim())) {
+          subject = subject.substring(0, subject.length - teacher.trim().length).trim();
+        }
+      }
+
+      legend.push({ code, subject: subject || code, teacher: teacher ? teacher.trim() : null });
     }
   }
 
