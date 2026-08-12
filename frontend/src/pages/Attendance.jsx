@@ -418,12 +418,14 @@ const Attendance = () => {
                     }
                 });
 
-                // For teachers, filter timetable subjects to only show their own
+                let filteredDbCourses = dbCourses;
+                // For teachers, filter both dbCourses and timetable subjects to only show their own
                 if (isTeacher) {
+                    filteredDbCourses = dbCourses.filter(c => isCourseTaughtByTeacher(c, user));
                     uniqueTimetableSubjects = uniqueTimetableSubjects.filter(ts => isCourseTaughtByTeacher(ts, user));
                 }
 
-                setCourses([...dbCourses, ...uniqueTimetableSubjects]);
+                setCourses([...filteredDbCourses, ...uniqueTimetableSubjects]);
             } catch (err) {
                 console.error('Error fetching courses for attendance:', err);
             } finally {
