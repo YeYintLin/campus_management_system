@@ -234,14 +234,111 @@ function parseSheet(worksheet) {
   };
 }
 
+function parseScheduleListSheet(worksheet, headerRowIndex) {
+  const titleLines = [];
+  for (let r = 1; r < headerRowIndex; r++) {
+    const v = cellText(worksheet, r, 1);
+    if (v && String(v).trim()) titleLines.push(String(v).trim());
+  }
+
+  let academicYear = titleLines[2] || null;
+  let timetableTitle = titleLines[3] || null;
+  let department = titleLines[1] || 'Department of Mechatronic Engineering';
+
+  const isTutorial = (timetableTitle || '').toLowerCase().includes('tutorial') || worksheet.name.toLowerCase().includes('tut');
+  const sessionTypeDefault = isTutorial ? 'Tutorial' : 'Practical';
+
+  const rows = [];
+  for (let r = headerRowIndex + 1; r <= worksheet.rowCount; r++) {
+    const row = worksheet.getRow(r);
+    const code = row.getCell(2).value ? String(row.getCell(2).value).trim() : '';
+    if (!code || code.toLowerCase().startsWith('prepared') || code.toLowerCase().startsWith('approved')) continue;
+
+    const yearVal = row.getCell(1).value ? String(row.getCell(1).value).trim() : '';
+    const title = row.getCell(3).value ? String(row.getCell(3).value).trim() : '';
+    const teacher = row.getCell(4).value ? String(row.getCell(4).value).trim() : '';
+    const group = row.getCell(5).value ? String(row.getCell(5).value).trim() : '';
+    const date = row.getCell(6).value ? String(row.getCell(6).value).trim() : '';
+    const time = row.getCell(7).value ? String(row.getCell(7).value).trim() : '';
+    const place = row.getCell(8).value ? String(row.getCell(8).value).trim() : '';
+
+    rows.push({ year: yearVal, code, title, teacher, group, date, time, place });
+  }
+
+  if (rows.length === 0) return null;
+
+  const sampleRow = rows[0];
+  const yearNum = extractNumber(sampleRow.year);
+  const yearLabel = sampleRow.year ? sampleRow.year + ' Year' : '4th Year';
+
+  const dayMap = {};
+  rows.forEach((r) => {
+    const dayKey = r.date || 'Scheduled Date';
+    if (!dayMap[dayKey]) dayMap[dayKey] = [];
+    dayMap[dayKey].push({
+      code: r.code,
+      session_type: sessionTypeDefault,
+      raw: `${r.title} (${r.group}) - ${r.place}`,
+      time: [r.time],
+      teacher: r.teacher,
+      place: r.place,
+      group: r.group
+    });
+  });
+
+  const days = Object.entries(dayMap).map(([dayName, sessions]) => ({
+    day: dayName,
+    sessions
+  }));
+
+  const legend = Array.from(new Set(rows.map((r) => r.code))).map((code) => {
+    const r = rows.find((x) => x.code === code);
+    return { code: r.code, subject: r.title, teacher: r.teacher };
+  });
+
+  return {
+    sheet_name: worksheet.name.trim(),
+    academic_year: academicYear,
+    department,
+    year_label: yearLabel,
+    year_number: yearNum,
+    semester_label: academicYear && academicYear.includes('Second') ? 'Second Semester' : 'First Semester',
+    semester_number: academicYear && academicYear.includes('Second') ? 2 : 1,
+    periods: [{ period: 'Session 1', time: 'Scheduled Time' }],
+    days,
+    legend
+  };
+}
+
 async function parseTimetableBuffer(buffer) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
   const result = [];
   workbook.eachSheet((worksheet) => {
-    const parsed = parseSheet(worksheet);
-    if (parsed && parsed.days.some((d) => d.sessions.length > 0)) {
-      result.push(parsed);
+    // Check if sheet is a Schedule List (Practical / Tutorial)
+    let scheduleListHeaderRow = null;
+    for (let r = 1; r <= 10; r++) {
+      const rowVals = [];
+      for (let c = 1; c <= 10; c++) {
+        const v = cellText(worksheet, r, c);
+        rowVals.push(v ? String(v).trim().toLowerCase() : '');
+      }
+      if (rowVals.some((v) => v.includes('subject code') || v.includes('tutorial title') || v.includes('practical title'))) {
+        scheduleListHeaderRow = r;
+        break;
+      }
+    }
+
+    if (scheduleListHeaderRow) {
+      const parsedList = parseScheduleListSheet(worksheet, scheduleListHeaderRow);
+      if (parsedList && parsedList.days.length > 0) {
+        result.push(parsedList);
+      }
+    } else {
+      const parsed = parseSheet(worksheet);
+      if (parsed && parsed.days.some((d) => d.sessions.length > 0)) {
+        result.push(parsed);
+      }
     }
   });
   return result;
