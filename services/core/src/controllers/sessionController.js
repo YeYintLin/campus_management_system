@@ -222,42 +222,48 @@ const batchImportSessions = async (req, res) => {
 
             let sessionBulkCount = 0;
             if (validSessions.length > 0) {
-                const bulkOps = validSessions.map(session => ({
-                    updateOne: {
-                        filter: {
-                            year: session.year || year,
-                            semester: session.semester || semester,
-                            major: session.major || major,
-                            sessionType: session.sessionType || sessionType,
-                            courseCode: session.courseCode,
-                            date: session.date,
-                            startTimeMinutes: session.startTimeMinutes || 540
-                        },
-                        update: {
-                            $set: {
+                const bulkOps = validSessions.map(session => {
+                    const normType = ['Practical', 'Tutorial', 'Exam'].includes(session.sessionType) 
+                        ? session.sessionType 
+                        : (['Practical', 'Tutorial', 'Exam'].includes(sessionType) ? sessionType : 'Practical');
+
+                    return {
+                        updateOne: {
+                            filter: {
                                 year: session.year || year,
                                 semester: session.semester || semester,
                                 major: session.major || major,
-                                sessionType: session.sessionType || sessionType,
-                                examType: session.examType || 'N/A',
+                                sessionType: normType,
                                 courseCode: session.courseCode,
-                                courseName: session.courseName || session.courseCode,
-                                title: session.title || session.courseName || session.courseCode,
-                                teacher: session.teacher || 'Faculty Member',
-                                groupTag: session.groupTag || 'All',
                                 date: session.date,
-                                startTime: session.startTime || '08:30 AM',
-                                endTime: session.endTime || '11:30 AM',
-                                startTimeMinutes: session.startTimeMinutes || 540,
-                                endTimeMinutes: session.endTimeMinutes || 710,
-                                place: session.place || '3/212-A',
-                                status: 'Draft',
-                                classSection: createdSections.get(`${session.year || year}_${session.semester || semester}_${session.major || major}`)?._id
-                            }
-                        },
-                        upsert: true
-                    }
-                }));
+                                startTimeMinutes: session.startTimeMinutes || 540
+                            },
+                            update: {
+                                $set: {
+                                    year: session.year || year,
+                                    semester: session.semester || semester,
+                                    major: session.major || major,
+                                    sessionType: normType,
+                                    examType: session.examType || 'N/A',
+                                    courseCode: session.courseCode,
+                                    courseName: session.courseName || session.courseCode,
+                                    title: session.title || session.courseName || session.courseCode,
+                                    teacher: session.teacher || 'Faculty Member',
+                                    groupTag: session.groupTag || 'All',
+                                    date: session.date,
+                                    startTime: session.startTime || '08:30 AM',
+                                    endTime: session.endTime || '11:30 AM',
+                                    startTimeMinutes: session.startTimeMinutes || 540,
+                                    endTimeMinutes: session.endTimeMinutes || 710,
+                                    place: session.place || '3/212-A',
+                                    status: 'Draft',
+                                    classSection: createdSections.get(`${session.year || year}_${session.semester || semester}_${session.major || major}`)?._id
+                                }
+                            },
+                            upsert: true
+                        }
+                    };
+                });
                 await ScheduledSession.bulkWrite(bulkOps);
                 sessionBulkCount = bulkOps.length;
             }

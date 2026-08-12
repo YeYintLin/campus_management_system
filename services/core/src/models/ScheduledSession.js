@@ -21,7 +21,7 @@ const scheduledSessionSchema = new mongoose.Schema(
         sessionType: {
             type: String,
             required: [true, 'Session type is required'],
-            enum: ['Practical', 'Tutorial', 'Exam'],
+            enum: ['Practical', 'Tutorial', 'Exam', 'Academic', 'Lecture'],
         },
         examType: {
             type: String,
