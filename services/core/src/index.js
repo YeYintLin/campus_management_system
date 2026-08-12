@@ -90,43 +90,41 @@ mongoose
         dbStatus = 'connected';
         console.log('Connected to MongoDB');
         
-        // Auto-purge stray non-official course documents & enforce official teacher assignments
+        // Auto-purge invalid blank courses & ensure official teacher subject assignments across years
         (async () => {
             try {
                 const Course = require('./models/Course');
                 const User = require('./models/User');
 
-                const OFFICIAL_CODES = new Set([
-                    'MCE-51039', 'MCE-52039', 'MCE-52018', 'MCE-51001',
-                    'MCE-42026', 'MCE-41026', 'MCE-4049',
-                    'MCE-32032', 'MCE-31032', 'MCE-31022', 'MCE-3027',
-                    'E-11001', 'MATH-11002', 'PHYSICS-11003', 'MCE-21005', 'MCE-22006', 'MCE-61011'
-                ]);
-
                 const teacher = await User.findOne({ email: 'myat.thu.zar@tuhmawbi.edu.mm' });
                 const myatThuZarId = teacher ? teacher._id : null;
-                const fifthYearCodes = new Set(['MCE-51039', 'MCE-52039', 'MCE-52018', 'MCE-51001']);
+                const herSubjectCodes = new Set([
+                    'MCE-51039', 'MCE-52039', 'MCE-52018', 'MCE-51001',
+                    'MCE-42026', 'MCE-41026', 'MCE-4049'
+                ]);
 
                 const allCourses = await Course.find({});
                 for (const c of allCourses) {
                     const cleanCode = (c.code || '').toUpperCase().replace(/\s+/g, '');
-                    if (!OFFICIAL_CODES.has(cleanCode)) {
-                        console.log(`[Auto-Purge] Deleting stray course record: '${c.code}' (${c._id})`);
+
+                    // Delete incomplete corrupt course codes (e.g. 'MCE-' or empty)
+                    if (!cleanCode || cleanCode === 'MCE-' || cleanCode === 'MCE') {
+                        console.log(`[Auto-Purge] Deleting corrupt course record: '${c.code}' (${c._id})`);
                         await Course.deleteOne({ _id: c._id });
-                    } else if (myatThuZarId) {
-                        const shouldBeHer = fifthYearCodes.has(cleanCode);
-                        if (shouldBeHer && (!c.teacher || String(c.teacher._id || c.teacher) !== String(myatThuZarId))) {
+                        continue;
+                    }
+
+                    // Assign 4th & 5th Year Mechatronics subjects to Daw Myat Thu Zar
+                    if (myatThuZarId && herSubjectCodes.has(cleanCode)) {
+                        if (!c.teacher || String(c.teacher._id || c.teacher) !== String(myatThuZarId)) {
                             c.teacher = myatThuZarId;
-                            await c.save();
-                        } else if (!shouldBeHer && c.teacher && String(c.teacher._id || c.teacher) === String(myatThuZarId)) {
-                            c.teacher = null;
                             await c.save();
                         }
                     }
                 }
-                console.log('Official curriculum course audit completed successfully.');
+                console.log('Official course audit completed: 4th & 5th Year subjects linked for Daw Myat Thu Zar.');
             } catch (auditErr) {
-                console.error('Course auto-cleanup error:', auditErr.message);
+                console.error('Course audit error:', auditErr.message);
             }
         })();
     })

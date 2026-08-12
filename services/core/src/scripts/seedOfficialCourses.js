@@ -59,7 +59,7 @@ async function seedCourses() {
         let createdCount = 0;
         let updatedCount = 0;
 
-        const myatThuZarCourseCodes = new Set(['McE-51039', 'McE-52039', 'McE-52018', 'McE-51001']);
+        const myatThuZarCourseCodes = new Set(['McE-51039', 'McE-52039', 'McE-52018', 'McE-51001', 'McE-42026', 'McE-41026', 'McE-4049']);
 
         for (const c of OFFICIAL_COURSES) {
             const isHerSubject = myatThuZarCourseCodes.has(c.code);
