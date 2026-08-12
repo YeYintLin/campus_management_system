@@ -6,10 +6,16 @@ const Course = require('../models/Course');
 const getCourses = async (req, res) => {
     try {
         let query = {};
+        const role = (req.user.role || '').toLowerCase().trim();
 
         // Teachers only see courses assigned to them
-        if (req.user.role === 'Teacher') {
-            query = { teacher: req.user._id };
+        if (role === 'teacher') {
+            query = {
+                $or: [
+                    { teacher: req.user._id },
+                    { teacher: req.user.id }
+                ]
+            };
         }
         // Admin sees all, Student sees all (frontend filters by year)
 

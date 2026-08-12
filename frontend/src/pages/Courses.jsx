@@ -47,7 +47,7 @@ const normalizeYear = (yr) => {
 
 const isCourseTaughtByTeacher = (course, user) => {
     if (!user) return false;
-    const userTeacherId = user._id ? String(user._id) : '';
+    const userTeacherId = user._id ? String(user._id) : (user.id ? String(user.id) : '');
     const userTeacherName = (user.name || '').toLowerCase().trim();
     const userTeacherEmail = (user.email || '').toLowerCase().trim();
 
@@ -58,14 +58,14 @@ const isCourseTaughtByTeacher = (course, user) => {
     let cName = '';
     let cEmail = '';
 
-    if (typeof cTeacher === 'object') {
-        cId = cTeacher._id ? String(cTeacher._id) : '';
+    if (typeof cTeacher === 'object' && cTeacher !== null) {
+        cId = cTeacher._id ? String(cTeacher._id) : (cTeacher.id ? String(cTeacher.id) : '');
         cName = (cTeacher.name || '').toLowerCase().trim();
         cEmail = (cTeacher.email || '').toLowerCase().trim();
     } else if (typeof cTeacher === 'string') {
         cName = cTeacher.toLowerCase().trim();
         if (cTeacher.includes('@')) cEmail = cTeacher.toLowerCase().trim();
-        else if (cTeacher.length > 15) cId = cTeacher;
+        else cId = cTeacher;
     }
 
     if (userTeacherId && cId && userTeacherId === cId) return true;
