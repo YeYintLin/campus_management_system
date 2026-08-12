@@ -7,6 +7,24 @@ import apiClient from '../api/apiClient';
 import { Calendar, Users, BookOpen, ChevronRight, ArrowLeft, CheckCircle2, XCircle, Clock, Save, Search, Award, TrendingUp, Zap, KeyRound, Send, Check, Camera, QrCode, X, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
 import './Attendance.css';
 
+const yearNumberToLabel = (num) => {
+    const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year' };
+    return labels[num] || '1st Year';
+};
+
+const normalizeYear = (yr) => {
+    if (!yr) return 'All';
+    const str = String(yr).trim().toLowerCase();
+    if (str === 'all') return 'All';
+    if (str.includes('1') || str.includes('first')) return '1st Year';
+    if (str.includes('2') || str.includes('second')) return '2nd Year';
+    if (str.includes('3') || str.includes('third')) return '3rd Year';
+    if (str.includes('4') || str.includes('fourth')) return '4th Year';
+    if (str.includes('5') || str.includes('fifth')) return '5th Year';
+    if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
+    return yr;
+};
+
 const Attendance = () => {
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
@@ -574,7 +592,12 @@ const Attendance = () => {
 
         const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             c.code.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesSearch;
+
+        const normTarget = normalizeYear(selectedYear);
+        const normCourseYear = c.yearLabel ? normalizeYear(c.yearLabel) : normalizeYear(yearNumberToLabel(c.year || 1));
+        const matchesYear = normTarget === 'All' || normCourseYear === 'All' || normCourseYear === normTarget;
+
+        return matchesSearch && matchesYear;
     });
 
     // Filter student roster by search
@@ -1042,6 +1065,20 @@ const Attendance = () => {
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {view === 'courses' && (
+                <div className="year-filter-bar glass-panel" style={{ marginBottom: '1.5rem' }}>
+                    {years.map(year => (
+                        <button
+                            key={year}
+                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                            onClick={() => setSelectedYear(year)}
+                        >
+                            {year}
+                        </button>
+                    ))}
                 </div>
             )}
 
