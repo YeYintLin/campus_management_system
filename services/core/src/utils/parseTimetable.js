@@ -295,8 +295,14 @@ function parseSheet(worksheet) {
         teacher = rowCells[rowCells.length - 1].trim();
       } else if (rowCells.length === 2) {
         code = m[2].trim().split(/\s+/)[0];
-        subject = rowCells[1].trim();
-        teacher = '';
+        const subParts = rowCells[1].trim().split(/\s{2,}|\t/).map(p => p.trim()).filter(Boolean);
+        if (subParts.length >= 2) {
+          subject = subParts.slice(0, subParts.length - 1).join(' ');
+          teacher = subParts[subParts.length - 1];
+        } else {
+          subject = rowCells[1].trim();
+          teacher = '';
+        }
       } else {
         const rest = m[2].trim();
         const parts = rest.split(/\s{2,}|\t/).map(p => p.trim()).filter(Boolean);
