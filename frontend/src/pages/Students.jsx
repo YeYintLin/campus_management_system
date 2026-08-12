@@ -196,8 +196,43 @@ const Students = () => {
         };
     });
 
-    const teacherDefaultDept = roleStr === 'teacher' && user?.department ? user.department : 'All';
-    const [selectedDepartment, setSelectedDepartment] = useState(teacherDefaultDept);
+    const userDepartment = React.useMemo(() => {
+        if (user?.department && user.department.trim()) return user.department.trim();
+        if (user?.email) {
+            const parts = user.email.split('@')[0].toLowerCase().split('.');
+            if (parts.length >= 2) {
+                const d = parts[1];
+                if (d === 'mc' || d === 'mce') return 'Mechatronics Engineering';
+                if (d === 'arch' || d === 'ar') return 'Architecture';
+                if (d === 'c' || d === 'ce') return 'Civil Engineering';
+                if (d === 'ep') return 'Electrical Power Engineering';
+                if (d === 'ec' || d === 'ece') return 'Electronic Engineering';
+                if (d === 'it') return 'Information Technology';
+                if (d === 'me') return 'Mechanical Engineering';
+            }
+        }
+        if (user?.rollNo) {
+            const c = String(user.rollNo).toUpperCase();
+            if (c.includes('MC') || c.includes('MCE')) return 'Mechatronics Engineering';
+            if (c.includes('CE') && !c.includes('ECE')) return 'Civil Engineering';
+            if (c.includes('EP')) return 'Electrical Power Engineering';
+            if (c.includes('EC')) return 'Electronic Engineering';
+            if (c.includes('IT')) return 'Information Technology';
+            if (c.includes('ME')) return 'Mechanical Engineering';
+            if (c.includes('ARCH') || c.includes('AR')) return 'Architecture';
+        }
+        return 'Mechatronics Engineering';
+    }, [user]);
+
+    const initialDepartment = isAdmin ? 'All' : userDepartment;
+    const [selectedDepartment, setSelectedDepartment] = useState(initialDepartment);
+
+    // Keep selectedDepartment locked for non-admins if user state updates
+    useEffect(() => {
+        if (!isAdmin) {
+            setSelectedDepartment(userDepartment);
+        }
+    }, [isAdmin, userDepartment]);
 
     const availableDepartments = [
         'All',
@@ -440,18 +475,27 @@ const Students = () => {
                 ))}
             </div>
 
-            <div className="year-filter-bar glass-panel" style={{ marginBottom: '1.5rem', background: 'rgba(99, 102, 241, 0.05)' }}>
-                {availableDepartments.map(dept => (
-                    <button
-                        key={dept}
-                        className={`year-tag ${selectedDepartment === dept ? 'active' : ''}`}
-                        onClick={() => setSelectedDepartment(dept)}
-                        style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
-                    >
-                        {dept === 'Mechatronics Engineering' ? 'Mechatronics (VMC)' : dept === 'Civil Engineering' ? 'Civil (VC)' : dept}
-                    </button>
-                ))}
-            </div>
+            {isAdmin ? (
+                <div className="year-filter-bar glass-panel" style={{ marginBottom: '1.5rem', background: 'rgba(99, 102, 241, 0.05)' }}>
+                    {availableDepartments.map(dept => (
+                        <button
+                            key={dept}
+                            className={`year-tag ${selectedDepartment === dept ? 'active' : ''}`}
+                            onClick={() => setSelectedDepartment(dept)}
+                            style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
+                        >
+                            {dept === 'Mechatronics Engineering' ? 'Mechatronics (VMC)' : dept === 'Civil Engineering' ? 'Civil (VC)' : dept}
+                        </button>
+                    ))}
+                </div>
+            ) : (
+                <div className="glass-panel" style={{ marginBottom: '1.5rem', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '12px' }}>
+                    <span className="text-muted" style={{ fontSize: '0.85rem', fontWeight: '600' }}>Department:</span>
+                    <span className="badge badge-primary font-mono" style={{ fontSize: '0.85rem', fontWeight: '700' }}>
+                        {userDepartment}
+                    </span>
+                </div>
+            )}
 
             {error && (
                 <div className="glass-panel empty-state">

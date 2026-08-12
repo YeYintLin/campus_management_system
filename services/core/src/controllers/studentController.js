@@ -9,32 +9,62 @@ const STUDENT_USER_FIELDS = 'name email role status department';
 // @access  Private (Admin, Teacher, Student)
 const getStudents = async (req, res) => {
     try {
-        const { role, _id: userId } = req.user;
+        const { role, department, email, _id: userId } = req.user;
+        const normalizedRole = (role || '').toLowerCase();
+        const isAdmin = ['admin', 'superadmin', 'academicadmin'].includes(normalizedRole);
 
-        if (role === 'Teacher') {
-            // Teacher: only students enrolled in courses taught by this teacher
-            const myCourses = await Course.find({ teacher: userId }).select('students');
-            const studentUserIds = new Set();
-            for (const course of myCourses) {
-                for (const sid of course.students) {
-                    studentUserIds.add(sid.toString());
+        if (!isAdmin) {
+            // Teacher / Student: restrict to their own department
+            let userDept = department || '';
+            if (!userDept && email) {
+                const parts = email.split('@')[0].toLowerCase().split('.');
+                if (parts.length >= 2) {
+                    const d = parts[1];
+                    if (d === 'mc' || d === 'mce') userDept = 'Mechatronics Engineering';
+                    else if (d === 'arch' || d === 'ar') userDept = 'Architecture';
+                    else if (d === 'c' || d === 'ce') userDept = 'Civil Engineering';
+                    else if (d === 'ep') userDept = 'Electrical Power Engineering';
+                    else if (d === 'ec' || d === 'ece') userDept = 'Electronic Engineering';
+                    else if (d === 'it') userDept = 'Information Technology';
+                    else if (d === 'me') userDept = 'Mechanical Engineering';
                 }
             }
-            if (studentUserIds.size > 0) {
-                const students = await Student.find({ user: { $in: Array.from(studentUserIds) } })
-                    .populate('user', STUDENT_USER_FIELDS);
-                return res.json(students);
+            if (!userDept) userDept = 'Mechatronics Engineering'; // Default fallback for TU Hmawbi
+
+            // Find all users in the same department
+            const deptKeyword = userDept.split(' ')[0].toLowerCase(); // e.g. "mechatronics"
+            const deptUsers = await User.find({
+                role: 'Student',
+                $or: [
+                    { department: new RegExp(deptKeyword, 'i') },
+                    { email: new RegExp(`\\.${deptKeyword.substring(0, 2)}\\.`, 'i') },
+                    { email: new RegExp(`\\.${deptKeyword}\\.`, 'i') }
+                ]
+            }).select('_id');
+
+            const deptUserIds = deptUsers.map(u => u._id);
+
+            // Also include students in teacher's enrolled courses
+            if (role === 'Teacher') {
+                const myCourses = await Course.find({ teacher: userId }).select('students');
+                for (const course of myCourses) {
+                    for (const sid of course.students) {
+                        deptUserIds.push(sid);
+                    }
+                }
             }
-            // Fallback for teachers: return all active students so directory is not empty
-            const students = await Student.find().populate('user', STUDENT_USER_FIELDS);
-            return res.json(students);
-        } else if (role === 'Student') {
-            // Student: only their own student profile
-            const students = await Student.find({ user: userId }).populate('user', STUDENT_USER_FIELDS);
+
+            const students = await Student.find({
+                $or: [
+                    { user: { $in: deptUserIds } },
+                    { department: new RegExp(deptKeyword, 'i') }
+                ]
+            }).populate('user', STUDENT_USER_FIELDS);
+
             return res.json(students);
         }
 
-        // Admin / SuperAdmin / AcademicAdmin: all students
+        // Admin / SuperAdmin / AcademicAdmin: all students across all departments
         const students = await Student.find().populate('user', STUDENT_USER_FIELDS);
         res.json(students);
     } catch (error) {
