@@ -86,7 +86,20 @@ async function seedCourses() {
             }
         }
 
-        console.log(`[SEED SUCCESS] Created ${createdCount} new subjects, updated ${updatedCount} existing subjects.`);
+        const officialCodesSet = new Set(OFFICIAL_COURSES.map(c => c.code.toUpperCase().replace(/\s+/g, '')));
+
+        // Delete stray courses that are not in official curriculum list
+        const allDbCourses = await Course.find({});
+        let deletedStrayCount = 0;
+        for (const dbc of allDbCourses) {
+            const cleanCode = (dbc.code || '').toUpperCase().replace(/\s+/g, '');
+            if (!officialCodesSet.has(cleanCode)) {
+                await Course.deleteOne({ _id: dbc._id });
+                deletedStrayCount++;
+            }
+        }
+
+        console.log(`[SEED SUCCESS] Created ${createdCount} new subjects, updated ${updatedCount} existing subjects, purged ${deletedStrayCount} stray course codes.`);
         process.exit(0);
     } catch (err) {
         console.error('Seeding failed:', err);
