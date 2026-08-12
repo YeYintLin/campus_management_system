@@ -226,72 +226,78 @@ TU Hmawbi Smart Campus Management System
             const dbCourses = Array.isArray(coursesRes.data) ? coursesRes.data : [];
             const timetableData = Array.isArray(timetableRes.data) ? timetableRes.data : [];
 
-            // Extract subjects from timetable legends & sessions
-            const timetableSubjects = [];
+            // Extract timetable legend items by code (timetable legend is authoritative)
+            const timetableMap = new Map();
             timetableData.forEach(sheet => {
-                const sheetYear = sheet.yearNumber ? yearNumberToLabel(sheet.yearNumber) : (sheet.yearLabel || 'All');
+                const sheetYear = sheet.yearLabel || (sheet.yearNumber ? yearNumberToLabel(sheet.yearNumber) : '1st Year');
+                const sheetYearNum = sheet.yearNumber || 1;
 
-                // Check legend
                 if (Array.isArray(sheet.legend)) {
                     sheet.legend.forEach(item => {
                         if (item.code) {
-                            timetableSubjects.push({
-                                _id: `tt_${item.code}`,
-                                code: item.code,
+                            const cleanCode = item.code.trim().toUpperCase();
+                            timetableMap.set(cleanCode, {
+                                code: item.code.trim(),
                                 name: item.subject || item.code,
-                                year: sheet.yearNumber || 1,
+                                year: sheetYearNum,
                                 yearLabel: sheetYear,
-                                description: `Official timetable subject offering for ${sheetYear}`,
-                                teacher: item.teacher ? { name: item.teacher } : null,
-                                students: [],
-                                isFromTimetable: true,
-                            });
-                        }
-                    });
-                }
-
-                // Check days -> sessions
-                if (Array.isArray(sheet.days)) {
-                    sheet.days.forEach(day => {
-                        if (Array.isArray(day.sessions)) {
-                            day.sessions.forEach(sess => {
-                                if (sess.code) {
-                                    timetableSubjects.push({
-                                        _id: `tt_${sess.code}`,
-                                        code: sess.code,
-                                        name: sess.raw || sess.code,
-                                        year: sheet.yearNumber || 1,
-                                        yearLabel: sheetYear,
-                                        description: `Timetable class session for ${sheetYear}`,
-                                        teacher: sess.teacher ? { name: sess.teacher } : null,
-                                        students: [],
-                                        isFromTimetable: true,
-                                    });
-                                }
+                                teacherName: item.teacher ? item.teacher.trim() : '',
+                                isFromTimetable: true
                             });
                         }
                     });
                 }
             });
 
-            // Combine and deduplicate by code
-            const existingCodes = new Set(dbCourses.map(c => c.code.toUpperCase().trim()));
-            let uniqueTimetableSubjects = [];
+            // Process DB Courses & override with Timetable legend info if available
+            const mergedCourses = [];
+            const processedCodes = new Set();
 
-            timetableSubjects.forEach(ts => {
-                const cleanCode = ts.code.toUpperCase().trim();
-                if (!existingCodes.has(cleanCode)) {
-                    existingCodes.add(cleanCode);
-                    uniqueTimetableSubjects.push(ts);
+            dbCourses.forEach(dbc => {
+                const cleanCode = (dbc.code || '').trim().toUpperCase();
+                if (!cleanCode) return;
+                processedCodes.add(cleanCode);
+
+                const ttInfo = timetableMap.get(cleanCode);
+                if (ttInfo) {
+                    mergedCourses.push({
+                        ...dbc,
+                        name: ttInfo.name || dbc.name,
+                        year: ttInfo.year || dbc.year,
+                        yearLabel: ttInfo.yearLabel,
+                        teacher: ttInfo.teacherName ? (dbc.teacher || { name: ttInfo.teacherName }) : dbc.teacher,
+                        isFromTimetable: true
+                    });
+                } else {
+                    mergedCourses.push(dbc);
                 }
             });
 
-            // For teachers, filter timetable subjects to only show their own
+            // Add any remaining timetable legend subjects not yet in DB
+            timetableMap.forEach((ttInfo, cleanCode) => {
+                if (!processedCodes.has(cleanCode)) {
+                    processedCodes.add(cleanCode);
+                    mergedCourses.push({
+                        _id: `tt_${ttInfo.code}`,
+                        code: ttInfo.code,
+                        name: ttInfo.name,
+                        year: ttInfo.year,
+                        yearLabel: ttInfo.yearLabel,
+                        description: `Official timetable subject offering for ${ttInfo.yearLabel}`,
+                        teacher: ttInfo.teacherName ? { name: ttInfo.teacherName } : null,
+                        students: [],
+                        isFromTimetable: true,
+                    });
+                }
+            });
+
+            // Filter for Teacher role: strictly show subjects taught by this teacher
+            let finalCourses = mergedCourses;
             if (isTeacher) {
-                uniqueTimetableSubjects = uniqueTimetableSubjects.filter(ts => isCourseTaughtByTeacher(ts, user));
+                finalCourses = mergedCourses.filter(c => isCourseTaughtByTeacher(c, user));
             }
 
-            setCourses([...dbCourses, ...uniqueTimetableSubjects]);
+            setCourses(finalCourses);
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Failed to load courses');
         } finally {

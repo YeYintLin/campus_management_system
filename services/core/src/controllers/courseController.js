@@ -1,10 +1,69 @@
 const Course = require('../models/Course');
 
+const syncCourseCollectionWithTimetable = async () => {
+    try {
+        const Semester = require('../models/Semester');
+        const User = require('../models/User');
+
+        const semesters = await Semester.find({}).lean().exec();
+        if (!semesters || semesters.length === 0) return;
+
+        const allTeachers = await User.find({ role: 'Teacher' }).lean().exec();
+        const stripHonorifics = (name = '') => name.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim().toLowerCase();
+
+        const findTeacherByName = (tName) => {
+            if (!tName) return null;
+            const cleanT = stripHonorifics(tName);
+            if (cleanT.length < 3) return null;
+            return allTeachers.find(u => {
+                const cleanU = stripHonorifics(u.name || '');
+                return cleanU.includes(cleanT) || cleanT.includes(cleanU);
+            }) || null;
+        };
+
+        for (const sem of semesters) {
+            const yearNum = sem.yearNumber || 1;
+            const yearLabel = sem.yearLabel || `${yearNum}th Year`;
+
+            if (Array.isArray(sem.legend)) {
+                for (const item of sem.legend) {
+                    if (item && item.code) {
+                        const codeStr = item.code.trim();
+                        const subjectName = item.subject ? item.subject.trim() : codeStr;
+                        const teacherObj = findTeacherByName(item.teacher);
+
+                        const existing = await Course.findOne({ code: new RegExp(`^${codeStr}$`, 'i') });
+                        if (existing) {
+                            existing.name = subjectName;
+                            existing.year = yearNum;
+                            if (teacherObj) existing.teacher = teacherObj._id;
+                            await existing.save();
+                        } else {
+                            await Course.create({
+                                code: codeStr,
+                                name: subjectName,
+                                year: yearNum,
+                                description: `Official timetable subject offering for ${yearLabel}`,
+                                teacher: teacherObj ? teacherObj._id : null,
+                                students: []
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Course sync notice:', err.message);
+    }
+};
+
 // @desc    Get all courses
 // @route   GET /api/courses
 // @access  Private
 const getCourses = async (req, res) => {
     try {
+        await syncCourseCollectionWithTimetable();
+
         let query = {};
         const role = (req.user.role || '').toLowerCase().trim();
 
