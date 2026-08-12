@@ -30,13 +30,38 @@ const syncCourseCollectionWithTimetable = async () => {
             if (Array.isArray(sem.legend)) {
                 for (const item of sem.legend) {
                     if (item && item.code) {
-                        const codeStr = item.code.trim().toUpperCase();
-                        const subjectName = item.subject ? item.subject.trim() : codeStr;
-                        const teacherObj = findTeacherByName(item.teacher);
+                        // Extract just the course code (e.g., "McE-51021") from potentially garbled data
+                        let rawCode = item.code.trim();
+                        const codeMatch = rawCode.match(/^[A-Za-z]{1,5}-?\s*\d{3,6}/);
+                        if (codeMatch) {
+                            rawCode = codeMatch[0].replace(/\s+/g, '');
+                        }
+                        // Skip obviously garbled codes (real codes are short, like "McE-51021")
+                        if (rawCode.length > 20) continue;
+
+                        const codeStr = rawCode.toUpperCase();
+
+                        // Clean subject: strip teacher name if appended
+                        let subjectName = item.subject ? item.subject.trim() : rawCode;
+                        // Remove teacher name patterns from end of subject (e.g., "Subject Name    Daw Teacher Name")
+                        const teacherInSubject = subjectName.match(/\s{2,}(Daw |U |Dr\.|Dr |Prof\.?|Sayar ).+$/i);
+                        if (teacherInSubject) {
+                            subjectName = subjectName.substring(0, teacherInSubject.index).trim();
+                        }
+
+                        // Clean teacher: extract just the teacher name
+                        let teacherName = item.teacher ? item.teacher.trim() : '';
+                        // Strip "(n)CODE  Subject  " prefix from teacher field if present
+                        const teacherMatch = teacherName.match(/(Daw |U |Dr\.|Dr |Prof\.?|Sayar )(.+)$/i);
+                        if (teacherMatch) {
+                            teacherName = teacherMatch[0].trim();
+                        }
+
+                        const teacherObj = findTeacherByName(teacherName || item.teacher);
 
                         legendMap.set(codeStr, {
-                            code: item.code.trim(),
-                            name: subjectName,
+                            code: rawCode,
+                            name: subjectName || rawCode,
                             year: yearNum,
                             yearLabel: yearLabel,
                             teacherId: teacherObj ? teacherObj._id : null
