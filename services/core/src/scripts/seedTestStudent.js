@@ -45,7 +45,7 @@ async function seed() {
         user: user._id,
         enrollmentNumber: rollNum,
         department: 'Mechatronics Engineering',
-        semester: 'First Semester',
+        semester: 1,
         status: 'Active',
     });
 
