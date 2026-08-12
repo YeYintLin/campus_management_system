@@ -377,15 +377,38 @@ const getSessionOverrides = async (req, res) => {
     }
 };
 
-// @desc    Get attendance for a course (can filter by date)
-// @route   GET /api/attendance/course/:courseId
-// @access  Private
 const getAttendance = async (req, res) => {
     try {
         const { courseId } = req.params;
         const { date } = req.query;
 
-        let query = { courseId: courseId };
+        // Build flexible query supporting both course._id and course.code
+        let query = {
+            $or: [
+                { courseId: courseId },
+                { courseId: courseId.toUpperCase() },
+                { courseId: courseId.toLowerCase() }
+            ]
+        };
+
+        // Try to fetch course details to resolve both code and _id
+        try {
+            const token = req.headers.authorization;
+            const courseRes = await axios.get(`${CORE_SERVICE_URL}/api/courses/${courseId}`, {
+                headers: { Authorization: token },
+                timeout: 3000
+            }).catch(() => null);
+
+            if (courseRes?.data) {
+                const c = courseRes.data;
+                if (c._id) query.$or.push({ courseId: c._id.toString() });
+                if (c.code) {
+                    query.$or.push({ courseId: c.code });
+                    query.$or.push({ courseId: c.code.toUpperCase() });
+                    query.$or.push({ courseId: c.code.toLowerCase() });
+                }
+            }
+        } catch (e) {}
 
         if (date) {
             const start = new Date(date);
@@ -556,7 +579,8 @@ const getUserAttendance = async (req, res) => {
 
         // Student role validation: must query their own ID
         let targetStudentId = student;
-        if (req.user.role === 'Student') {
+        const roleStr = (req.user.role || '').toLowerCase();
+        if (roleStr === 'student') {
             if (student && student.toString() !== req.user._id.toString()) {
                 return res.status(403).json({ message: 'Not authorized to view other students\' attendance' });
             }

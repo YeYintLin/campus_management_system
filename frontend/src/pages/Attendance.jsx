@@ -490,28 +490,39 @@ const Attendance = () => {
     const loadCourseAttendance = useCallback(async (course, date, silent = false) => {
         if (!silent) setLoading(true);
         try {
-            // Get enrolled students from course object or students list
-            const studentsInCourse = course.students || [];
-            setStudentRoster(studentsInCourse);
+            // Start with enrolled students from course object
+            let roster = [...(course.students || [])];
 
-            // Fetch existing attendance logs for this course on date
-            const { data } = await apiClient.get(`/attendance/course/${course._id}?date=${date}`);
+            // Fetch existing attendance logs for this course on date (using course.code || course._id)
+            const courseKey = course.code || course._id;
+            const { data } = await apiClient.get(`/attendance/course/${courseKey}?date=${date}`);
             const existingSheet = {};
 
-            // Default all enrolled students to empty (Unsubmitted / No code sent yet)
-            studentsInCourse.forEach(s => {
-                const sId = s._id || s;
-                existingSheet[sId] = '';
-            });
-
-            // Overlay records from DB (students who scanned QR or sent pass code get 'Present')
-            if (data && data.length > 0 && data[0].records) {
+            // Merge any students returned in DB records into the roster
+            if (data && data.length > 0 && Array.isArray(data[0].records)) {
+                const rosterSet = new Set(roster.map(s => (s._id || s).toString()));
                 data[0].records.forEach(r => {
-                    const studentId = r.student?._id || r.student;
-                    if (studentId) existingSheet[studentId] = r.status;
+                    if (r.student) {
+                        const sObj = typeof r.student === 'object' ? r.student : { _id: r.student, name: 'Student', email: '' };
+                        const sId = (sObj._id || sObj).toString();
+                        if (!rosterSet.has(sId)) {
+                            rosterSet.add(sId);
+                            roster.push(sObj);
+                        }
+                        existingSheet[sId] = r.status || 'Present';
+                    }
                 });
             }
 
+            // Default remaining enrolled students without a status
+            roster.forEach(s => {
+                const sId = (s._id || s).toString();
+                if (existingSheet[sId] === undefined) {
+                    existingSheet[sId] = '';
+                }
+            });
+
+            setStudentRoster(roster);
             setAttendanceSheet(existingSheet);
         } catch (err) {
             console.error('Error loading course attendance:', err);
@@ -584,7 +595,7 @@ const Attendance = () => {
             });
 
             await apiClient.post('/attendance', {
-                course: selectedCourse._id,
+                course: selectedCourse.code || selectedCourse._id,
                 date: selectedDate,
                 records: recordsPayload
             });
