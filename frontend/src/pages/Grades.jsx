@@ -825,17 +825,6 @@ const Grades = () => {
                                 </div>
                             </div>
                             <div className="glass-panel gpa-card-premium">
-                                <div className="card-accent secondary"></div>
-                                <div className="card-content">
-                                    <div className="icon-badge secondary"><TrendingUp size={24} /></div>
-                                    <div className="info">
-                                        <span className="label">Performance Average</span>
-                                        <div className="main-value">{classAvg}</div>
-                                        <span className="sub-text text-success">Aggregated Score</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="glass-panel gpa-card-premium">
                                 <div className="card-accent info"></div>
                                 <div className="card-content">
                                     <div className="icon-badge info"><BookOpen size={24} /></div>
