@@ -51,24 +51,32 @@ const isCourseTaughtByTeacher = (course, user) => {
     const userTeacherName = (user.name || '').toLowerCase().trim();
     const userTeacherEmail = (user.email || '').toLowerCase().trim();
 
-    const courseTeacher = course.teacher;
-    if (!courseTeacher) return false;
+    const cTeacher = course.teacher;
+    if (!cTeacher) return false;
 
-    if (typeof courseTeacher === 'object') {
-        const cId = courseTeacher._id ? String(courseTeacher._id) : '';
-        const cName = (courseTeacher.name || '').toLowerCase().trim();
-        const cEmail = (courseTeacher.email || '').toLowerCase().trim();
+    let cId = '';
+    let cName = '';
+    let cEmail = '';
 
-        if (cId && userTeacherId && cId === userTeacherId) return true;
-        if (cEmail && userTeacherEmail && cEmail === userTeacherEmail) return true;
-        if (cName && userTeacherName && userTeacherName.length >= 3 && cName.includes(userTeacherName)) return true;
-        if (cName && userTeacherName && cName.length >= 3 && userTeacherName.includes(cName)) return true;
-    } else if (typeof courseTeacher === 'string') {
-        const cStr = courseTeacher.toLowerCase().trim();
-        if (userTeacherId && cStr === userTeacherId.toLowerCase()) return true;
-        if (userTeacherEmail && cStr === userTeacherEmail) return true;
-        if (cStr && userTeacherName && userTeacherName.length >= 3 && cStr.includes(userTeacherName)) return true;
-        if (cStr && userTeacherName && cStr.length >= 3 && userTeacherName.includes(cStr)) return true;
+    if (typeof cTeacher === 'object') {
+        cId = cTeacher._id ? String(cTeacher._id) : '';
+        cName = (cTeacher.name || '').toLowerCase().trim();
+        cEmail = (cTeacher.email || '').toLowerCase().trim();
+    } else if (typeof cTeacher === 'string') {
+        cName = cTeacher.toLowerCase().trim();
+        if (cTeacher.includes('@')) cEmail = cTeacher.toLowerCase().trim();
+        else if (cTeacher.length > 15) cId = cTeacher;
+    }
+
+    if (userTeacherId && cId && userTeacherId === cId) return true;
+    if (userTeacherEmail && cEmail && userTeacherEmail === cEmail) return true;
+
+    // Strip honorifics (Daw, U, Prof, Dr) for resilient matching
+    const cleanUser = userTeacherName.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim();
+    const cleanCourse = cName.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim();
+
+    if (cleanUser.length >= 3 && cleanCourse.length >= 3) {
+        if (cleanCourse.includes(cleanUser) || cleanUser.includes(cleanCourse)) return true;
     }
 
     return false;

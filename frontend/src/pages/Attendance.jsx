@@ -25,6 +25,43 @@ const normalizeYear = (yr) => {
     return yr;
 };
 
+const isCourseTaughtByTeacher = (course, user) => {
+    if (!user) return false;
+    const userTeacherId = user._id ? String(user._id) : '';
+    const userTeacherName = (user.name || '').toLowerCase().trim();
+    const userTeacherEmail = (user.email || '').toLowerCase().trim();
+
+    const cTeacher = course.teacher;
+    if (!cTeacher) return false;
+
+    let cId = '';
+    let cName = '';
+    let cEmail = '';
+
+    if (typeof cTeacher === 'object') {
+        cId = cTeacher._id ? String(cTeacher._id) : '';
+        cName = (cTeacher.name || '').toLowerCase().trim();
+        cEmail = (cTeacher.email || '').toLowerCase().trim();
+    } else if (typeof cTeacher === 'string') {
+        cName = cTeacher.toLowerCase().trim();
+        if (cTeacher.includes('@')) cEmail = cTeacher.toLowerCase().trim();
+        else if (cTeacher.length > 15) cId = cTeacher;
+    }
+
+    if (userTeacherId && cId && userTeacherId === cId) return true;
+    if (userTeacherEmail && cEmail && userTeacherEmail === cEmail) return true;
+
+    // Strip honorifics (Daw, U, Prof, Dr) for resilient matching
+    const cleanUser = userTeacherName.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim();
+    const cleanCourse = cName.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim();
+
+    if (cleanUser.length >= 3 && cleanCourse.length >= 3) {
+        if (cleanCourse.includes(cleanUser) || cleanUser.includes(cleanCourse)) return true;
+    }
+
+    return false;
+};
+
 const Attendance = () => {
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
@@ -564,32 +601,8 @@ const Attendance = () => {
 
     // Filter courses by selected year, search, and teacher assignment
     const filteredCourses = courses.filter(c => {
-        if (isTeacher) {
-            const userTeacherId = user?._id ? String(user._id) : '';
-            const userTeacherName = (user?.name || '').toLowerCase().trim();
-            const userTeacherEmail = (user?.email || '').toLowerCase().trim();
-
-            const cTeacher = c.teacher;
-            let isMine = false;
-            if (cTeacher) {
-                if (typeof cTeacher === 'object') {
-                    const cId = cTeacher._id ? String(cTeacher._id) : '';
-                    const cName = (cTeacher.name || '').toLowerCase().trim();
-                    const cEmail = (cTeacher.email || '').toLowerCase().trim();
-
-                    if (cId && userTeacherId && cId === userTeacherId) isMine = true;
-                    else if (cEmail && userTeacherEmail && cEmail === userTeacherEmail) isMine = true;
-                    else if (cName && userTeacherName && userTeacherName.length >= 3 && cName.includes(userTeacherName)) isMine = true;
-                    else if (cName && userTeacherName && cName.length >= 3 && userTeacherName.includes(cName)) isMine = true;
-                } else if (typeof cTeacher === 'string') {
-                    const cStr = cTeacher.toLowerCase().trim();
-                    if (userTeacherId && cStr === userTeacherId.toLowerCase()) isMine = true;
-                    else if (userTeacherEmail && cStr === userTeacherEmail) isMine = true;
-                    else if (cStr && userTeacherName && userTeacherName.length >= 3 && cStr.includes(userTeacherName)) isMine = true;
-                    else if (cStr && userTeacherName && cStr.length >= 3 && userTeacherName.includes(cStr)) isMine = true;
-                }
-            }
-            if (!isMine) return false;
+        if (isTeacher && !isCourseTaughtByTeacher(c, user)) {
+            return false;
         }
 
         const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
