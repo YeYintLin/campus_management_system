@@ -143,10 +143,53 @@ const getDownloadStats = async (req, res) => {
 // Fetch all custom folders created by users
 const CustomFolder = require('../models/CustomFolder');
 const ResourceFile = require('../models/ResourceFile');
+const Course = require('../models/Course');
 
+const normalizeYear = (yr) => {
+    if (!yr) return 'All';
+    const str = String(yr).trim().toLowerCase();
+    if (str === 'all') return 'All';
+    if (str.includes('1') || str.includes('first')) return '1st Year';
+    if (str.includes('2') || str.includes('second')) return '2nd Year';
+    if (str.includes('3') || str.includes('third')) return '3rd Year';
+    if (str.includes('4') || str.includes('fourth')) return '4th Year';
+    if (str.includes('5') || str.includes('fifth')) return '5th Year';
+    if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
+    const digitMatch = str.match(/\d+/);
+    if (digitMatch) {
+        const num = digitMatch[0];
+        const labels = { '1': '1st Year', '2': '2nd Year', '3': '3rd Year', '4': '4th Year', '5': '5th Year', '6': '6th Year' };
+        if (labels[num]) return labels[num];
+    }
+    return 'All';
+};
+
+const extractCourseCode = (text = '') => {
+    const clean = String(text).trim();
+    const match = clean.match(/^[A-Za-z]{1,5}-?\s*\d{3,6}/);
+    if (match) {
+        return match[0].replace(/\s+/g, '').toUpperCase();
+    }
+    return null;
+};
+
+// GET /api/files/folders
 const getCustomFolders = async (req, res) => {
     try {
-        const folders = await CustomFolder.find().sort({ createdAt: -1 });
+        let query = {};
+        const role = (req.user?.role || '').toLowerCase().trim();
+
+        if (role === 'student') {
+            const studentYearNorm = normalizeYear(req.user.year);
+            const flexYearPattern = studentYearNorm.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&');
+            query.$or = [
+                { year: new RegExp(`^${flexYearPattern}$`, 'i') },
+                { year: { $in: ['All', 'all', '', null] } },
+                { year: { $exists: false } }
+            ];
+        }
+
+        const folders = await CustomFolder.find(query).sort({ createdAt: -1 });
         res.json(folders);
     } catch (error) {
         console.error('Error fetching custom folders:', error);
@@ -155,7 +198,6 @@ const getCustomFolders = async (req, res) => {
 };
 
 // POST /api/files/folders
-// Create a new custom folder
 const createCustomFolder = async (req, res) => {
     try {
         const { name, description, iconColor, year, parentFolder } = req.body;
@@ -194,7 +236,22 @@ const deleteCustomFolder = async (req, res) => {
 // GET /api/files/resources
 const getResourceFiles = async (req, res) => {
     try {
-        const files = await ResourceFile.find().sort({ createdAt: -1 });
+        let query = {};
+        const role = (req.user?.role || '').toLowerCase().trim();
+
+        if (role === 'student') {
+            const studentYearNorm = normalizeYear(req.user.year);
+            const flexYearPattern = studentYearNorm.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&');
+            // Lock student backend query: ALWAYS filter by student's normalized year + 'All'
+            // Discard/override any client query parameters attempting to fetch other years
+            query.$or = [
+                { year: new RegExp(`^${flexYearPattern}$`, 'i') },
+                { year: { $in: ['All', 'all', '', null] } },
+                { year: { $exists: false } }
+            ];
+        }
+
+        const files = await ResourceFile.find(query).sort({ createdAt: -1 });
         res.json(files);
     } catch (error) {
         console.error('Error fetching resource files:', error);
@@ -208,6 +265,33 @@ const createResourceFile = async (req, res) => {
         const { name, type, size, category, year, fileUrl } = req.body;
         if (!name || !category) {
             return res.status(400).json({ message: 'Name and category are required' });
+        }
+
+        const userRole = (req.user?.role || '').toLowerCase().trim();
+        const courseCode = extractCourseCode(category) || extractCourseCode(name);
+
+        // Verification: If teacher is uploading to a course folder/code, verify teacher is assigned to course
+        if (userRole === 'teacher' && courseCode) {
+            const teacherId = req.user._id;
+            const assignedCourse = await Course.findOne({
+                teacher: teacherId,
+                code: new RegExp(`^${courseCode.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&')}$`, 'i')
+            });
+
+            if (!assignedCourse) {
+                // Try matching with spaces stripped
+                const flexPattern = courseCode.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&').replace(/-/g, '-\\s*');
+                const flexCourse = await Course.findOne({
+                    teacher: teacherId,
+                    code: new RegExp(`^${flexPattern}$`, 'i')
+                });
+
+                if (!flexCourse) {
+                    return res.status(403).json({
+                        message: `Not authorized: You are not assigned to teach course code ${courseCode}`
+                    });
+                }
+            }
         }
 
         const file = await ResourceFile.create({
