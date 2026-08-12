@@ -32,18 +32,33 @@ async function cleanup() {
     const isMechatronics = (user, studentDoc) => {
         const dept = (user?.department || studentDoc?.department || '').toLowerCase().trim();
         const roll = (user?.rollNo || studentDoc?.enrollmentNumber || '').toUpperCase().trim();
+        const email = (user?.email || '').toLowerCase().trim();
 
-        // If explicitly Civil / V-C, it is NOT Mechatronics
-        if (dept.includes('civil') || roll.includes('V-C') || roll.includes('-C-')) {
+        // Check email prefix (e.g. v.arch.1@tuhmawbi.edu.mm, v.c.1@tuhmawbi.edu.mm, v.mc.1@tuhmawbi.edu.mm)
+        const emailParts = email.split('@')[0].split('.');
+        const emailDept = emailParts.length >= 2 ? emailParts[1] : '';
+
+        // Explicitly exclude other departments (Architecture, Civil, Electrical, Electronic, IT, Mechanical)
+        if (['arch', 'ar', 'c', 'ce', 'ep', 'ec', 'ece', 'it', 'me'].includes(emailDept)) {
+            return false;
+        }
+
+        if (dept.includes('civil') || dept.includes('architecture') || dept.includes('electrical') || dept.includes('electronic') || dept.includes('information') || (dept.includes('mechanical') && !dept.includes('mechatronics'))) {
+            return false;
+        }
+
+        const rollDeptMatch = roll.match(/^[IVX]+-([A-Z]+)-/);
+        if (rollDeptMatch && rollDeptMatch[1] !== 'MC' && rollDeptMatch[1] !== 'MCE') {
             return false;
         }
 
         // Check if explicitly Mechatronics or MC
         if (dept.includes('mechatronics') || dept.includes('mc') || dept === 'mce') return true;
         if (roll.includes('MC') || roll.includes('-MC-')) return true;
+        if (emailDept === 'mc' || emailDept === 'mce' || email.includes('vimc') || email.includes('iiimc') || email.includes('vmc') || email.includes('v.mc.')) return true;
 
-        // Keep test student accounts
-        if (user?.email && user.email.includes('test.student')) return true;
+        // Keep primary test student account testv5@gmail.com or test.student
+        if (email.includes('test.student') || email === 'testv5@gmail.com') return true;
 
         return false;
     };
