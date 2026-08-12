@@ -634,13 +634,96 @@ const Attendance = () => {
         });
     }, [studentAttendanceLogs]);
 
+    // ── Helpers for year + department resolution (used by roster filtering) ──
+
+    const deriveDepartmentFromCode = useCallback((code = '') => {
+        const clean = code.toUpperCase();
+        if (clean.includes('MCE') || clean.match(/\bMC\b/)) return 'Mechatronics Engineering';
+        if (clean.includes('CE') && !clean.includes('MCE') && !clean.includes('ECE')) return 'Civil Engineering';
+        if (clean.includes('EP')) return 'Electrical Power Engineering';
+        if (clean.includes('ECE') || (clean.includes('EC') && !clean.includes('MCE'))) return 'Electronic Engineering';
+        if (clean.includes('IT')) return 'Information Technology';
+        if (clean.includes('ME') && !clean.includes('MCE')) return 'Mechanical Engineering';
+        if (clean.includes('ARCH') || clean.includes('AR') || clean.includes('AG')) return 'Architecture';
+        return '';
+    }, []);
+
+    // Derive department from student email prefix (e.g. v.mc.1@tuhmawbi → mc → Mechatronics)
+    const deriveDepartmentFromEmail = useCallback((email = '') => {
+        if (!email) return '';
+        const prefix = email.split('@')[0].toLowerCase(); // e.g. "v.mc.1" or "vimc15"
+        const parts = prefix.split('.');
+        if (parts.length >= 2) {
+            const deptCode = parts[1]; // e.g. "mc", "arch"
+            if (deptCode === 'mc' || deptCode === 'mce') return 'Mechatronics Engineering';
+            if (deptCode === 'arch' || deptCode === 'ar') return 'Architecture';
+            if (deptCode === 'c' || deptCode === 'ce') return 'Civil Engineering';
+            if (deptCode === 'ep') return 'Electrical Power Engineering';
+            if (deptCode === 'ec' || deptCode === 'ece') return 'Electronic Engineering';
+            if (deptCode === 'it') return 'Information Technology';
+            if (deptCode === 'me') return 'Mechanical Engineering';
+        }
+        // Handle non-dot format: vimc15, iiimc5, iimc3
+        const noDot = prefix.replace(/[0-9@]+.*$/, ''); // strip trailing numbers & domain
+        if (noDot.endsWith('mc') || noDot.endsWith('mce')) return 'Mechatronics Engineering';
+        if (noDot.endsWith('arch') || noDot.endsWith('ar')) return 'Architecture';
+        if (noDot.endsWith('ce')) return 'Civil Engineering';
+        if (noDot.endsWith('ep')) return 'Electrical Power Engineering';
+        if (noDot.endsWith('ec') || noDot.endsWith('ece')) return 'Electronic Engineering';
+        if (noDot.endsWith('it')) return 'Information Technology';
+        if (noDot.endsWith('me') && !noDot.endsWith('mce')) return 'Mechanical Engineering';
+        return '';
+    }, []);
+
+    // Derive year from email prefix: v.mc.1 → 5th, iii.mc.3 → 3rd, vimc15 → 6th, imc1 → 1st
+    const deriveYearFromEmail = useCallback((email = '') => {
+        if (!email) return '';
+        const prefix = email.split('@')[0].toLowerCase();
+        const parts = prefix.split('.');
+        let yearPart = '';
+        if (parts.length >= 2) {
+            yearPart = parts[0]; // e.g. "v", "iii", "i", "vi", "iv", "ii"
+        } else {
+            // Non-dot format: vimc15 → extract roman prefix before dept code
+            const m = prefix.match(/^(i{1,4}|iv|v|vi)(?=[a-z])/i);
+            if (m) yearPart = m[1];
+        }
+        if (!yearPart) return '';
+        const romanMap = { 'i': '1st Year', 'ii': '2nd Year', 'iii': '3rd Year', 'iv': '4th Year', 'v': '5th Year', 'vi': '6th Year' };
+        return romanMap[yearPart.toLowerCase()] || '';
+    }, []);
+
+    // Resolve a student's department from: explicit field > email prefix > rollNo
+    const resolveStudentDept = useCallback((student) => {
+        if (student.department && student.department.trim()) return student.department.trim();
+        const fromEmail = deriveDepartmentFromEmail(student.email);
+        if (fromEmail) return fromEmail;
+        if (student.rollNo) return deriveDepartmentFromCode(student.rollNo);
+        return '';
+    }, [deriveDepartmentFromEmail, deriveDepartmentFromCode]);
+
+    // Resolve a student's year from: explicit field > email prefix
+    const resolveStudentYear = useCallback((student) => {
+        if (student.year && String(student.year).trim()) return normalizeYear(student.year);
+        const fromEmail = deriveYearFromEmail(student.email);
+        if (fromEmail) return normalizeYear(fromEmail);
+        return '';
+    }, [deriveYearFromEmail]);
+
+    const matchesDept = useCallback((resolvedStudentDept, targetDept) => {
+        if (!targetDept || targetDept === 'All') return true;
+        if (!resolvedStudentDept) return false;
+        const s = resolvedStudentDept.toLowerCase().trim();
+        const t = targetDept.toLowerCase().trim();
+        if (s === t) return true;
+        if (s.includes(t) || t.includes(s)) return true;
+        return false;
+    }, []);
+
     // Load attendance marking sheet for selected course and date
     const loadCourseAttendance = useCallback(async (course, date, silent = false) => {
         if (!silent) setLoading(true);
         try {
-            // Start with enrolled students from course object
-            let roster = [...(course.students || [])];
-
             // Derive course academic year (checking yearLabel, year, and code digits e.g. McE-52039 -> 5th Year)
             const deriveYearFromCourse = (c) => {
                 if (c.yearLabel) return c.yearLabel;
@@ -661,85 +744,45 @@ const Attendance = () => {
 
             const courseYearLabel = deriveYearFromCourse(course);
             const targetYearNorm = normalizeYear(courseYearLabel);
+            const targetDept = course.department || deriveDepartmentFromCode(course.code || course.name || '');
 
-            // If course has no explicit students list attached, fetch registered students matching academic year AND department
+            // Year + Department filter function
+            const studentBelongsToCourse = (student) => {
+                // Year check
+                const sYear = resolveStudentYear(student);
+                const yearOk = targetYearNorm === 'All' || !sYear || sYear === targetYearNorm;
+
+                // Department check
+                const sDept = resolveStudentDept(student);
+                const deptOk = matchesDept(sDept, targetDept);
+
+                // If student has NO year AND NO dept info (test/gmail accounts), exclude them
+                if (!sYear && !sDept) return false;
+
+                return yearOk && deptOk;
+            };
+
+            // Start with enrolled students from course object, then filter
+            let roster = [...(course.students || [])];
+
+            if (roster.length > 0) {
+                // Course has an explicit students list — filter out wrong year/dept students
+                roster = roster.filter(s => studentBelongsToCourse(s));
+            }
+
+            // If course has no students (or all were filtered out), fetch from users API
             if (roster.length === 0) {
                 try {
                     const usersRes = await apiClient.get('/users').catch(() => ({ data: [] }));
                     const allUsers = Array.isArray(usersRes.data) ? usersRes.data : [];
                     const allStudents = allUsers.filter(u => (u.role || '').toLowerCase() === 'student');
 
-                    const deriveDepartmentFromCode = (code = '') => {
-                        const clean = code.toUpperCase();
-                        if (clean.includes('MCE') || clean.match(/\bMC\b/)) return 'Mechatronics Engineering';
-                        if (clean.includes('CE') && !clean.includes('MCE') && !clean.includes('ECE')) return 'Civil Engineering';
-                        if (clean.includes('EP')) return 'Electrical Power Engineering';
-                        if (clean.includes('ECE') || (clean.includes('EC') && !clean.includes('MCE'))) return 'Electronic Engineering';
-                        if (clean.includes('IT')) return 'Information Technology';
-                        if (clean.includes('ME') && !clean.includes('MCE')) return 'Mechanical Engineering';
-                        if (clean.includes('ARCH') || clean.includes('AR') || clean.includes('AG')) return 'Architecture';
-                        return '';
-                    };
-
-                    // Derive department from student email prefix (e.g. v.mc.1@tuhmawbi → mc → Mechatronics)
-                    const deriveDepartmentFromEmail = (email = '') => {
-                        if (!email) return '';
-                        const prefix = email.split('@')[0].toLowerCase(); // e.g. "v.mc.1"
-                        const parts = prefix.split('.');
-                        if (parts.length >= 2) {
-                            const deptCode = parts[1]; // e.g. "mc", "arch", "c", "ep"
-                            if (deptCode === 'mc' || deptCode === 'mce') return 'Mechatronics Engineering';
-                            if (deptCode === 'arch' || deptCode === 'ar') return 'Architecture';
-                            if (deptCode === 'c' || deptCode === 'ce') return 'Civil Engineering';
-                            if (deptCode === 'ep') return 'Electrical Power Engineering';
-                            if (deptCode === 'ec' || deptCode === 'ece') return 'Electronic Engineering';
-                            if (deptCode === 'it') return 'Information Technology';
-                            if (deptCode === 'me') return 'Mechanical Engineering';
-                        }
-                        return '';
-                    };
-
-                    // Resolve a student's department from: explicit field > email prefix > rollNo
-                    const resolveStudentDept = (student) => {
-                        if (student.department && student.department.trim()) return student.department.trim();
-                        const fromEmail = deriveDepartmentFromEmail(student.email);
-                        if (fromEmail) return fromEmail;
-                        if (student.rollNo) return deriveDepartmentFromCode(student.rollNo);
-                        return '';
-                    };
-
-                    const matchesDept = (resolvedStudentDept, targetDept) => {
-                        if (!targetDept || targetDept === 'All') return true;
-                        if (!resolvedStudentDept) return false; // No dept info = exclude, don't include blindly
-                        const s = resolvedStudentDept.toLowerCase().trim();
-                        const t = targetDept.toLowerCase().trim();
-                        // Exact department name match
-                        if (s === t) return true;
-                        // Substring match (e.g. "mechatronics" in "mechatronics engineering")
-                        if (s.includes(t) || t.includes(s)) return true;
-                        return false;
-                    };
-
-                    const targetDept = course.department || deriveDepartmentFromCode(course.code || course.name || '');
-
-                    const yearAndDeptStudents = allStudents.filter(u => {
-                        const uYearNorm = normalizeYear(u.year);
-                        const yearMatches = targetYearNorm === 'All' || uYearNorm === targetYearNorm;
-                        const studentDept = resolveStudentDept(u);
-                        const deptMatches = matchesDept(studentDept, targetDept);
-                        return yearMatches && deptMatches;
-                    });
+                    const yearAndDeptStudents = allStudents.filter(u => studentBelongsToCourse(u));
 
                     if (yearAndDeptStudents.length > 0) {
                         roster = yearAndDeptStudents;
-                    } else {
-                        // Only fall back to year-only if no dept match found — never dump ALL students
-                        const yearOnlyStudents = allStudents.filter(u => normalizeYear(u.year) === targetYearNorm);
-                        if (yearOnlyStudents.length > 0) {
-                            roster = yearOnlyStudents;
-                        }
-                        // If still empty, roster stays empty — better than showing wrong-department students
                     }
+                    // If still empty, roster stays empty — don't show wrong students
                 } catch (uErr) {
                     console.error('Error fetching students:', uErr);
                 }
@@ -750,17 +793,19 @@ const Attendance = () => {
             const { data } = await apiClient.get(`/attendance/course/${courseKey}?date=${date}`);
             const existingSheet = {};
 
-            // Merge any students returned in DB records into the roster
+            // Merge any students returned in DB records into the roster (only if they match year+dept)
             if (data && data.length > 0 && Array.isArray(data[0].records)) {
                 const rosterSet = new Set(roster.map(s => (s._id || s).toString()));
                 data[0].records.forEach(r => {
                     if (r.student) {
                         const sObj = typeof r.student === 'object' ? r.student : { _id: r.student, name: 'Student', email: '' };
                         const sId = (sObj._id || sObj).toString();
-                        if (!rosterSet.has(sId)) {
+                        // Only add to roster if student belongs to this course's year+dept
+                        if (!rosterSet.has(sId) && studentBelongsToCourse(sObj)) {
                             rosterSet.add(sId);
                             roster.push(sObj);
                         }
+                        // Still record their attendance status even if filtered out of display
                         existingSheet[sId] = r.status || 'Present';
                     }
                 });
@@ -782,7 +827,7 @@ const Attendance = () => {
         } finally {
             if (!silent) setLoading(false);
         }
-    }, []);
+    }, [deriveDepartmentFromCode, deriveDepartmentFromEmail, resolveStudentDept, resolveStudentYear, matchesDept]);
 
     // Live polling when a live attendance session is active in marking view
     useEffect(() => {
