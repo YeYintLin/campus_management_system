@@ -117,14 +117,43 @@ const TimeTable = () => {
         if (!isTeacher) return;
         const fetchTeacherScope = async () => {
             try {
-                const { data } = await apiClient.get('/courses').catch(() => ({ data: [] }));
+                const [coursesRes, timetableRes] = await Promise.all([
+                    apiClient.get('/courses').catch(() => ({ data: [] })),
+                    apiClient.get('/timetable').catch(() => ({ data: [] }))
+                ]);
+
                 const set = new Set();
-                (data || []).forEach(c => {
+
+                // 1. Scan courses for teacher assignments
+                (coursesRes.data || []).forEach(c => {
                     if (isCourseTaughtByTeacher(c, user)) {
-                        const yLabel = c.yearLabel ? normalizeYear(c.yearLabel) : normalizeYear(yearNumberToLabel(c.year || 1));
+                        const yLabel = c.yearLabel ? normalizeYear(c.yearLabel) : deriveYearTag(c.code, c.year);
                         if (yLabel && yLabel !== 'All') set.add(yLabel);
                     }
                 });
+
+                // 2. Scan timetable sheets directly for teacher slots
+                if (Array.isArray(timetableRes.data)) {
+                    timetableRes.data.forEach(sheet => {
+                        const sheetYear = sheet.yearLabel || (sheet.yearNumber ? yearNumberToLabel(sheet.yearNumber) : null);
+                        if (!sheetYear) return;
+
+                        let hasTeacher = false;
+                        if (Array.isArray(sheet.legend)) {
+                            hasTeacher = sheet.legend.some(item => isCourseTaughtByTeacher({ teacher: item.teacher }, user));
+                        }
+                        if (!hasTeacher && Array.isArray(sheet.days)) {
+                            hasTeacher = sheet.days.some(day =>
+                                Array.isArray(day.sessions) && day.sessions.some(sess => isCourseTaughtByTeacher({ teacher: sess.teacher }, user))
+                            );
+                        }
+
+                        if (hasTeacher) {
+                            set.add(normalizeYear(sheetYear));
+                        }
+                    });
+                }
+
                 const order = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'];
                 const matched = order.filter(y => set.has(y));
                 if (matched.length > 0) {
