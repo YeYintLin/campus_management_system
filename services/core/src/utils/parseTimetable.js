@@ -97,6 +97,57 @@ function cellTextIfOwn(worksheet, merges, row, col) {
   return null;
 }
 
+function parseRow4Title(text) {
+    if (!text) return { yearNum: 4, yearLabel: '4th Year', semNum: 1, semLabel: 'Semester 1' };
+
+    const match = text.match(/timetable\s+for\s+(.*?)(?:\(|\n|$)/i);
+    const semMatch = text.match(/\((.*?)\)/);
+
+    let yearStr = match ? match[1].trim() : text;
+    let semStr = semMatch ? semMatch[1].trim() : text;
+
+    const cleanY = yearStr.toUpperCase();
+    let yearNum = null;
+    let yearLabel = null;
+
+    if (/\bV\b/.test(cleanY) || cleanY.includes('FIFTH') || cleanY.includes('5TH') || cleanY.includes('5')) {
+        if (!/\bIV\b/.test(cleanY) && !/\bVI\b/.test(cleanY)) {
+            yearNum = 5; yearLabel = '5th Year';
+        }
+    }
+    if (!yearNum && (/\bIV\b/.test(cleanY) || cleanY.includes('FOURTH') || cleanY.includes('4TH') || cleanY.includes('4'))) {
+        yearNum = 4; yearLabel = '4th Year';
+    }
+    if (!yearNum && (/\bIII\b/.test(cleanY) || cleanY.includes('THIRD') || cleanY.includes('3RD') || cleanY.includes('3'))) {
+        yearNum = 3; yearLabel = '3rd Year';
+    }
+    if (!yearNum && (/\bII\b/.test(cleanY) || cleanY.includes('SECOND') || cleanY.includes('2ND') || cleanY.includes('2')) && !/\bIII\b/.test(cleanY)) {
+        yearNum = 2; yearLabel = '2nd Year';
+    }
+    if (!yearNum && (/\bI\b/.test(cleanY) || cleanY.includes('FIRST') || cleanY.includes('1ST') || cleanY.includes('1')) && !/\bII\b/.test(cleanY) && !/\bIII\b/.test(cleanY) && !/\bIV\b/.test(cleanY) && !/\bV\b/.test(cleanY) && !/\bVI\b/.test(cleanY)) {
+        yearNum = 1; yearLabel = '1st Year';
+    }
+    if (!yearNum && (/\bVI\b/.test(cleanY) || cleanY.includes('SIXTH') || cleanY.includes('6TH') || cleanY.includes('6'))) {
+        yearNum = 6; yearLabel = '6th Year';
+    }
+
+    if (!yearNum) {
+        yearNum = 4; yearLabel = '4th Year';
+    }
+
+    let semNum = 1;
+    let semLabel = 'Semester 1';
+    const cleanS = semStr.toLowerCase();
+
+    if (cleanS.includes('second') || cleanS.includes('sem 2') || cleanS.includes('semester 2') || cleanS.includes('sem ii') || cleanS.includes('semester ii') || cleanS.includes('s2') || cleanS.includes('2')) {
+        semNum = 2; semLabel = 'Semester 2';
+    } else if (cleanS.includes('first') || cleanS.includes('sem 1') || cleanS.includes('semester 1') || cleanS.includes('sem i') || cleanS.includes('semester i') || cleanS.includes('s1') || cleanS.includes('1')) {
+        semNum = 1; semLabel = 'Semester 1';
+    }
+
+    return { yearNum, yearLabel, semNum, semLabel };
+}
+
 function parseSheet(worksheet) {
   const merges = getMergeList(worksheet);
 
@@ -116,24 +167,13 @@ function parseSheet(worksheet) {
     else if (lower.includes('major room')) majorRoomRaw = line;
   }
 
-  const combinedTitle = `${worksheet.name} ${yearSemesterRaw || ''} ${titleLines.join(' ')}`.toLowerCase();
+  const rawRow4 = yearSemesterRaw || `${worksheet.name} ${titleLines.join(' ')}`;
+  const parsedTitleInfo = parseRow4Title(rawRow4);
 
-  let yearLabel = '4th Year';
-  let yearNum = 4;
-  if (/\b(v\s*year|5th|fifth|v-mc|v\s*mc)\b/i.test(combinedTitle) && !/\b(iv|vi)\b/i.test(combinedTitle)) { yearLabel = '5th Year'; yearNum = 5; }
-  else if (/\b(iv\s*year|4th|fourth|iv-mc|iv\s*mc)\b/i.test(combinedTitle)) { yearLabel = '4th Year'; yearNum = 4; }
-  else if (/\b(iii\s*year|3rd|third|iii-mc|iii\s*mc)\b/i.test(combinedTitle)) { yearLabel = '3rd Year'; yearNum = 3; }
-  else if (/\b(ii\s*year|2nd|second|ii-mc|ii\s*mc)\b/i.test(combinedTitle) && !/\b(iii)\b/i.test(combinedTitle)) { yearLabel = '2nd Year'; yearNum = 2; }
-  else if (/\b(i\s*year|1st|first|i-mc|i\s*mc)\b/i.test(combinedTitle) && !/\b(ii|iii|iv|v|vi)\b/i.test(combinedTitle)) { yearLabel = '1st Year'; yearNum = 1; }
-  else if (/\b(vi\s*year|6th|sixth|vi-mc|vi\s*mc)\b/i.test(combinedTitle)) { yearLabel = '6th Year'; yearNum = 6; }
-  else if (/\b(me|master)\b/i.test(combinedTitle)) { yearLabel = 'ME Program'; yearNum = 7; }
-
-  let semesterLabel = 'Semester 1';
-  let semesterNum = 1;
-  if (/\b(sem\s*2|sem\s*ii|semester\s*2|semester\s*ii|s2|2nd\s*sem|second\s*sem)\b/i.test(combinedTitle)) {
-    semesterLabel = 'Semester 2';
-    semesterNum = 2;
-  }
+  const yearLabel = parsedTitleInfo.yearLabel;
+  const yearNum = parsedTitleInfo.yearNum;
+  const semesterLabel = parsedTitleInfo.semLabel;
+  const semesterNum = parsedTitleInfo.semNum;
 
   let majorRoom = null, combinedRoom = null;
   if (majorRoomRaw) {
