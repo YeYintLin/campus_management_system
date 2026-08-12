@@ -32,6 +32,32 @@ const yearNumberToLabel = (num) => {
     return labels[num] || '1st Year';
 };
 
+const normalizeYear = (yr) => {
+    if (!yr) return 'All';
+    const str = String(yr).trim().toLowerCase();
+    if (str === 'all') return 'All';
+    if (str.includes('1') || str.includes('first')) return '1st Year';
+    if (str.includes('2') || str.includes('second')) return '2nd Year';
+    if (str.includes('3') || str.includes('third')) return '3rd Year';
+    if (str.includes('4') || str.includes('fourth')) return '4th Year';
+    if (str.includes('5') || str.includes('fifth')) return '5th Year';
+    if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
+    return yr;
+};
+
+const deriveYearFromCode = (code = '') => {
+    const digits = code.match(/\d+/);
+    if (!digits) return '1st Year';
+    const firstDigit = digits[0][0];
+    if (firstDigit === '1') return '1st Year';
+    if (firstDigit === '2') return '2nd Year';
+    if (firstDigit === '3') return '3rd Year';
+    if (firstDigit === '4') return '4th Year';
+    if (firstDigit === '5') return '5th Year';
+    if (firstDigit === '6') return '6th Year';
+    return '1st Year';
+};
+
 const initialCourseForm = {
     name: '',
     code: '',
@@ -153,8 +179,75 @@ TU Hmawbi Smart Campus Management System
         setLoading(true);
         setError('');
         try {
-            const { data } = await apiClient.get('/courses');
-            setCourses(data);
+            const [coursesRes, timetableRes] = await Promise.all([
+                apiClient.get('/courses').catch(() => ({ data: [] })),
+                apiClient.get('/timetable').catch(() => ({ data: [] })),
+            ]);
+
+            const dbCourses = Array.isArray(coursesRes.data) ? coursesRes.data : [];
+            const timetableData = Array.isArray(timetableRes.data) ? timetableRes.data : [];
+
+            // Extract subjects from timetable legends & sessions
+            const timetableSubjects = [];
+            timetableData.forEach(sheet => {
+                const sheetYear = sheet.yearNumber ? yearNumberToLabel(sheet.yearNumber) : (sheet.yearLabel || 'All');
+
+                // Check legend
+                if (Array.isArray(sheet.legend)) {
+                    sheet.legend.forEach(item => {
+                        if (item.code) {
+                            timetableSubjects.push({
+                                _id: `tt_${item.code}`,
+                                code: item.code,
+                                name: item.subject || item.code,
+                                year: sheet.yearNumber || 1,
+                                yearLabel: sheetYear,
+                                description: `Official timetable subject offering for ${sheetYear}`,
+                                teacher: item.teacher ? { name: item.teacher } : null,
+                                students: [],
+                                isFromTimetable: true,
+                            });
+                        }
+                    });
+                }
+
+                // Check days -> sessions
+                if (Array.isArray(sheet.days)) {
+                    sheet.days.forEach(day => {
+                        if (Array.isArray(day.sessions)) {
+                            day.sessions.forEach(sess => {
+                                if (sess.code) {
+                                    timetableSubjects.push({
+                                        _id: `tt_${sess.code}`,
+                                        code: sess.code,
+                                        name: sess.raw || sess.code,
+                                        year: sheet.yearNumber || 1,
+                                        yearLabel: sheetYear,
+                                        description: `Timetable class session for ${sheetYear}`,
+                                        teacher: sess.teacher ? { name: sess.teacher } : null,
+                                        students: [],
+                                        isFromTimetable: true,
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+
+            // Combine and deduplicate by code
+            const existingCodes = new Set(dbCourses.map(c => c.code.toUpperCase().trim()));
+            const uniqueTimetableSubjects = [];
+
+            timetableSubjects.forEach(ts => {
+                const cleanCode = ts.code.toUpperCase().trim();
+                if (!existingCodes.has(cleanCode)) {
+                    existingCodes.add(cleanCode);
+                    uniqueTimetableSubjects.push(ts);
+                }
+            });
+
+            setCourses([...dbCourses, ...uniqueTimetableSubjects]);
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Failed to load courses');
         } finally {
@@ -251,8 +344,14 @@ TU Hmawbi Smart Campus Management System
     const filteredCourses = courses.filter(course => {
         const target = `${course.name} ${course.code} ${course.description || ''} ${course.teacher?.name || ''}`.toLowerCase();
         const matchesSearch = target.includes(searchTerm.toLowerCase());
-        const courseYear = yearNumberToLabel(course.year || 1);
-        const matchesYear = isStudent ? (courseYear === studentYear) : (selectedYear === 'All' || courseYear === selectedYear);
+
+        const courseYear = course.yearLabel ? normalizeYear(course.yearLabel) : normalizeYear(yearNumberToLabel(course.year || 1));
+        const targetYear = normalizeYear(selectedYear);
+
+        const matchesYear = isStudent
+            ? (targetYear === 'All' || courseYear === 'All' || courseYear === targetYear)
+            : (targetYear === 'All' || courseYear === 'All' || courseYear === targetYear);
+
         return matchesSearch && matchesYear;
     });
 
