@@ -179,8 +179,9 @@ const batchImportSessions = async (req, res) => {
             }
 
             // Write matrix slots to Timetable model if present
+            let timetableBulk = [];
             if (Array.isArray(parsedMatrix) && parsedMatrix.length > 0) {
-                const timetableBulk = parsedMatrix.map(slot => ({
+                timetableBulk = parsedMatrix.map(slot => ({
                     updateOne: {
                         filter: {
                             year: slot.year || year,
@@ -212,8 +213,9 @@ const batchImportSessions = async (req, res) => {
                         upsert: true
                     }
                 }));
-            if (Array.isArray(timetableBulk) && timetableBulk.length > 0) {
-                await Timetable.bulkWrite(timetableBulk);
+                if (timetableBulk.length > 0) {
+                    await Timetable.bulkWrite(timetableBulk);
+                }
             }
 
             const bulkOps = parsedSessions.map(session => ({
