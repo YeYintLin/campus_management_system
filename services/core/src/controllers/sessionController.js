@@ -103,49 +103,19 @@ const batchImportSessions = async (req, res) => {
             createdSections.set(`${sec.year}_${sec.semester}_${sec.major}`, updated);
         }
 
-        // 3. Find-or-create subject courses cleanly (Task 2: conditional E11000 handling)
+        // 3. Link to existing official subject courses cleanly (without creating stray Course records)
         const Course = require('../models/Course');
-        const isLegitimateCourseCode = (code) => {
-            if (!code || typeof code !== 'string') return false;
-            const clean = code.trim().toUpperCase();
-            if (clean.length < 3 || clean.length > 20) return false;
-            if (['DEPARTMENT', 'UNIVERSITY', 'TECHNOLOGICAL', 'TIMETABLE', 'MECHATRONICS', 'PRACTICAL', 'SR', 'NO', 'NO.'].includes(clean)) return false;
-            return /^[A-Z0-9_-]+$/i.test(clean);
-        };
-
         const itemsToProcess = sessionType === 'Academic' ? (parsedMatrix || []) : (parsedSessions || []);
         for (const item of itemsToProcess) {
             const cCode = (item.courseCode || '').trim().toUpperCase();
             if (cCode) {
-                if (!isLegitimateCourseCode(cCode)) {
-                    // Non-data row artifact — ignore silently
-                    continue;
-                }
-
                 try {
-                    let existingCourse = await Course.findOne({ code: cCode });
-                    if (!existingCourse) {
-                        existingCourse = await Course.create({
-                            code: cCode,
-                            name: item.courseName || cCode,
-                            department: major,
-                            year: item.year || year,
-                            semester: item.semester || semester,
-                            teacher: req.user._id
-                        });
+                    const existingCourse = await Course.findOne({ code: { $regex: new RegExp(`^${cCode.replace(/-/g, '[- ]?')}$`, 'i') } });
+                    if (existingCourse) {
+                        item.courseRef = existingCourse._id;
                     }
-                    item.courseRef = existingCourse._id;
-                } catch (cErr) {
-                    if (cErr.code === 11000) {
-                        // Legitimate course code E11000: reuse existing course document!
-                        console.warn(`[Course Reuse] Legitimate course code '${cCode}' already exists. Reusing existing course record.`);
-                        const existing = await Course.findOne({ code: cCode });
-                        if (existing) {
-                            item.courseRef = existing._id;
-                        }
-                    } else {
-                        console.error(`Failed to register course '${cCode}':`, cErr.message);
-                    }
+                } catch (findErr) {
+                    console.error('Course lookup notice:', findErr.message);
                 }
             }
         }
