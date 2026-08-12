@@ -218,45 +218,48 @@ const batchImportSessions = async (req, res) => {
                 }
             }
 
-            const bulkOps = parsedSessions.map(session => ({
-                updateOne: {
-                    filter: {
-                        year,
-                        semester,
-                        major,
-                        sessionType: session.sessionType,
-                        courseCode: session.courseCode,
-                        date: session.date,
-                        startTimeMinutes: session.startTimeMinutes
-                    },
-                    update: {
-                        $set: {
-                            year,
-                            semester,
-                            major,
-                            sessionType: session.sessionType,
-                            examType: session.examType,
-                            courseCode: session.courseCode,
-                            courseName: session.courseName,
-                            title: session.title,
-                            teacher: session.teacher,
-                            groupTag: session.groupTag,
-                            date: session.date,
-                            startTime: session.startTime,
-                            endTime: session.endTime,
-                            startTimeMinutes: session.startTimeMinutes,
-                            endTimeMinutes: session.endTimeMinutes,
-                            place: session.place,
-                            status: 'Draft',
-                            classSection: createdSections.get(`${session.year || year}_${session.semester || semester}_${session.major || major}`)?. _id
-                        }
-                    },
-                    upsert: true
-                }
-            }));
+            const validSessions = (parsedSessions || []).filter(s => s && s.courseCode && s.date && !isNaN(new Date(s.date).getTime()));
 
-            if (bulkOps.length > 0) {
+            let sessionBulkCount = 0;
+            if (validSessions.length > 0) {
+                const bulkOps = validSessions.map(session => ({
+                    updateOne: {
+                        filter: {
+                            year: session.year || year,
+                            semester: session.semester || semester,
+                            major: session.major || major,
+                            sessionType: session.sessionType || sessionType,
+                            courseCode: session.courseCode,
+                            date: session.date,
+                            startTimeMinutes: session.startTimeMinutes || 540
+                        },
+                        update: {
+                            $set: {
+                                year: session.year || year,
+                                semester: session.semester || semester,
+                                major: session.major || major,
+                                sessionType: session.sessionType || sessionType,
+                                examType: session.examType || 'N/A',
+                                courseCode: session.courseCode,
+                                courseName: session.courseName || session.courseCode,
+                                title: session.title || session.courseName || session.courseCode,
+                                teacher: session.teacher || 'Faculty Member',
+                                groupTag: session.groupTag || 'All',
+                                date: session.date,
+                                startTime: session.startTime || '08:30 AM',
+                                endTime: session.endTime || '11:30 AM',
+                                startTimeMinutes: session.startTimeMinutes || 540,
+                                endTimeMinutes: session.endTimeMinutes || 710,
+                                place: session.place || '3/212-A',
+                                status: 'Draft',
+                                classSection: createdSections.get(`${session.year || year}_${session.semester || semester}_${session.major || major}`)?._id
+                            }
+                        },
+                        upsert: true
+                    }
+                }));
                 await ScheduledSession.bulkWrite(bulkOps);
+                sessionBulkCount = bulkOps.length;
             }
 
             const Notification = require('../models/Notification');
@@ -287,7 +290,7 @@ const batchImportSessions = async (req, res) => {
                 });
             }
 
-            const totalCount = (timetableBulk ? timetableBulk.length : 0) + bulkOps.length;
+            const totalCount = (timetableBulk ? timetableBulk.length : 0) + sessionBulkCount;
 
             return res.json({
                 message: `Successfully imported ${totalCount} ${sessionType} sessions!`,
