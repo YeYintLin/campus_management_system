@@ -19,6 +19,6 @@ router
     .route('/:id')
     .get(protect, getCourseById)
     .put(protect, teacher, updateCourse) // `teacher` middleware allows Admins too
-    .delete(protect, admin, deleteCourse);
+    .delete(protect, teacher, deleteCourse);
 
 module.exports = router;

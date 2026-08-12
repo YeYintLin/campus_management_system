@@ -219,12 +219,17 @@ const updateCourse = async (req, res) => {
 
 // @desc    Delete course
 // @route   DELETE /api/courses/:id
-// @access  Private (Admin)
+// @access  Private (Admin, Teacher if their course)
 const deleteCourse = async (req, res) => {
     try {
         const course = await Course.findById(req.params.id);
 
         if (course) {
+            // Authorization: only Admin or assigned Teacher can delete
+            if (req.user.role === 'Teacher' && course.teacher?.toString() !== req.user._id.toString()) {
+                return res.status(403).json({ message: 'Not authorized to delete this course' });
+            }
+
             await course.deleteOne();
             res.json({ message: 'Course removed' });
         } else {

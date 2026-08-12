@@ -432,6 +432,16 @@ TU Hmawbi Smart Campus Management System
         } finally {
             setSavingCourse(false);
         }
+    const handleDeleteCourse = async (courseId) => {
+        if (!window.confirm('Are you sure you want to delete this subject? This action cannot be undone.')) return;
+        
+        try {
+            await apiClient.delete(`/courses/${courseId}`);
+            closeCourseModal();
+            loadCourses();
+        } catch (err) {
+            setModalError(err.response?.data?.message || err.message || 'Unable to delete course');
+        }
     };
 
     const filteredCourses = courses.filter(course => {
@@ -681,11 +691,20 @@ TU Hmawbi Smart Campus Management System
                             )}
                         </div>
 
-                        <div className="modal-footer">
-                            <button type="button" className="btn btn-secondary" onClick={closeCourseModal}>Cancel</button>
-                            <button type="submit" className="btn btn-primary" disabled={savingCourse}>
-                                {savingCourse ? 'Saving…' : modalCourse ? 'Save Changes' : 'Create Subject'}
-                            </button>
+                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                            {modalCourse ? (
+                                <button type="button" className="btn btn-danger" onClick={() => handleDeleteCourse(modalCourse._id)} style={{ backgroundColor: '#ef4444', color: 'white' }}>
+                                    Delete Subject
+                                </button>
+                            ) : (
+                                <div></div>
+                            )}
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button type="button" className="btn btn-secondary" onClick={closeCourseModal}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={savingCourse}>
+                                    {savingCourse ? 'Saving…' : modalCourse ? 'Save Changes' : 'Create Subject'}
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
