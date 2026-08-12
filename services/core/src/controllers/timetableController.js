@@ -52,17 +52,12 @@ const getTimetable = async (req, res) => {
             return false;
         });
 
-        // Fallback 1: Match any sheet for that year
+        // Fallback 1: Match any sheet for that specific year only
         if (!semesterDoc && yNum) {
             semesterDoc = allSemDocs.find(d => {
                 const dY = d.yearNumber || parseNum(d.yearLabel) || parseNum(d.sheetName);
                 return dY === yNum;
             }) || null;
-        }
-
-        // Fallback 2: Pick first available semester document if any exists
-        if (!semesterDoc && allSemDocs.length > 0) {
-            semesterDoc = allSemDocs[0];
         }
 
         // Build query for Timetable slots model
