@@ -52,7 +52,10 @@ const batchImportSessions = async (req, res) => {
         }
 
         // 2. Parse Excel file via server-side parser
-        const { parsedMatrix, parsedSessions } = parseTUHmawbiExcel(req.file.buffer, sessionType);
+        const { parsedMatrix, parsedSessions, headerError } = parseTUHmawbiExcel(req.file.buffer, sessionType);
+        if (headerError) {
+            return res.status(400).json({ message: headerError });
+        }
 
         // 2. Find or create authoritative ClassSections per parsed cohort
         const ClassSection = require('../models/ClassSection');
@@ -100,16 +103,29 @@ const batchImportSessions = async (req, res) => {
             createdSections.set(`${sec.year}_${sec.semester}_${sec.major}`, updated);
         }
 
-        // 3. Find-or-create subject courses cleanly (deduplicating subject folders)
+        // 3. Find-or-create subject courses cleanly (Task 2: conditional E11000 handling)
         const Course = require('../models/Course');
+        const isLegitimateCourseCode = (code) => {
+            if (!code || typeof code !== 'string') return false;
+            const clean = code.trim().toUpperCase();
+            if (clean.length < 3 || clean.length > 20) return false;
+            if (['DEPARTMENT', 'UNIVERSITY', 'TECHNOLOGICAL', 'TIMETABLE', 'MECHATRONICS', 'PRACTICAL', 'SR', 'NO', 'NO.'].includes(clean)) return false;
+            return /^[A-Z0-9_-]+$/i.test(clean);
+        };
+
         const itemsToProcess = sessionType === 'Academic' ? (parsedMatrix || []) : (parsedSessions || []);
         for (const item of itemsToProcess) {
             const cCode = (item.courseCode || '').trim().toUpperCase();
-            if (cCode && cCode.length >= 3 && !['DEPARTMENT', 'TECHNOLOGICAL', 'UNIVERSITY', 'MECHATRONICS', 'TIMETABLE'].includes(cCode)) {
+            if (cCode) {
+                if (!isLegitimateCourseCode(cCode)) {
+                    // Non-data row artifact — ignore silently
+                    continue;
+                }
+
                 try {
-                    const existingCourse = await Course.findOne({ code: cCode });
+                    let existingCourse = await Course.findOne({ code: cCode });
                     if (!existingCourse) {
-                        await Course.create({
+                        existingCourse = await Course.create({
                             code: cCode,
                             name: item.courseName || cCode,
                             department: major,
@@ -118,8 +134,18 @@ const batchImportSessions = async (req, res) => {
                             teacher: req.user._id
                         });
                     }
+                    item.courseRef = existingCourse._id;
                 } catch (cErr) {
-                    console.error('Course auto-create skip:', cErr.message);
+                    if (cErr.code === 11000) {
+                        // Legitimate course code E11000: reuse existing course document!
+                        console.warn(`[Course Reuse] Legitimate course code '${cCode}' already exists. Reusing existing course record.`);
+                        const existing = await Course.findOne({ code: cCode });
+                        if (existing) {
+                            item.courseRef = existing._id;
+                        }
+                    } else {
+                        console.error(`Failed to register course '${cCode}':`, cErr.message);
+                    }
                 }
             }
         }

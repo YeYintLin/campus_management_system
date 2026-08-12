@@ -64,6 +64,7 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
 
     const allSessions = [];
     const allMatrix = [];
+    let headerError = null;
 
     workbook.SheetNames.forEach(sheetName => {
         const sheet = workbook.Sheets[sheetName];
@@ -299,16 +300,36 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 }
             });
         } else {
-            // Dynamic Column Header Detection for Practical, Tutorial & Exam Tables
-            let headerRowIdx = jsonRows.findIndex(r => {
-                if (!Array.isArray(r)) return false;
+            // Structural Header-Row Detection (Scan first 15 rows for column labels)
+            const scanLimit = Math.min(jsonRows.length, 15);
+            let headerRowIdx = -1;
+
+            for (let i = 0; i < scanLimit; i++) {
+                const r = jsonRows[i];
+                if (!Array.isArray(r)) continue;
+                const lineStr = r.map(c => String(c || '').toLowerCase().trim()).join(' ');
+                
+                // Skip title / banner lines
+                if (lineStr.includes('technological university') || lineStr.includes('department of') || lineStr.includes('practical timetable')) {
+                    continue;
+                }
+
+                const headerKeywords = ['code', 'subject', 'course', 'date', 'day', 'time', 'title', 'exp', 'topic', 'group', 'batch', 'room', 'place', 'teacher', 'sr'];
                 const matches = r.filter(c => {
                     const s = String(c || '').toLowerCase();
-                    return s.includes('code') || s.includes('subject') || s.includes('date') || s.includes('time') || s.includes('title') || s.includes('exp') || s.includes('group') || s.includes('room') || s.includes('sr');
+                    return headerKeywords.some(kw => s.includes(kw));
                 });
-                return matches.length >= 2;
-            });
-            if (headerRowIdx === -1) headerRowIdx = 0;
+
+                if (matches.length >= 2) {
+                    headerRowIdx = i;
+                    break;
+                }
+            }
+
+            if (headerRowIdx === -1) {
+                headerError = `Could not locate a valid header row in sheet '${sheetName}' — check the file format.`;
+                return;
+            }
 
             const headerRow = (jsonRows[headerRowIdx] || []).map(c => String(c || '').toLowerCase().trim());
             
@@ -327,7 +348,6 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 const rowText = row.join(' ').toLowerCase();
                 if (rowText.includes('saturday') && !rowText.includes(':') && !rowText.includes('mc')) continue;
                 if (rowText.includes('sunday') && !rowText.includes(':')) continue;
-                if (rowText.includes('technological university') || rowText.includes('department of') || rowText.includes('practical timetable')) continue;
 
                 const rawDate = (dateIdx !== -1 && row[dateIdx]) ? row[dateIdx] : (row[1] || row[0] || row[5]);
                 const rawTime = (timeIdx !== -1 && row[timeIdx]) ? row[timeIdx] : (row[2] || row[6] || '08:30 AM to 11:30 AM');
@@ -338,8 +358,11 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 const rawTeacher = (teacherIdx !== -1 && row[teacherIdx]) ? row[teacherIdx] : (row[3] || row[4] || 'Faculty Member');
 
                 const cleanCodeStr = String(rawCode).split(' ')[0].toUpperCase().replace(/[^A-Z0-9-]/g, '');
-                if (!cleanCodeStr || ['UNIVERSITY', 'DEPARTMENT', 'TIMETABLE', 'TECHNOLOGICAL', 'MECHATRONICS', 'SR', 'NO', 'NO.'].includes(cleanCodeStr)) {
-                    continue; // Skip title or header text rows
+                
+                // Structural code check — skip empty or header artifacts
+                if (!cleanCodeStr || cleanCodeStr.length < 3 || cleanCodeStr.length > 20) continue;
+                if (['UNIVERSITY', 'DEPARTMENT', 'TIMETABLE', 'TECHNOLOGICAL', 'MECHATRONICS', 'SR', 'NO', 'NO.'].includes(cleanCodeStr)) {
+                    continue;
                 }
 
                 let parsedDate = parseExcelDate({ v: rawDate });
@@ -369,7 +392,7 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
         }
     });
 
-    return { parsedMatrix: allMatrix, parsedSessions: allSessions };
+    return { parsedMatrix: allMatrix, parsedSessions: allSessions, headerError };
 };
 
 module.exports = {
