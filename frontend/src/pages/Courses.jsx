@@ -61,12 +61,14 @@ const isCourseTaughtByTeacher = (course, user) => {
 
         if (cId && userTeacherId && cId === userTeacherId) return true;
         if (cEmail && userTeacherEmail && cEmail === userTeacherEmail) return true;
-        if (cName && userTeacherName && (cName.includes(userTeacherName) || userTeacherName.includes(cName))) return true;
+        if (cName && userTeacherName && userTeacherName.length >= 3 && cName.includes(userTeacherName)) return true;
+        if (cName && userTeacherName && cName.length >= 3 && userTeacherName.includes(cName)) return true;
     } else if (typeof courseTeacher === 'string') {
         const cStr = courseTeacher.toLowerCase().trim();
         if (userTeacherId && cStr === userTeacherId.toLowerCase()) return true;
         if (userTeacherEmail && cStr === userTeacherEmail) return true;
-        if (userTeacherName && (cStr.includes(userTeacherName) || userTeacherName.includes(cStr))) return true;
+        if (cStr && userTeacherName && userTeacherName.length >= 3 && cStr.includes(userTeacherName)) return true;
+        if (cStr && userTeacherName && cStr.length >= 3 && userTeacherName.includes(cStr)) return true;
     }
 
     return false;

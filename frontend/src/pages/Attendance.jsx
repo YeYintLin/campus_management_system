@@ -579,12 +579,14 @@ const Attendance = () => {
 
                     if (cId && userTeacherId && cId === userTeacherId) isMine = true;
                     else if (cEmail && userTeacherEmail && cEmail === userTeacherEmail) isMine = true;
-                    else if (cName && userTeacherName && (cName.includes(userTeacherName) || userTeacherName.includes(cName))) isMine = true;
+                    else if (cName && userTeacherName && userTeacherName.length >= 3 && cName.includes(userTeacherName)) isMine = true;
+                    else if (cName && userTeacherName && cName.length >= 3 && userTeacherName.includes(cName)) isMine = true;
                 } else if (typeof cTeacher === 'string') {
                     const cStr = cTeacher.toLowerCase().trim();
                     if (userTeacherId && cStr === userTeacherId.toLowerCase()) isMine = true;
                     else if (userTeacherEmail && cStr === userTeacherEmail) isMine = true;
-                    else if (userTeacherName && (cStr.includes(userTeacherName) || userTeacherName.includes(cStr))) isMine = true;
+                    else if (cStr && userTeacherName && userTeacherName.length >= 3 && cStr.includes(userTeacherName)) isMine = true;
+                    else if (cStr && userTeacherName && cStr.length >= 3 && userTeacherName.includes(cStr)) isMine = true;
                 }
             }
             if (!isMine) return false;
