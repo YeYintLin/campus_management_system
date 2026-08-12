@@ -253,34 +253,51 @@ TU Hmawbi Smart Campus Management System
             });
 
             // Process DB Courses & override with Timetable legend info if available
-            const mergedCourses = [];
-            const processedCodes = new Set();
+            const mergedCoursesMap = new Map();
 
             dbCourses.forEach(dbc => {
                 const cleanCode = (dbc.code || '').trim().toUpperCase();
                 if (!cleanCode) return;
 
                 const ttInfo = timetableMap.get(cleanCode);
+                let newCourseObj = null;
+
                 if (ttInfo) {
-                    processedCodes.add(cleanCode);
-                    mergedCourses.push({
+                    newCourseObj = {
                         ...dbc,
                         name: ttInfo.name || dbc.name,
                         year: ttInfo.year,
                         yearLabel: ttInfo.yearLabel,
                         teacher: ttInfo.teacherName ? (dbc.teacher || { name: ttInfo.teacherName }) : dbc.teacher,
                         isFromTimetable: true
-                    });
+                    };
                 } else if (dbc.teacher) {
                     // Only keep dbCourse if it has an explicit teacher assigned and valid code
-                    processedCodes.add(cleanCode);
                     const yLabel = dbc.yearLabel ? normalizeYear(dbc.yearLabel) : deriveYearTag(dbc.code, dbc.year);
-                    mergedCourses.push({
+                    newCourseObj = {
                         ...dbc,
                         yearLabel: yLabel
-                    });
+                    };
+                }
+
+                if (newCourseObj) {
+                    if (mergedCoursesMap.has(cleanCode)) {
+                        const existing = mergedCoursesMap.get(cleanCode);
+                        // Prefer the course that does NOT have the generic auto-generated description
+                        const existingIsGeneric = existing.description && existing.description.includes('Official timetable subject offering');
+                        const newIsGeneric = newCourseObj.description && newCourseObj.description.includes('Official timetable subject offering');
+                        
+                        if (existingIsGeneric && !newIsGeneric) {
+                            mergedCoursesMap.set(cleanCode, newCourseObj);
+                        }
+                    } else {
+                        mergedCoursesMap.set(cleanCode, newCourseObj);
+                    }
                 }
             });
+
+            const mergedCourses = Array.from(mergedCoursesMap.values());
+            const processedCodes = new Set(mergedCoursesMap.keys());
 
             // Add any remaining timetable legend subjects not yet in DB
             timetableMap.forEach((ttInfo, cleanCode) => {
