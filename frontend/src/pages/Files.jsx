@@ -230,7 +230,7 @@ const Files = () => {
     const [showAuditPanel, setShowAuditPanel] = useState(false);
     const [auditLogs, setAuditLogs] = useState([]);
     const [auditStats, setAuditStats] = useState(null);
-    const [auditSearch, setAuditSearch] = useState('');
+    const [auditSearchTerm, setAuditSearchTerm] = useState('');
     const [auditLoading, setAuditLoading] = useState(false);
 
     const fetchAuditData = useCallback(async () => {
@@ -238,7 +238,7 @@ const Files = () => {
         setAuditLoading(true);
         try {
             const [logsRes, statsRes] = await Promise.all([
-                apiClient.get('/files/download-logs', { params: { search: auditSearch, limit: 100 } }),
+                apiClient.get('/files/download-logs', { params: { search: auditSearchTerm, limit: 100 } }),
                 apiClient.get('/files/download-stats'),
             ]);
             setAuditLogs(logsRes.data.logs || []);
@@ -248,7 +248,7 @@ const Files = () => {
         } finally {
             setAuditLoading(false);
         }
-    }, [canManageFiles, auditSearch]);
+    }, [canManageFiles, auditSearchTerm]);
 
     useEffect(() => {
         if (showAuditPanel) fetchAuditData();
