@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import jsQR from 'jsqr';
@@ -1590,8 +1591,8 @@ const Attendance = () => {
             )}
 
             {/* ── IN-APP CAMERA SCANNER MODAL (PRIMARY FLOW FOR STUDENT) ── */}
-            {showCameraModal && (
-                <div className="modal-overlay" onClick={stopCameraScanner} style={{ zIndex: 1100 }}>
+            {showCameraModal && createPortal(
+                <div className="modal-overlay" onClick={stopCameraScanner} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', zIndex: 99999, padding: '1rem' }}>
                     <div className="modal-content glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', padding: '1.5rem', textAlign: 'center' }}>
                         <div className="modal-header" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fff' }}>
@@ -1633,12 +1634,13 @@ const Attendance = () => {
                             Point your camera at the QR code on your teacher's screen
                         </p>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* ── TEACHER ENLARGED QR MODAL ── */}
-            {showQRModal && activeSession && (
-                <div className="modal-overlay" onClick={() => setShowQRModal(false)} style={{ zIndex: 1100 }}>
+            {showQRModal && activeSession && createPortal(
+                <div className="modal-overlay" onClick={() => setShowQRModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', zIndex: 99999, padding: '1rem' }}>
                     <div className="modal-content glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px', padding: '2rem', textAlign: 'center' }}>
                         <div className="modal-header" style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 style={{ margin: 0, color: '#fff' }}>Classroom Attendance Pass</h3>
@@ -1661,12 +1663,13 @@ const Attendance = () => {
                             Scan with mobile camera or enter code on app
                         </p>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* ── OFFICIAL ROLL CALL EXCEL EXPORT MODAL ── */}
-            {showExportModal && (
-                <div className="modal-overlay" onClick={() => setShowExportModal(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', zIndex: 9999, padding: '1rem' }}>
+            {showExportModal && createPortal(
+                <div className="modal-overlay" onClick={() => setShowExportModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', zIndex: 99999, padding: '1rem' }}>
                     <div className="modal-content glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', width: '100%', padding: '1.75rem' }}>
                         <div className="modal-header" style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 style={{ margin: 0, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1761,7 +1764,8 @@ const Attendance = () => {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
