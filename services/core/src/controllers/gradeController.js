@@ -1,5 +1,17 @@
+const mongoose = require('mongoose');
 const Grade = require('../models/Grade');
 const Course = require('../models/Course');
+
+// Helper to resolve course ID or Code
+const resolveCourseId = async (courseParam) => {
+    if (!courseParam) return null;
+    if (mongoose.Types.ObjectId.isValid(courseParam)) {
+        return courseParam;
+    }
+    const cleanCode = String(courseParam).replace(/^tt_/, '').trim();
+    const found = await Course.findOne({ code: { $regex: new RegExp(`^${cleanCode}$`, 'i') } }).select('_id');
+    return found ? found._id : null;
+};
 
 // @desc    Get all grades or role-filtered grades
 // @route   GET /api/grades
@@ -10,22 +22,26 @@ const getGrades = async (req, res) => {
         const filter = {};
 
         if (role === 'Student') {
-            // Student: strictly limit to their own student ID
             filter.student = userId;
             if (req.query.course) {
-                filter.course = req.query.course;
+                const resolvedCourseId = await resolveCourseId(req.query.course);
+                if (!resolvedCourseId) return res.json([]);
+                filter.course = resolvedCourseId;
             }
         } else if (role === 'Teacher') {
-            // Teacher: strictly limit to courses they teach
             const myCourses = await Course.find({ teacher: userId }).select('_id');
             const myCourseIds = myCourses.map(c => c._id);
             if (req.query.course) {
-                filter.course = req.query.course;
+                const resolvedCourseId = await resolveCourseId(req.query.course);
+                if (!resolvedCourseId) return res.json([]);
+                filter.course = resolvedCourseId;
             } else {
                 filter.course = { $in: myCourseIds };
             }
         } else if (req.query.course) {
-            filter.course = req.query.course;
+            const resolvedCourseId = await resolveCourseId(req.query.course);
+            if (!resolvedCourseId) return res.json([]);
+            filter.course = resolvedCourseId;
         }
 
         const grades = await Grade.find(filter)
@@ -44,7 +60,6 @@ const getStudentGrades = async (req, res) => {
     try {
         const { studentId, courseId } = req.params;
 
-        // Optional: Allow self, or teachers/admin
         if (
             req.user.role === 'Student' &&
             req.user._id.toString() !== studentId.toString()
@@ -52,7 +67,10 @@ const getStudentGrades = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to view these grades' });
         }
 
-        const grades = await Grade.find({ student: studentId, course: courseId })
+        const resolvedCourseId = await resolveCourseId(courseId);
+        if (!resolvedCourseId) return res.json([]);
+
+        const grades = await Grade.find({ student: studentId, course: resolvedCourseId })
             .populate('course', 'name code')
             .populate('student', 'name email');
 
@@ -68,8 +86,10 @@ const getStudentGrades = async (req, res) => {
 const getCourseGrades = async (req, res) => {
     try {
         const { courseId } = req.params;
+        const resolvedCourseId = await resolveCourseId(courseId);
+        if (!resolvedCourseId) return res.json([]);
 
-        const grades = await Grade.find({ course: courseId })
+        const grades = await Grade.find({ course: resolvedCourseId })
             .populate('student', 'name email')
             .populate('course', 'name code');
 

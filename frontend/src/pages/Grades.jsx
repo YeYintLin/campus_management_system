@@ -317,19 +317,20 @@ const Grades = () => {
             setDataLoading(true);
             setDataError('');
             try {
-                const gradePromises = courses.map(course => {
+                const validCourses = courses.filter(course => course && course._id && !String(course._id).startsWith('tt_'));
+                const gradePromises = validCourses.map(course => {
                     if (canManageGrades) {
-                        return apiClient.get(`/grades/course/${course._id}`);
+                        return apiClient.get(`/grades/course/${course._id}`).catch(() => ({ data: [] }));
                     }
-                    return apiClient.get(`/grades/student/${user._id}/course/${course._id}`);
+                    return apiClient.get(`/grades/student/${user._id}/course/${course._id}`).catch(() => ({ data: [] }));
                 });
                 const responses = await Promise.all(gradePromises);
-                const records = responses.flatMap((res) => res.data);
+                const records = responses.flatMap((res) => res?.data || []);
                 const normalized = normalizeGradeRecords(records);
                 normalized.default = normalized.default || [];
                 setGradesData(normalized);
             } catch (error) {
-                setDataError(error.response?.data?.message || error.message || 'Failed to load grade data');
+                console.warn('Grade records load warning:', error);
             } finally {
                 setDataLoading(false);
             }
@@ -874,18 +875,6 @@ const Grades = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <button className="btn btn-secondary-glass" onClick={() => setShowImportModal(true)} disabled={isLoading}>
-                            <Upload size={18} />
-                            Import Excel Marks
-                        </button>
-                        <button className="btn btn-secondary-glass" onClick={() => setShowPreview(true)} disabled={isLoading}>
-                            <Eye size={18} />
-                            Preview Export
-                        </button>
-                        <button className="export-btn-premium" onClick={() => setShowPreview(true)} disabled={isLoading}>
-                            <FileText size={18} />
-                            Export to Word
-                        </button>
                     </div>
                 </header>
 
