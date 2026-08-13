@@ -38,54 +38,56 @@ async function testExportA4() {
         { width: 3.2 }   // Y: Pct (ရာခိုင်နှုန်း)
     ];
 
-    // Row 1: Form No. TUHMB-028 (Top Right)
-    const row1 = ws.addRow([...Array(24).fill(''), 'Form No. TUHMB-028']);
+    ws.addRow([]);
+    ws.getCell('U1').value = 'Form No. TUHMB-028';
     ws.mergeCells('U1:Y1');
-    ws.getCell('U1').font = { size: 9, bold: false };
+    ws.getCell('U1').font = { size: 8, bold: false };
     ws.getCell('U1').alignment = { horizontal: 'right', vertical: 'middle' };
 
     // Row 2: Technological University ( Hmawbi )
-    const row2 = ws.addRow(['Technological University ( Hmawbi )']);
+    ws.addRow([]);
+    ws.getCell('A2').value = 'Technological University ( Hmawbi )';
     ws.mergeCells('A2:Y2');
-    ws.getCell('A2').font = { size: 13, bold: true };
+    ws.getCell('A2').font = { bold: true, size: 12 };
     ws.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Row 3: Attendance Record ( 2025 - 2026 )
-    const row3 = ws.addRow(['Attendance Record ( 2025 - 2026 )']);
+    ws.addRow([]);
+    ws.getCell('A3').value = 'Attendance Record ( 2025 - 2026 )';
     ws.mergeCells('A3:Y3');
-    ws.getCell('A3').font = { size: 11, bold: true };
+    ws.getCell('A3').font = { bold: true, size: 10 };
     ws.getCell('A3').alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Row 4: V MC & Subject Name
-    const row4 = ws.addRow(['V MC', '', '', '', '', '', '', '', '', '', '', '', 'ဘာသာရပ် - Industrial Automation II ( McE-52039 )']);
+    ws.addRow([]);
+    ws.getCell('A4').value = 'V MC';
+    ws.getCell('M4').value = 'ဘာသာရပ် - Industrial Automation II ( McE-52039 )';
     ws.mergeCells('A4:B4');
     ws.mergeCells('M4:Y4');
-    ws.getCell('A4').font = { bold: true, size: 10 };
-    ws.getCell('M4').font = { bold: true, size: 10 };
+    ws.getCell('A4').font = { bold: true, size: 9 };
+    ws.getCell('M4').font = { bold: true, size: 9 };
     ws.getCell('M4').alignment = { horizontal: 'right', vertical: 'middle' };
 
     // Row 5: Academic Year/Month & Monthly Hours
-    const row5 = ws.addRow(['၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ဇန်နဝါရီ (Jan) လ', '', '', '', '', '', '', '', '', '', '', '', 'ယခုလတက်ချိန် - 36 နာရီ']);
+    ws.addRow([]);
+    ws.getCell('A5').value = '၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ဇန်နဝါရီ (Jan) လ';
+    ws.getCell('M5').value = 'ယခုလတက်ချိန် - 36 နာရီ';
     ws.mergeCells('A5:L5');
     ws.mergeCells('M5:Y5');
-    ws.getCell('A5').font = { size: 10 };
-    ws.getCell('M5').font = { bold: true, size: 10 };
+    ws.getCell('A5').font = { size: 9 };
+    ws.getCell('M5').font = { bold: true, size: 9 };
     ws.getCell('M5').alignment = { horizontal: 'right', vertical: 'middle' };
 
-    // Empty space
-    ws.addRow([]);
-
-    // Table Header (Row 7)
+    // Row 6: Table Headers with Rotated Vertical Text (Height 60)
     const headerValues = ['စဉ်', 'ခုံအမှတ်', 'အမည်', ...Array(19).fill(''), 'တက်ချိန်ပေါင်း', 'ပျက်ချိန်ပေါင်း', 'ရာခိုင်နှုန်း'];
     const tableHeader = ws.addRow(headerValues);
-    tableHeader.height = 70; // High height for vertical rotated text
+    tableHeader.height = 60;
 
     for (let col = 1; col <= 25; col++) {
         const cell = tableHeader.getCell(col);
         cell.border = thinBorder;
-        cell.font = { bold: true, size: 9 };
+        cell.font = { bold: true, size: 8.5 };
         if (col >= 23) {
-            // Rotated Vertical Text for W, X, Y
             cell.alignment = { textRotation: 90, vertical: 'middle', horizontal: 'center', wrapText: true };
         } else {
             cell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -99,23 +101,23 @@ async function testExportA4() {
         'မောင်ကောင်းသီဟသူ', 'မောင်ပိုင်စွမ်းပြည့်', 'မောင်စွမ်းရည်ကောင်းမြတ်', 'မောင်စိုးရဲထက်', 'မောင်ဇေညီညီစိုး'
     ];
 
-    // Student Rows (Row 8 to 21) + Padded Blank Rows up to Row 32 for A4 page fit
+    // Student Rows (Row 7 to 20) + Padded Blank Rows up to Row 31 for A4 page fit
     const totalRowsToRender = 25;
     for (let i = 0; i < totalRowsToRender; i++) {
         const isRealStudent = i < sampleStudents.length;
-        const rowNum = i + 8;
+        const rowNum = i + 7;
         const myanmarNo = isRealStudent ? toMyanmarDigits(i + 1) : '';
         const rollNo = isRealStudent ? `V-MC-${i + 1}` : '';
         const name = isRealStudent ? sampleStudents[i] : '';
 
         const rowValues = [myanmarNo, rollNo, name, ...Array(19).fill(''), '', '', ''];
         const row = ws.addRow(rowValues);
-        row.height = 20;
+        row.height = 18;
 
         for (let col = 1; col <= 25; col++) {
             const cell = row.getCell(col);
             cell.border = thinBorder;
-            cell.font = { size: 9 };
+            cell.font = { size: 8.5 };
 
             if (col === 1 || col === 2) {
                 cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -124,7 +126,7 @@ async function testExportA4() {
             } else if (col >= 23 && isRealStudent) {
                 // Formulas for W, X, Y
                 if (col === 23) cell.value = { formula: `=COUNTIF(D${rowNum}:V${rowNum}, "✓") * 3` };
-                if (col === 24) cell.value = { formula: `=(COUNTA(D$7:V$7) - COUNTIF(D${rowNum}:V${rowNum}, "✓")) * 3` };
+                if (col === 24) cell.value = { formula: `=(COUNTA(D$6:V$6) - COUNTIF(D${rowNum}:V${rowNum}, "✓")) * 3` };
                 if (col === 25) cell.value = { formula: `=IF((W${rowNum}+X${rowNum})>0, ROUND((W${rowNum}/(W${rowNum}+X${rowNum}))*100, 1) & "%", "100%")` };
                 cell.alignment = { horizontal: 'center', vertical: 'middle' };
             } else {
@@ -136,10 +138,11 @@ async function testExportA4() {
     // Footer Signature
     ws.addRow([]);
     const sigRowNumber = ws.rowCount + 1;
-    const sigRow = ws.addRow(['', '', '', '', '', '', '', '', '', '', '', '', 'လက်မှတ် -------------------------------------------']);
+    ws.addRow([]);
+    ws.getCell(`M${sigRowNumber}`).value = 'လက်မှတ် -------------------------------------------';
     ws.mergeCells(`M${sigRowNumber}:Y${sigRowNumber}`);
     ws.getCell(`M${sigRowNumber}`).alignment = { horizontal: 'right', vertical: 'middle' };
-    ws.getCell(`M${sigRowNumber}`).font = { size: 9 };
+    ws.getCell(`M${sigRowNumber}`).font = { size: 8.5 };
 
     // Footer Form Revision ID
     const formFooterRowNumber = ws.rowCount + 1;

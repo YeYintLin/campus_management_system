@@ -959,6 +959,8 @@ const exportRollCallExcel = async (req, res) => {
                     fitToPage: true,
                     fitToWidth: 1,
                     fitToHeight: 1,
+                    horizontalDpi: 300,
+                    verticalDpi: 300,
                     margins: { left: 0.25, right: 0.25, top: 0.3, bottom: 0.3 }
                 }
             });
@@ -998,6 +1000,8 @@ const exportRollCallExcel = async (req, res) => {
                     fitToPage: true,
                     fitToWidth: 1,
                     fitToHeight: 1,
+                    horizontalDpi: 300,
+                    verticalDpi: 300,
                     margins: { left: 0.2, right: 0.2, top: 0.3, bottom: 0.3 }
                 }
             });
@@ -1014,19 +1018,22 @@ const exportRollCallExcel = async (req, res) => {
             ];
 
             // Row 1: Top Right Form Number (Form No. TUHMB-028)
-            const row1 = sheet.addRow([...Array(24).fill(''), 'Form No. TUHMB-028']);
+            sheet.addRow([]);
+            sheet.getCell('U1').value = 'Form No. TUHMB-028';
             sheet.mergeCells('U1:Y1');
             sheet.getCell('U1').font = { size: 8, bold: false };
             sheet.getCell('U1').alignment = { horizontal: 'right', vertical: 'middle' };
 
             // Row 2: Technological University ( Hmawbi )
-            const title1 = sheet.addRow(['Technological University ( Hmawbi )']);
+            sheet.addRow([]);
+            sheet.getCell('A2').value = 'Technological University ( Hmawbi )';
             sheet.mergeCells('A2:Y2');
             sheet.getCell('A2').font = { bold: true, size: 12 };
             sheet.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' };
 
             // Row 3: Attendance Record ( 2025 - 2026 )
-            const title2 = sheet.addRow(['Attendance Record ( 2025 - 2026 )']);
+            sheet.addRow([]);
+            sheet.getCell('A3').value = 'Attendance Record ( 2025 - 2026 )';
             sheet.mergeCells('A3:Y3');
             sheet.getCell('A3').font = { bold: true, size: 10 };
             sheet.getCell('A3').alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1034,7 +1041,9 @@ const exportRollCallExcel = async (req, res) => {
             const classCode = `${romanYr} MC`;
 
             // Row 4: Class Code & Subject Header
-            const row4 = sheet.addRow([classCode, '', '', '', '', '', '', '', '', '', '', '', `ဘာသာရပ် - ${courseInfo.name || courseInfo.code}`]);
+            sheet.addRow([]);
+            sheet.getCell('A4').value = classCode;
+            sheet.getCell('M4').value = `ဘာသာရပ် - ${courseInfo.name || courseInfo.code}`;
             sheet.mergeCells('A4:B4');
             sheet.mergeCells('M4:Y4');
             sheet.getCell('A4').font = { bold: true, size: 9 };
@@ -1044,7 +1053,9 @@ const exportRollCallExcel = async (req, res) => {
             // Row 5: Academic Year/Month & Monthly Total Hours Header
             const totalMonthlyHours = Math.max(12, attendanceRecords.length) * hourWeight;
             const monthLabel = month && String(month).trim() !== '' ? month : 'ဇန်နဝါရီ (Jan)';
-            const row5 = sheet.addRow([`၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ${monthLabel} လ`, '', '', '', '', '', '', '', '', '', '', '', `ယခုလတက်ချိန် - ${totalMonthlyHours} နာရီ`]);
+            sheet.addRow([]);
+            sheet.getCell('A5').value = `၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ${monthLabel} လ`;
+            sheet.getCell('M5').value = `ယခုလတက်ချိန် - ${totalMonthlyHours} နာရီ`;
             sheet.mergeCells('A5:L5');
             sheet.mergeCells('M5:Y5');
             sheet.getCell('A5').font = { size: 9 };
@@ -1124,14 +1135,16 @@ const exportRollCallExcel = async (req, res) => {
             // Teacher Signature Footer
             sheet.addRow([]);
             const sigRowNumber = sheet.rowCount + 1;
-            const sigRow = sheet.addRow(['', '', '', '', '', '', '', '', '', '', '', '', 'လက်မှတ် -------------------------------------------']);
+            sheet.addRow([]);
+            sheet.getCell(`M${sigRowNumber}`).value = 'လက်မှတ် -------------------------------------------';
             sheet.mergeCells(`M${sigRowNumber}:Y${sigRowNumber}`);
             sheet.getCell(`M${sigRowNumber}`).alignment = { horizontal: 'right', vertical: 'middle' };
             sheet.getCell(`M${sigRowNumber}`).font = { size: 8.5 };
 
             // Revision Form Footer
             const formFooterRowNumber = sheet.rowCount + 1;
-            const formFooterRow = sheet.addRow(['TUHMB/F-028/Rev-0/25.2.2022']);
+            sheet.addRow([]);
+            sheet.getCell(`A${formFooterRowNumber}`).value = 'TUHMB/F-028/Rev-0/25.2.2022';
             sheet.mergeCells(`A${formFooterRowNumber}:H${formFooterRowNumber}`);
             sheet.getCell(`A${formFooterRowNumber}`).font = { size: 7.5, italic: true };
             sheet.getCell(`A${formFooterRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
