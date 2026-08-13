@@ -67,7 +67,7 @@ export const AuthProvider = ({ children }) => {
                     logout();
                 } else {
                     // Keep the cached session on non-auth failures (e.g. backend temporarily unavailable).
-                    console.error('Profile verification skipped due to non-auth error:', error?.message || error);
+                    console.warn('Profile verification skipped due to non-auth error:', error?.message || error);
                 }
             } finally {
                 setLoading(false);
