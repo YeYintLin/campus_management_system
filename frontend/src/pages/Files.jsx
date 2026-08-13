@@ -96,7 +96,8 @@ const Files = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
     const [viewMode, setViewMode] = useState('folders'); // 'folders' or 'files'
-    const [selectedFolder, setSelectedFolder] = useState(null);
+    const [folderPath, setFolderPath] = useState([]);
+    const selectedFolder = folderPath.length > 0 ? folderPath[folderPath.length - 1] : null;
     const [allCourses, setAllCourses] = useState([]);
 
     // Fetch custom folders, resource files, courses, AND timetable slots from backend DB on mount
