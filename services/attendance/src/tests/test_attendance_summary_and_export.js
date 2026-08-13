@@ -150,13 +150,12 @@ async function runAttendanceTests() {
         const sheetV = wbParsed.getWorksheet('V');
 
         assert.ok(sheetV, 'Exported workbook MUST contain Sheet "V"');
-        const headerCellA1 = sheetV.getCell('A1').value;
-        console.log('A1 Header Value in Excel:', headerCellA1);
-        assert.strictEqual(headerCellA1, 'Technological University ( Hmawbi )');
-
-        const formulaW6 = sheetV.getCell('W6').value;
-        console.log('W6 Formula Cell Value:', formulaW6);
-        assert.ok(typeof formulaW6 === 'object' && formulaW6.formula.includes('COUNTIF'), 'W6 cell MUST contain live COUNTIF formula');
+        const cellA1 = sheetV.getCell('A2').value || sheetV.getCell('A1').value;
+        console.log('A2 Title Header Value in Excel:', cellA1);
+        assert.strictEqual(cellA1, 'Technological University ( Hmawbi )', 'Exported sheet MUST contain university title header');
+        const formulaW8 = sheetV.getCell('W8').value;
+        console.log('W8 Formula Cell Value:', formulaW8);
+        assert.ok(typeof formulaW8 === 'object' && formulaW8.formula && formulaW8.formula.includes('COUNTIF'), 'W8 cell MUST contain live COUNTIF formula');
         console.log('✓ TEST 4 PASSED: Exported official Roll Call Excel containing university headers, tick marks, and live formulas!\n');
 
         // Test 5: Negative 6th Year Sem 2 Excel Export Rejection

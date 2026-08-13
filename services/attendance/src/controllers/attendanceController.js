@@ -753,7 +753,7 @@ const getAttendanceSummary = async (req, res) => {
 const exportRollCallExcel = async (req, res) => {
     try {
         const ExcelJS = require('exceljs');
-        const { courseId = 'McE-52039', year = '5th Year', month = 'ဇန်နဝါရီ', templateType = 'daily', semester = '1' } = req.query;
+        const { courseId = 'McE-52039', year = '5th Year', month = 'ဇန်နဝါရီ (Jan)', templateType = 'daily', semester = '1' } = req.query;
 
         const yrStr = String(year || req.user?.year || '').toLowerCase();
         const semStr = String(semester || '1').toLowerCase();
@@ -923,20 +923,40 @@ const exportRollCallExcel = async (req, res) => {
         workbook.creator = 'Campus Management System (CMS)';
         workbook.created = new Date();
 
+        const toMyanmarDigits = (num) => {
+            const myanmarNumbers = ['၀', '၁', '၂', '၃', '၄', '၅', '၆', '၇', '၈', '၉'];
+            return String(num).replace(/\d/g, d => myanmarNumbers[parseInt(d, 10)]);
+        };
+
+        const thinBorder = {
+            top: { style: 'thin', color: { argb: 'FF000000' } },
+            bottom: { style: 'thin', color: { argb: 'FF000000' } },
+            left: { style: 'thin', color: { argb: 'FF000000' } },
+            right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+
         if (templateType === 'tutorial') {
             // ── TUTORIAL GRID (Sheet1 Style) ──
-            const sheet = workbook.addWorksheet('Sheet1');
+            const sheet = workbook.addWorksheet('Sheet1', {
+                pageSetup: {
+                    paperSize: 9, // A4
+                    orientation: 'portrait',
+                    fitToPage: true,
+                    fitToWidth: 1,
+                    fitToHeight: 1,
+                    margins: { left: 0.3, right: 0.3, top: 0.3, bottom: 0.3 }
+                }
+            });
             
-            // Set Column Widths matching official template
             sheet.columns = [
                 { width: 4 },
                 { width: 12 },
                 { width: 25 },
-                { width: 12 },
-                { width: 12 },
-                { width: 12 },
-                { width: 12 },
-                { width: 12 }
+                { width: 10 },
+                { width: 10 },
+                { width: 10 },
+                { width: 10 },
+                { width: 10 }
             ];
 
             const titleRow = sheet.addRow([`${courseInfo.code}, ${courseInfo.name}\nTutorial Sign`]);
@@ -955,33 +975,48 @@ const exportRollCallExcel = async (req, res) => {
                 row.getCell(2).alignment = { horizontal: 'center' };
             });
         } else {
-            // ── DAILY ROLL CALL GRID (Official Sheet V Style) ──
-            const sheet = workbook.addWorksheet('V');
+            // ── OFFICIAL ROLL CALL GRID (Form No. TUHMB-028 A4 Style) ──
+            const sheet = workbook.addWorksheet('V', {
+                pageSetup: {
+                    paperSize: 9, // A4
+                    orientation: 'portrait',
+                    fitToPage: true,
+                    fitToWidth: 1,
+                    fitToHeight: 1,
+                    margins: { left: 0.3, right: 0.3, top: 0.3, bottom: 0.3 }
+                }
+            });
 
-            // Set Column Widths matching official university template
+            // Set Column Widths matching official Form No. TUHMB-028 template
             sheet.columns = [
-                { width: 4 },   // Col A: No (စဉ်)
-                { width: 12 },  // Col B: Roll No (ခုံအမှတ်)
-                { width: 26 },  // Col C: Name (အမည်)
-                ...Array(19).fill({ width: 4 }), // Cols D-V: 19 Period/Date Columns
-                { width: 12 },  // Col W: Total Present (တက်ချိန်ပေါင်း)
-                { width: 12 },  // Col X: Total Absent (ပျက်ချိန်ပေါင်း)
-                { width: 12 }   // Col Y: Percentage (ရာခိုင်နှုန်း)
+                { width: 4 },    // Col A: Serial (စဉ်)
+                { width: 11 },   // Col B: Roll No (ခုံအမှတ်)
+                { width: 24 },   // Col C: Name (အမည်)
+                ...Array(19).fill({ width: 2.2 }), // Cols D-V: 19 Period columns
+                { width: 3.5 },  // Col W: Attended (တက်ချိန်ပေါင်း)
+                { width: 3.5 },  // Col X: Absent (ပျက်ချိန်ပေါင်း)
+                { width: 3.5 }   // Col Y: Pct (ရာခိုင်နှုန်း)
             ];
 
-            // Title Header 1: Technological University ( Hmawbi )
+            // Row 1: Top Right Form Number (Form No. TUHMB-028)
+            const row1 = sheet.addRow([...Array(24).fill(''), 'Form No. TUHMB-028']);
+            sheet.mergeCells('U1:Y1');
+            sheet.getCell('U1').font = { size: 9, bold: false };
+            sheet.getCell('U1').alignment = { horizontal: 'right', vertical: 'middle' };
+
+            // Row 2: Technological University ( Hmawbi )
             const title1 = sheet.addRow(['Technological University ( Hmawbi )']);
-            sheet.mergeCells('A1:Y1');
-            title1.font = { bold: true, size: 14 };
+            sheet.mergeCells('A2:Y2');
+            title1.font = { bold: true, size: 13 };
             title1.alignment = { horizontal: 'center', vertical: 'middle' };
 
-            // Title Header 2: Attendance Record ( 2025 - 2026 )
+            // Row 3: Attendance Record ( 2025 - 2026 )
             const title2 = sheet.addRow(['Attendance Record ( 2025 - 2026 )']);
-            sheet.mergeCells('A2:Y2');
-            title2.font = { bold: true, size: 12 };
+            sheet.mergeCells('A3:Y3');
+            title2.font = { bold: true, size: 11 };
             title2.alignment = { horizontal: 'center', vertical: 'middle' };
 
-            // Derive Roman Numeral Class Code (e.g. V MC, II MC)
+            // Derive Class Code (e.g. V MC, II MC)
             const cYr = (courseInfo.year || yrStr || '').toLowerCase();
             const romanYr = cYr.includes('1') || cYr.includes('first') ? 'I' :
                             cYr.includes('2') || cYr.includes('second') ? 'II' :
@@ -991,50 +1026,66 @@ const exportRollCallExcel = async (req, res) => {
                             cYr.includes('6') || cYr.includes('sixth') ? 'VI' : 'ME';
             const classCode = `${romanYr} MC`;
 
-            // Row 3: Class Code & Subject Name Header
-            const row3 = sheet.addRow([classCode, '', '', '', '', '', `ဘာသာရပ် - ${courseInfo.name || courseInfo.code}`]);
-            sheet.mergeCells('A3:B3');
-            row3.font = { bold: true };
-            row3.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-            row3.getCell(7).alignment = { horizontal: 'left', vertical: 'middle' };
+            // Row 4: Class Code & Subject Header
+            const row4 = sheet.addRow([classCode, '', '', '', '', '', '', '', '', '', '', '', `ဘာသာရပ် - ${courseInfo.name || courseInfo.code}`]);
+            sheet.mergeCells('A4:B4');
+            sheet.mergeCells('M4:Y4');
+            sheet.getCell('A4').font = { bold: true, size: 10 };
+            sheet.getCell('M4').font = { bold: true, size: 10 };
+            sheet.getCell('M4').alignment = { horizontal: 'right', vertical: 'middle' };
 
-            // Row 4: Academic Year & Monthly Total Hours Header
+            // Row 5: Academic Year/Month & Monthly Total Hours Header
             const totalMonthlyHours = Math.max(12, attendanceRecords.length) * hourWeight;
             const monthLabel = month && String(month).trim() !== '' ? month : 'ဇန်နဝါရီ (Jan)';
-            const row4 = sheet.addRow([`၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ${monthLabel} လ`, '', '', '', '', '', `ယခုလတက်ချိန် - ${totalMonthlyHours} နာရီ`]);
-            row4.font = { bold: true };
-            row4.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-            row4.getCell(7).alignment = { horizontal: 'left', vertical: 'middle' };
+            const row5 = sheet.addRow([`၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ${monthLabel} လ`, '', '', '', '', '', '', '', '', '', '', '', `ယခုလတက်ချိန် - ${totalMonthlyHours} နာရီ`]);
+            sheet.mergeCells('A5:L5');
+            sheet.mergeCells('M5:Y5');
+            sheet.getCell('A5').font = { size: 10 };
+            sheet.getCell('M5').font = { bold: true, size: 10 };
+            sheet.getCell('M5').alignment = { horizontal: 'right', vertical: 'middle' };
 
-            // Table Header (Row 5)
-            const headerValues = ['စဉ်', 'ခုံအမှတ်', 'အမည်'];
-            // 19 period/date columns (D through V)
-            for (let p = 1; p <= 19; p++) {
-                if (attendanceRecords[p - 1]) {
-                    const d = new Date(attendanceRecords[p - 1].date);
-                    headerValues.push(`${d.getMonth() + 1}/${d.getDate()}`);
+            // Row 6: Empty spacing before table
+            sheet.addRow([]);
+
+            // Row 7: Table Headers with Rotated Vertical Text (Height 70)
+            const headerValues = ['စဉ်', 'ခုံအမှတ်', 'အမည်', ...Array(19).fill(''), 'တက်ချိန်ပေါင်း', 'ပျက်ချိန်ပေါင်း', 'ရာခိုင်နှုန်း'];
+            const tableHeader = sheet.addRow(headerValues);
+            tableHeader.height = 70; // High height for vertical rotated text
+
+            for (let col = 1; col <= 25; col++) {
+                const cell = tableHeader.getCell(col);
+                cell.border = thinBorder;
+                cell.font = { bold: true, size: 9 };
+                if (col >= 23) {
+                    // Rotated 90-degree Vertical Text for Columns W, X, Y
+                    cell.alignment = { textRotation: 90, vertical: 'middle', horizontal: 'center', wrapText: true };
                 } else {
-                    headerValues.push('');
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
                 }
             }
-            headerValues.push('တက်ချိန်ပေါင်း', 'ပျက်ချိန်ပေါင်း', 'ရာခိုင်နှုန်း');
 
-            const tableHeader = sheet.addRow(headerValues);
-            tableHeader.font = { bold: true };
-            tableHeader.alignment = { horizontal: 'center', vertical: 'middle' };
+            // Student Roster Rows (Rows 8+) - Pad up to 25 total rows for full A4 page height
+            const totalRowsToRender = Math.max(studentsList.length, 25);
+            for (let i = 0; i < totalRowsToRender; i++) {
+                const isRealStudent = i < studentsList.length;
+                const st = isRealStudent ? studentsList[i] : null;
+                const rowNum = i + 8;
+                const myanmarNo = isRealStudent ? toMyanmarDigits(i + 1) : '';
+                const rollStr = isRealStudent ? deriveRollNo(st, i) : '';
+                const nameStr = isRealStudent ? st.name : '';
 
-            // Student Roster Rows (Rows 6+)
-            studentsList.forEach((st, idx) => {
-                const rowNum = idx + 6; // 1-indexed row number starting at 6
-                const rollStr = deriveRollNo(st, idx);
-                const rowValues = [idx + 1, rollStr, st.name];
+                const rowValues = [myanmarNo, rollStr, nameStr];
 
                 // Checkmarks for 19 period columns (D to V)
                 for (let p = 0; p < 19; p++) {
-                    const rec = attendanceRecords[p];
-                    if (rec && Array.isArray(rec.records)) {
-                        const studentRec = rec.records.find(r => String(r.studentId) === String(st._id) || String(r.studentId) === String(st.user?._id));
-                        rowValues.push(studentRec && studentRec.status === 'Present' ? '✓' : '');
+                    if (isRealStudent) {
+                        const rec = attendanceRecords[p];
+                        if (rec && Array.isArray(rec.records)) {
+                            const studentRec = rec.records.find(r => String(r.studentId) === String(st._id) || String(r.studentId) === String(st.user?._id));
+                            rowValues.push(studentRec && studentRec.status === 'Present' ? '✓' : '');
+                        } else {
+                            rowValues.push('');
+                        }
                     } else {
                         rowValues.push('');
                     }
@@ -1043,39 +1094,43 @@ const exportRollCallExcel = async (req, res) => {
                 // Append empty strings for formulas
                 rowValues.push('', '', '');
                 const row = sheet.addRow(rowValues);
-                row.alignment = { vertical: 'middle' };
-                row.getCell(1).alignment = { horizontal: 'center' };
-                row.getCell(2).alignment = { horizontal: 'center' };
+                row.height = 20;
 
-                // Add Live Excel Formulas matching official template:
-                // Column W: Attended Hours = COUNTIF(D6:V6, "✓") * hourWeight
-                const attendedCell = row.getCell(23);
-                attendedCell.value = { formula: `=COUNTIF(D${rowNum}:V${rowNum}, "✓") * ${hourWeight}` };
-                attendedCell.alignment = { horizontal: 'center' };
+                for (let col = 1; col <= 25; col++) {
+                    const cell = row.getCell(col);
+                    cell.border = thinBorder;
+                    cell.font = { size: 9 };
 
-                // Column X: Absent Hours = (COUNTA(D$5:V$5) - COUNTIF(D6:V6, "✓")) * hourWeight
-                const absentCell = row.getCell(24);
-                absentCell.value = { formula: `=(COUNTA(D$5:V$5) - COUNTIF(D${rowNum}:V${rowNum}, "✓")) * ${hourWeight}` };
-                absentCell.alignment = { horizontal: 'center' };
+                    if (col === 1 || col === 2) {
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    } else if (col === 3) {
+                        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+                    } else if (col >= 23 && isRealStudent) {
+                        // Formulas for W, X, Y
+                        if (col === 23) cell.value = { formula: `=COUNTIF(D${rowNum}:V${rowNum}, "✓") * ${hourWeight}` };
+                        if (col === 24) cell.value = { formula: `=(COUNTA(D$7:V$7) - COUNTIF(D${rowNum}:V${rowNum}, "✓")) * ${hourWeight}` };
+                        if (col === 25) cell.value = { formula: `=IF((W${rowNum}+X${rowNum})>0, ROUND((W${rowNum}/(W${rowNum}+X${rowNum}))*100, 1) & "%", "100%")` };
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    } else {
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    }
+                }
+            }
 
-                // Column Y: Percentage = IF((W6+X6)>0, ROUND((W6/(W6+X6))*100, 1) & "%", "100%")
-                const pctCell = row.getCell(25);
-                pctCell.value = { formula: `=IF((W${rowNum}+X${rowNum})>0, ROUND((W${rowNum}/(W${rowNum}+X${rowNum}))*100, 1) & "%", "100%")` };
-                pctCell.alignment = { horizontal: 'center' };
-            });
-
-            // Teacher Signature Footer matching official template merge ranges
+            // Teacher Signature Footer
             sheet.addRow([]);
-            const sig1RowNumber = sheet.rowCount + 1;
-            const sig1Row = sheet.addRow(['', '', 'လက်မှတ် -------------------------------------------']);
-            sheet.mergeCells(`C${sig1RowNumber}:Y${sig1RowNumber}`);
-            sig1Row.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
+            const sigRowNumber = sheet.rowCount + 1;
+            const sigRow = sheet.addRow(['', '', '', '', '', '', '', '', '', '', '', '', 'လက်မှတ် -------------------------------------------']);
+            sheet.mergeCells(`M${sigRowNumber}:Y${sigRowNumber}`);
+            sheet.getCell(`M${sigRowNumber}`).alignment = { horizontal: 'right', vertical: 'middle' };
+            sheet.getCell(`M${sigRowNumber}`).font = { size: 9 };
 
-            const sig2RowNumber = sheet.rowCount + 1;
-            const sig2Row = sheet.addRow(['', '', `ဘာသာရပ်ဆရာအမည် ------------------------------------------- (${courseInfo.teacher})`]);
-            sheet.mergeCells(`C${sig2RowNumber}:Y${sig2RowNumber}`);
-            sig2Row.font = { italic: true };
-            sig2Row.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
+            // Revision Form Footer
+            const formFooterRowNumber = sheet.rowCount + 1;
+            const formFooterRow = sheet.addRow(['TUHMB/F-028/Rev-0/25.2.2022']);
+            sheet.mergeCells(`A${formFooterRowNumber}:H${formFooterRowNumber}`);
+            sheet.getCell(`A${formFooterRowNumber}`).font = { size: 8, italic: true };
+            sheet.getCell(`A${formFooterRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
         }
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
