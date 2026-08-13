@@ -27,15 +27,15 @@ async function testExportA4() {
         right: { style: 'thin', color: { argb: 'FF000000' } }
     };
 
-    // Column Widths for A4 Portrait Fit
+    // Column Widths for Single-Page A4 Portrait Fit
     ws.columns = [
-        { width: 4 },    // A: Serial (စဉ်)
-        { width: 11 },   // B: Roll No (ခုံအမှတ်)
-        { width: 24 },   // C: Name (အမည်)
-        ...Array(19).fill({ width: 2.2 }), // D-V: 19 Period columns
-        { width: 3.5 },  // W: Attended (တက်ချိန်ပေါင်း)
-        { width: 3.5 },  // X: Absent (ပျက်ချိန်ပေါင်း)
-        { width: 3.5 }   // Y: Pct (ရာခိုင်နှုန်း)
+        { width: 3.5 },  // A: Serial (စဉ်)
+        { width: 9.0 },  // B: Roll No (ခုံအမှတ်)
+        { width: 18.0 }, // C: Name (အမည်)
+        ...Array(19).fill({ width: 1.6 }), // D-V: 19 Period columns
+        { width: 3.2 },  // W: Attended (တက်ချိန်ပေါင်း)
+        { width: 3.2 },  // X: Absent (ပျက်ချိန်ပေါင်း)
+        { width: 3.2 }   // Y: Pct (ရာခိုင်နှုန်း)
     ];
 
     // Row 1: Form No. TUHMB-028 (Top Right)

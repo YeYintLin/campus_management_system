@@ -834,7 +834,13 @@ const exportRollCallExcel = async (req, res) => {
                     };
 
                     const targetDept = deriveDeptFromCode(courseId);
-                    const targetYrNum = yrStr.includes('1') ? '1' : yrStr.includes('2') ? '2' : yrStr.includes('3') ? '3' : yrStr.includes('4') ? '4' : yrStr.includes('5') ? '5' : yrStr.includes('6') ? '6' : '';
+                    const cYrLabel = (courseInfo.year || yrStr).toLowerCase();
+                    const targetYrNum = cYrLabel.includes('1') || cYrLabel.includes('first') ? '1' :
+                                       cYrLabel.includes('2') || cYrLabel.includes('second') ? '2' :
+                                       cYrLabel.includes('3') || cYrLabel.includes('third') ? '3' :
+                                       cYrLabel.includes('4') || cYrLabel.includes('fourth') ? '4' :
+                                       cYrLabel.includes('5') || cYrLabel.includes('fifth') ? '5' :
+                                       cYrLabel.includes('6') || cYrLabel.includes('sixth') ? '6' : '';
 
                     studentsList = usersRes.data.filter(s => {
                         // Filter out test demo accounts
@@ -860,23 +866,32 @@ const exportRollCallExcel = async (req, res) => {
             console.error('Core service fetch error during Excel export:', e.message);
         }
 
+        // Derive Roman Numeral Prefix (e.g., V, IV, III, II, I)
+        const cYr = (courseInfo.year || yrStr || '').toLowerCase();
+        const romanYr = cYr.includes('1') || cYr.includes('first') ? 'I' :
+                        cYr.includes('2') || cYr.includes('second') ? 'II' :
+                        cYr.includes('3') || cYr.includes('third') ? 'III' :
+                        cYr.includes('4') || cYr.includes('fourth') ? 'IV' :
+                        cYr.includes('5') || cYr.includes('fifth') ? 'V' :
+                        cYr.includes('6') || cYr.includes('sixth') ? 'VI' : 'ME';
+
         // Fallback students if no students returned
         if (studentsList.length === 0) {
             studentsList = [
-                { _id: '1', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-1`, name: 'မဟန်နီစိုး' },
-                { _id: '2', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-2`, name: 'မဆူးအိလှိုင်' },
-                { _id: '3', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-3`, name: 'မခိုင်ရတနာထွဋ်' },
-                { _id: '4', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-4`, name: 'မရွှန်းလဲ့လဲ့ဖြိုး' },
-                { _id: '5', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-5`, name: 'မအိမ့်ဖူးစံ' },
-                { _id: '6', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-6`, name: 'မောင်ကောင်းထက်မြတ်' },
-                { _id: '7', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-7`, name: 'မလင်းလဲ့ကြည်ဖြူသန့်' },
-                { _id: '8', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-8`, name: 'မောင်ဇင်မင်းထက်' },
-                { _id: '9', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-9`, name: 'မောင်နိုင်လင်းအောင်' },
-                { _id: '10', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-10`, name: 'မောင်ကောင်းသီဟသူ' },
-                { _id: '11', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-11`, name: 'မောင်ပိုင်စွမ်းပြည့်' },
-                { _id: '12', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-12`, name: 'မောင်စွမ်းရည်ကောင်းမြတ်' },
-                { _id: '13', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-13`, name: 'မောင်စိုးရဲထက်' },
-                { _id: '14', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-14`, name: 'မောင်ဇေညီညီစိုး' }
+                { _id: '1', rollNo: `${romanYr}-MC-1`, name: 'မဟန်နီစိုး' },
+                { _id: '2', rollNo: `${romanYr}-MC-2`, name: 'မဆူးအိလှိုင်' },
+                { _id: '3', rollNo: `${romanYr}-MC-3`, name: 'မခိုင်ရတနာထွဋ်' },
+                { _id: '4', rollNo: `${romanYr}-MC-4`, name: 'မရွှန်းလဲ့လဲ့ဖြိုး' },
+                { _id: '5', rollNo: `${romanYr}-MC-5`, name: 'မအိမ့်ဖူးစံ' },
+                { _id: '6', rollNo: `${romanYr}-MC-6`, name: 'မောင်ကောင်းထက်မြတ်' },
+                { _id: '7', rollNo: `${romanYr}-MC-7`, name: 'မလင်းလဲ့ကြည်ဖြူသန့်' },
+                { _id: '8', rollNo: `${romanYr}-MC-8`, name: 'မောင်ဇင်မင်းထက်' },
+                { _id: '9', rollNo: `${romanYr}-MC-9`, name: 'မောင်နိုင်လင်းအောင်' },
+                { _id: '10', rollNo: `${romanYr}-MC-10`, name: 'မောင်ကောင်းသီဟသူ' },
+                { _id: '11', rollNo: `${romanYr}-MC-11`, name: 'မောင်ပိုင်စွမ်းပြည့်' },
+                { _id: '12', rollNo: `${romanYr}-MC-12`, name: 'မောင်စွမ်းရည်ကောင်းမြတ်' },
+                { _id: '13', rollNo: `${romanYr}-MC-13`, name: 'မောင်စိုးရဲထက်' },
+                { _id: '14', rollNo: `${romanYr}-MC-14`, name: 'မောင်ဇေညီညီစိုး' }
             ];
         }
 
@@ -894,7 +909,7 @@ const exportRollCallExcel = async (req, res) => {
                     return `${parts[0].toUpperCase()}-${parts[1].toUpperCase()}`;
                 }
             }
-            return `ROLL-${index + 1}`;
+            return `${romanYr}-MC-${index + 1}`;
         };
 
         studentsList.sort((a, b) => {
@@ -944,19 +959,19 @@ const exportRollCallExcel = async (req, res) => {
                     fitToPage: true,
                     fitToWidth: 1,
                     fitToHeight: 1,
-                    margins: { left: 0.3, right: 0.3, top: 0.3, bottom: 0.3 }
+                    margins: { left: 0.25, right: 0.25, top: 0.3, bottom: 0.3 }
                 }
             });
             
             sheet.columns = [
-                { width: 4 },
-                { width: 12 },
-                { width: 25 },
+                { width: 3.5 },
                 { width: 10 },
-                { width: 10 },
-                { width: 10 },
-                { width: 10 },
-                { width: 10 }
+                { width: 22 },
+                { width: 9 },
+                { width: 9 },
+                { width: 9 },
+                { width: 9 },
+                { width: 9 }
             ];
 
             const titleRow = sheet.addRow([`${courseInfo.code}, ${courseInfo.name}\nTutorial Sign`]);
@@ -978,60 +993,52 @@ const exportRollCallExcel = async (req, res) => {
             // ── OFFICIAL ROLL CALL GRID (Form No. TUHMB-028 A4 Style) ──
             const sheet = workbook.addWorksheet('V', {
                 pageSetup: {
-                    paperSize: 9, // A4
+                    paperSize: 9, // A4 Portrait
                     orientation: 'portrait',
                     fitToPage: true,
                     fitToWidth: 1,
                     fitToHeight: 1,
-                    margins: { left: 0.3, right: 0.3, top: 0.3, bottom: 0.3 }
+                    margins: { left: 0.2, right: 0.2, top: 0.3, bottom: 0.3 }
                 }
             });
 
-            // Set Column Widths matching official Form No. TUHMB-028 template
+            // Compact column widths to fit all 25 columns onto ONE single A4 portrait page
             sheet.columns = [
-                { width: 4 },    // Col A: Serial (စဉ်)
-                { width: 11 },   // Col B: Roll No (ခုံအမှတ်)
-                { width: 24 },   // Col C: Name (အမည်)
-                ...Array(19).fill({ width: 2.2 }), // Cols D-V: 19 Period columns
-                { width: 3.5 },  // Col W: Attended (တက်ချိန်ပေါင်း)
-                { width: 3.5 },  // Col X: Absent (ပျက်ချိန်ပေါင်း)
-                { width: 3.5 }   // Col Y: Pct (ရာခိုင်နှုန်း)
+                { width: 3.5 },  // Col A: Serial (စဉ်)
+                { width: 9.0 },  // Col B: Roll No (ခုံအမှတ်)
+                { width: 18.0 }, // Col C: Name (အမည်)
+                ...Array(19).fill({ width: 1.6 }), // Cols D-V: 19 Period columns
+                { width: 3.2 },  // Col W: Attended (တက်ချိန်ပေါင်း)
+                { width: 3.2 },  // Col X: Absent (ပျက်ချိန်ပေါင်း)
+                { width: 3.2 }   // Col Y: Pct (ရာခိုင်နှုန်း)
             ];
 
             // Row 1: Top Right Form Number (Form No. TUHMB-028)
             const row1 = sheet.addRow([...Array(24).fill(''), 'Form No. TUHMB-028']);
             sheet.mergeCells('U1:Y1');
-            sheet.getCell('U1').font = { size: 9, bold: false };
+            sheet.getCell('U1').font = { size: 8, bold: false };
             sheet.getCell('U1').alignment = { horizontal: 'right', vertical: 'middle' };
 
             // Row 2: Technological University ( Hmawbi )
             const title1 = sheet.addRow(['Technological University ( Hmawbi )']);
             sheet.mergeCells('A2:Y2');
-            title1.font = { bold: true, size: 13 };
-            title1.alignment = { horizontal: 'center', vertical: 'middle' };
+            sheet.getCell('A2').font = { bold: true, size: 12 };
+            sheet.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' };
 
             // Row 3: Attendance Record ( 2025 - 2026 )
             const title2 = sheet.addRow(['Attendance Record ( 2025 - 2026 )']);
             sheet.mergeCells('A3:Y3');
-            title2.font = { bold: true, size: 11 };
-            title2.alignment = { horizontal: 'center', vertical: 'middle' };
+            sheet.getCell('A3').font = { bold: true, size: 10 };
+            sheet.getCell('A3').alignment = { horizontal: 'center', vertical: 'middle' };
 
-            // Derive Class Code (e.g. V MC, II MC)
-            const cYr = (courseInfo.year || yrStr || '').toLowerCase();
-            const romanYr = cYr.includes('1') || cYr.includes('first') ? 'I' :
-                            cYr.includes('2') || cYr.includes('second') ? 'II' :
-                            cYr.includes('3') || cYr.includes('third') ? 'III' :
-                            cYr.includes('4') || cYr.includes('fourth') ? 'IV' :
-                            cYr.includes('5') || cYr.includes('fifth') ? 'V' :
-                            cYr.includes('6') || cYr.includes('sixth') ? 'VI' : 'ME';
             const classCode = `${romanYr} MC`;
 
             // Row 4: Class Code & Subject Header
             const row4 = sheet.addRow([classCode, '', '', '', '', '', '', '', '', '', '', '', `ဘာသာရပ် - ${courseInfo.name || courseInfo.code}`]);
             sheet.mergeCells('A4:B4');
             sheet.mergeCells('M4:Y4');
-            sheet.getCell('A4').font = { bold: true, size: 10 };
-            sheet.getCell('M4').font = { bold: true, size: 10 };
+            sheet.getCell('A4').font = { bold: true, size: 9 };
+            sheet.getCell('M4').font = { bold: true, size: 9 };
             sheet.getCell('M4').alignment = { horizontal: 'right', vertical: 'middle' };
 
             // Row 5: Academic Year/Month & Monthly Total Hours Header
@@ -1040,22 +1047,19 @@ const exportRollCallExcel = async (req, res) => {
             const row5 = sheet.addRow([`၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ${monthLabel} လ`, '', '', '', '', '', '', '', '', '', '', '', `ယခုလတက်ချိန် - ${totalMonthlyHours} နာရီ`]);
             sheet.mergeCells('A5:L5');
             sheet.mergeCells('M5:Y5');
-            sheet.getCell('A5').font = { size: 10 };
-            sheet.getCell('M5').font = { bold: true, size: 10 };
+            sheet.getCell('A5').font = { size: 9 };
+            sheet.getCell('M5').font = { bold: true, size: 9 };
             sheet.getCell('M5').alignment = { horizontal: 'right', vertical: 'middle' };
 
-            // Row 6: Empty spacing before table
-            sheet.addRow([]);
-
-            // Row 7: Table Headers with Rotated Vertical Text (Height 70)
+            // Table Header (Row 6) - Rotated 90-degree Vertical Text (Height 60)
             const headerValues = ['စဉ်', 'ခုံအမှတ်', 'အမည်', ...Array(19).fill(''), 'တက်ချိန်ပေါင်း', 'ပျက်ချိန်ပေါင်း', 'ရာခိုင်နှုန်း'];
             const tableHeader = sheet.addRow(headerValues);
-            tableHeader.height = 70; // High height for vertical rotated text
+            tableHeader.height = 60;
 
             for (let col = 1; col <= 25; col++) {
                 const cell = tableHeader.getCell(col);
                 cell.border = thinBorder;
-                cell.font = { bold: true, size: 9 };
+                cell.font = { bold: true, size: 8.5 };
                 if (col >= 23) {
                     // Rotated 90-degree Vertical Text for Columns W, X, Y
                     cell.alignment = { textRotation: 90, vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -1064,12 +1068,12 @@ const exportRollCallExcel = async (req, res) => {
                 }
             }
 
-            // Student Roster Rows (Rows 8+) - Pad up to 25 total rows for full A4 page height
+            // Student Roster Rows (Rows 7+) - Pad up to 25 total rows for full A4 page height
             const totalRowsToRender = Math.max(studentsList.length, 25);
             for (let i = 0; i < totalRowsToRender; i++) {
                 const isRealStudent = i < studentsList.length;
                 const st = isRealStudent ? studentsList[i] : null;
-                const rowNum = i + 8;
+                const rowNum = i + 7;
                 const myanmarNo = isRealStudent ? toMyanmarDigits(i + 1) : '';
                 const rollStr = isRealStudent ? deriveRollNo(st, i) : '';
                 const nameStr = isRealStudent ? st.name : '';
@@ -1094,12 +1098,12 @@ const exportRollCallExcel = async (req, res) => {
                 // Append empty strings for formulas
                 rowValues.push('', '', '');
                 const row = sheet.addRow(rowValues);
-                row.height = 20;
+                row.height = 18;
 
                 for (let col = 1; col <= 25; col++) {
                     const cell = row.getCell(col);
                     cell.border = thinBorder;
-                    cell.font = { size: 9 };
+                    cell.font = { size: 8.5 };
 
                     if (col === 1 || col === 2) {
                         cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1108,7 +1112,7 @@ const exportRollCallExcel = async (req, res) => {
                     } else if (col >= 23 && isRealStudent) {
                         // Formulas for W, X, Y
                         if (col === 23) cell.value = { formula: `=COUNTIF(D${rowNum}:V${rowNum}, "✓") * ${hourWeight}` };
-                        if (col === 24) cell.value = { formula: `=(COUNTA(D$7:V$7) - COUNTIF(D${rowNum}:V${rowNum}, "✓")) * ${hourWeight}` };
+                        if (col === 24) cell.value = { formula: `=(COUNTA(D$6:V$6) - COUNTIF(D${rowNum}:V${rowNum}, "✓")) * ${hourWeight}` };
                         if (col === 25) cell.value = { formula: `=IF((W${rowNum}+X${rowNum})>0, ROUND((W${rowNum}/(W${rowNum}+X${rowNum}))*100, 1) & "%", "100%")` };
                         cell.alignment = { horizontal: 'center', vertical: 'middle' };
                     } else {
@@ -1123,13 +1127,13 @@ const exportRollCallExcel = async (req, res) => {
             const sigRow = sheet.addRow(['', '', '', '', '', '', '', '', '', '', '', '', 'လက်မှတ် -------------------------------------------']);
             sheet.mergeCells(`M${sigRowNumber}:Y${sigRowNumber}`);
             sheet.getCell(`M${sigRowNumber}`).alignment = { horizontal: 'right', vertical: 'middle' };
-            sheet.getCell(`M${sigRowNumber}`).font = { size: 9 };
+            sheet.getCell(`M${sigRowNumber}`).font = { size: 8.5 };
 
             // Revision Form Footer
             const formFooterRowNumber = sheet.rowCount + 1;
             const formFooterRow = sheet.addRow(['TUHMB/F-028/Rev-0/25.2.2022']);
             sheet.mergeCells(`A${formFooterRowNumber}:H${formFooterRowNumber}`);
-            sheet.getCell(`A${formFooterRowNumber}`).font = { size: 8, italic: true };
+            sheet.getCell(`A${formFooterRowNumber}`).font = { size: 7.5, italic: true };
             sheet.getCell(`A${formFooterRowNumber}`).alignment = { horizontal: 'left', vertical: 'middle' };
         }
 
