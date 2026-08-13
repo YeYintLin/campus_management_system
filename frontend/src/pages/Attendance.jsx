@@ -1666,8 +1666,8 @@ const Attendance = () => {
 
             {/* ── OFFICIAL ROLL CALL EXCEL EXPORT MODAL ── */}
             {showExportModal && (
-                <div className="modal-overlay" onClick={() => setShowExportModal(false)} style={{ zIndex: 1100 }}>
-                    <div className="modal-content glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', padding: '1.75rem' }}>
+                <div className="modal-overlay" onClick={() => setShowExportModal(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', zIndex: 9999, padding: '1rem' }}>
+                    <div className="modal-content glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', width: '100%', padding: '1.75rem' }}>
                         <div className="modal-header" style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 style={{ margin: 0, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <Award size={20} style={{ color: '#22c55e' }} />
