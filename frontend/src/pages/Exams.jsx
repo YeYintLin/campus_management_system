@@ -135,8 +135,15 @@ const Exams = () => {
                 }
             ];
 
+            const deletedDemos = JSON.parse(localStorage.getItem('cms_deleted_demo_exams') || '[]');
+            const activeDemoExams = defaultDemoExams.filter(d => !deletedDemos.includes(d._id));
+
             const combinedExams = [...sessionExams, ...dbExams];
-            setExams(combinedExams.length > 0 ? combinedExams : defaultDemoExams);
+            if (combinedExams.length > 0) {
+                setExams(combinedExams);
+            } else {
+                setExams(activeDemoExams);
+            }
         } catch (err) {
             console.error(err);
             setError('Failed to fetch exams.');
@@ -180,7 +187,7 @@ const Exams = () => {
     const handleSave = async (e) => {
         e.preventDefault();
         try {
-            if (currentExam) {
+            if (currentExam && !currentExam._id.toString().startsWith('demo-')) {
                 await apiClient.put(`/exams/${currentExam._id}`, formData);
             } else {
                 await apiClient.post('/exams', formData);
@@ -200,11 +207,17 @@ const Exams = () => {
         setExams(prev => prev.filter(e => e._id !== id));
 
         if (id.toString().startsWith('demo-')) {
+            const deletedDemos = JSON.parse(localStorage.getItem('cms_deleted_demo_exams') || '[]');
+            if (!deletedDemos.includes(id)) {
+                deletedDemos.push(id);
+                localStorage.setItem('cms_deleted_demo_exams', JSON.stringify(deletedDemos));
+            }
             return;
         }
 
         try {
             await apiClient.delete(`/exams/${id}`).catch(() => apiClient.delete(`/sessions/${id}`));
+            fetchExams();
         } catch (err) {
             console.error('Delete error:', err);
         }
