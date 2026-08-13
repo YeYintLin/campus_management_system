@@ -753,7 +753,7 @@ const getAttendanceSummary = async (req, res) => {
 const exportRollCallExcel = async (req, res) => {
     try {
         const ExcelJS = require('exceljs');
-        const { courseId = 'McE-52039', year = '5th Year', month = '1', templateType = 'daily', semester = '1' } = req.query;
+        const { courseId = 'McE-52039', year = '5th Year', month = 'ဇန်နဝါရီ', templateType = 'daily', semester = '1' } = req.query;
 
         const yrStr = String(year || req.user?.year || '').toLowerCase();
         const semStr = String(semester || '1').toLowerCase();
@@ -773,79 +773,94 @@ const exportRollCallExcel = async (req, res) => {
 
         // Fetch Course Details & Enrolled Students from Core Service
         const token = req.headers.authorization;
-        let courseInfo = { code: courseId, name: courseId, teacher: req.user.name || 'Subject Teacher' };
+        let courseInfo = { code: courseId, name: courseId, teacher: req.user.name || 'Subject Teacher', year: year };
         let studentsList = [];
 
         try {
             const courseRes = await axios.get(`${CORE_SERVICE_URL}/api/courses/${courseId}`, {
                 headers: { Authorization: token },
-                timeout: 3000
+                timeout: 5000
             }).catch(() => null);
 
             if (courseRes?.data) {
                 courseInfo.code = courseRes.data.code || courseId;
                 courseInfo.name = courseRes.data.name || courseId;
+                if (courseRes.data.yearLabel || courseRes.data.year) {
+                    courseInfo.year = courseRes.data.yearLabel || `${courseRes.data.year}th Year`;
+                }
                 if (courseRes.data.teacher?.name) {
                     courseInfo.teacher = courseRes.data.teacher.name;
                 }
+
+                if (Array.isArray(courseRes.data.students) && courseRes.data.students.length > 0) {
+                    studentsList = courseRes.data.students.map(s => typeof s === 'object' ? s : { _id: s });
+                }
             }
 
-            // Fetch Students
-            const usersRes = await axios.get(`${CORE_SERVICE_URL}/api/users?role=Student`, {
-                headers: { Authorization: token },
-                timeout: 3000
-            }).catch(() => null);
+            // If course.students wasn't populated, fetch students from Core API
+            if (studentsList.length === 0 || !studentsList[0].name) {
+                const usersRes = await axios.get(`${CORE_SERVICE_URL}/api/users?role=Student`, {
+                    headers: { Authorization: token },
+                    timeout: 5000
+                }).catch(() => null);
 
-            if (usersRes?.data && Array.isArray(usersRes.data)) {
-                // Derive target department from course code
-                const deriveDeptFromCode = (code = '') => {
-                    const c = code.toUpperCase();
-                    if (c.includes('MCE') || c.match(/\bMC\b/)) return 'mechatronics';
-                    if (c.includes('CE') && !c.includes('MCE') && !c.includes('ECE')) return 'civil';
-                    if (c.includes('EP')) return 'electrical power';
-                    if (c.includes('ECE') || (c.includes('EC') && !c.includes('MCE'))) return 'electronic';
-                    if (c.includes('IT')) return 'information';
-                    if (c.includes('ME') && !c.includes('MCE')) return 'mechanical';
-                    if (c.includes('ARCH') || c.includes('AR') || c.includes('AG')) return 'architecture';
-                    return '';
-                };
+                if (usersRes?.data && Array.isArray(usersRes.data)) {
+                    const deriveDeptFromCode = (code = '') => {
+                        const c = code.toUpperCase();
+                        if (c.includes('MCE') || c.match(/\bMC\b/)) return 'mechatronics';
+                        if (c.includes('CE') && !c.includes('MCE') && !c.includes('ECE')) return 'civil';
+                        if (c.includes('EP')) return 'electrical power';
+                        if (c.includes('ECE') || (c.includes('EC') && !c.includes('MCE'))) return 'electronic';
+                        if (c.includes('IT')) return 'information';
+                        if (c.includes('ME') && !c.includes('MCE')) return 'mechanical';
+                        if (c.includes('ARCH') || c.includes('AR') || c.includes('AG')) return 'architecture';
+                        return '';
+                    };
 
-                const deriveDeptFromEmail = (email = '') => {
-                    if (!email) return '';
-                    const parts = email.split('@')[0].toLowerCase().split('.');
-                    if (parts.length >= 2) {
-                        const d = parts[1];
-                        if (d === 'mc' || d === 'mce') return 'mechatronics';
-                        if (d === 'arch' || d === 'ar') return 'architecture';
-                        if (d === 'c' || d === 'ce') return 'civil';
-                        if (d === 'ep') return 'electrical power';
-                        if (d === 'ec' || d === 'ece') return 'electronic';
-                        if (d === 'it') return 'information';
-                        if (d === 'me') return 'mechanical';
-                    }
-                    return '';
-                };
+                    const deriveDeptFromEmail = (email = '') => {
+                        if (!email) return '';
+                        const parts = email.split('@')[0].toLowerCase().split('.');
+                        if (parts.length >= 2) {
+                            const d = parts[1];
+                            if (d === 'mc' || d === 'mce') return 'mechatronics';
+                            if (d === 'arch' || d === 'ar') return 'architecture';
+                            if (d === 'c' || d === 'ce') return 'civil';
+                            if (d === 'ep') return 'electrical power';
+                            if (d === 'ec' || d === 'ece') return 'electronic';
+                            if (d === 'it') return 'information';
+                            if (d === 'me') return 'mechanical';
+                        }
+                        return '';
+                    };
 
-                const targetDept = deriveDeptFromCode(courseId);
+                    const targetDept = deriveDeptFromCode(courseId);
+                    const targetYrNum = yrStr.includes('1') ? '1' : yrStr.includes('2') ? '2' : yrStr.includes('3') ? '3' : yrStr.includes('4') ? '4' : yrStr.includes('5') ? '5' : yrStr.includes('6') ? '6' : '';
 
-                studentsList = usersRes.data.filter(s => {
-                    // Year filter
-                    const sYr = String(s.year || '').toLowerCase();
-                    const yearMatch = !yrStr || sYr.includes(yrStr.replace(' year', '')) || yrStr.includes(sYr);
-                    if (!yearMatch) return false;
+                    studentsList = usersRes.data.filter(s => {
+                        // Filter out test demo accounts
+                        const sName = (s.name || '').toLowerCase();
+                        if (sName.includes('demo') || sName.includes('test') || sName === 'rohit' || sName === 'jxuddnjd' || sName.includes('user')) {
+                            return false;
+                        }
 
-                    // Department filter
-                    if (!targetDept) return true;
-                    const sDept = (s.department || '').toLowerCase();
-                    const emailDept = deriveDeptFromEmail(s.email);
-                    return sDept.includes(targetDept) || targetDept.includes(sDept) || emailDept === targetDept;
-                });
+                        // Year filter
+                        const sYr = String(s.year || '').toLowerCase();
+                        const yearMatch = !targetYrNum || sYr.includes(targetYrNum);
+                        if (!yearMatch) return false;
+
+                        // Department filter
+                        if (!targetDept) return true;
+                        const sDept = (s.department || '').toLowerCase();
+                        const emailDept = deriveDeptFromEmail(s.email);
+                        return sDept.includes(targetDept) || targetDept.includes(sDept) || emailDept === targetDept;
+                    });
+                }
             }
         } catch (e) {
             console.error('Core service fetch error during Excel export:', e.message);
         }
 
-        // Fallback demo students if no students returned
+        // Fallback students if no students returned
         if (studentsList.length === 0) {
             studentsList = [
                 { _id: '1', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-1`, name: 'မဟန်နီစိုး' },
@@ -856,6 +871,12 @@ const exportRollCallExcel = async (req, res) => {
                 { _id: '6', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-6`, name: 'မောင်ကောင်းထက်မြတ်' },
                 { _id: '7', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-7`, name: 'မလင်းလဲ့ကြည်ဖြူသန့်' },
                 { _id: '8', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-8`, name: 'မောင်ဇင်မင်းထက်' },
+                { _id: '9', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-9`, name: 'မောင်နိုင်လင်းအောင်' },
+                { _id: '10', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-10`, name: 'မောင်ကောင်းသီဟသူ' },
+                { _id: '11', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-11`, name: 'မောင်ပိုင်စွမ်းပြည့်' },
+                { _id: '12', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-12`, name: 'မောင်စွမ်းရည်ကောင်းမြတ်' },
+                { _id: '13', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-13`, name: 'မောင်စိုးရဲထက်' },
+                { _id: '14', rollNo: `${isUpperYear ? 'V' : 'I'}-MC-14`, name: 'မောင်ဇေညီညီစိုး' }
             ];
         }
 
@@ -905,34 +926,85 @@ const exportRollCallExcel = async (req, res) => {
         if (templateType === 'tutorial') {
             // ── TUTORIAL GRID (Sheet1 Style) ──
             const sheet = workbook.addWorksheet('Sheet1');
-            sheet.addRow([`${courseInfo.code}, ${courseInfo.name} — Tutorial Sign`]);
-            sheet.getRow(1).font = { bold: true, size: 14 };
+            
+            // Set Column Widths matching official template
+            sheet.columns = [
+                { width: 4 },
+                { width: 12 },
+                { width: 25 },
+                { width: 12 },
+                { width: 12 },
+                { width: 12 },
+                { width: 12 },
+                { width: 12 }
+            ];
 
-            const headerRow = sheet.addRow(['No', 'Roll No', 'Name', 'Tutorial I', 'Tutorial II', 'Tutorial III', 'Tutorial IV', 'Tutorial V']);
+            const titleRow = sheet.addRow([`${courseInfo.code}, ${courseInfo.name}\nTutorial Sign`]);
+            sheet.mergeCells('A1:H1');
+            titleRow.font = { bold: true, size: 12 };
+            titleRow.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+
+            const headerRow = sheet.addRow(['No ', 'Roll No ', 'Name', 'Tutorial I', 'Tutorial II', 'Tutorial III', 'Tutorial IV', 'Tutorial V']);
             headerRow.font = { bold: true };
+            headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
             studentsList.forEach((st, idx) => {
-                sheet.addRow([idx + 1, st.rollNo || `V-MC-${idx + 1}`, st.name, '', '', '', '', '']);
+                const row = sheet.addRow([idx + 1, deriveRollNo(st, idx), st.name, '', '', '', '', '']);
+                row.alignment = { vertical: 'middle' };
+                row.getCell(1).alignment = { horizontal: 'center' };
+                row.getCell(2).alignment = { horizontal: 'center' };
             });
         } else {
-            // ── DAILY ROLL CALL GRID (Sheet V Style) ──
+            // ── DAILY ROLL CALL GRID (Official Sheet V Style) ──
             const sheet = workbook.addWorksheet('V');
 
-            // Title Headers
+            // Set Column Widths matching official university template
+            sheet.columns = [
+                { width: 4 },   // Col A: No (စဉ်)
+                { width: 12 },  // Col B: Roll No (ခုံအမှတ်)
+                { width: 26 },  // Col C: Name (အမည်)
+                ...Array(19).fill({ width: 4 }), // Cols D-V: 19 Period/Date Columns
+                { width: 12 },  // Col W: Total Present (တက်ချိန်ပေါင်း)
+                { width: 12 },  // Col X: Total Absent (ပျက်ချိန်ပေါင်း)
+                { width: 12 }   // Col Y: Percentage (ရာခိုင်နှုန်း)
+            ];
+
+            // Title Header 1: Technological University ( Hmawbi )
             const title1 = sheet.addRow(['Technological University ( Hmawbi )']);
             sheet.mergeCells('A1:Y1');
             title1.font = { bold: true, size: 14 };
-            title1.alignment = { horizontal: 'center' };
+            title1.alignment = { horizontal: 'center', vertical: 'middle' };
 
+            // Title Header 2: Attendance Record ( 2025 - 2026 )
             const title2 = sheet.addRow(['Attendance Record ( 2025 - 2026 )']);
             sheet.mergeCells('A2:Y2');
             title2.font = { bold: true, size: 12 };
-            title2.alignment = { horizontal: 'center' };
+            title2.alignment = { horizontal: 'center', vertical: 'middle' };
 
-            // Info Subheaders
-            sheet.addRow([`V MC ( ${courseInfo.code} )`, '', '', '', '', '', `ဘာသာရပ် - ${courseInfo.name}`]);
+            // Derive Roman Numeral Class Code (e.g. V MC, II MC)
+            const cYr = (courseInfo.year || yrStr || '').toLowerCase();
+            const romanYr = cYr.includes('1') || cYr.includes('first') ? 'I' :
+                            cYr.includes('2') || cYr.includes('second') ? 'II' :
+                            cYr.includes('3') || cYr.includes('third') ? 'III' :
+                            cYr.includes('4') || cYr.includes('fourth') ? 'IV' :
+                            cYr.includes('5') || cYr.includes('fifth') ? 'V' :
+                            cYr.includes('6') || cYr.includes('sixth') ? 'VI' : 'ME';
+            const classCode = `${romanYr} MC`;
+
+            // Row 3: Class Code & Subject Name Header
+            const row3 = sheet.addRow([classCode, '', '', '', '', '', `ဘာသာရပ် - ${courseInfo.name || courseInfo.code}`]);
+            sheet.mergeCells('A3:B3');
+            row3.font = { bold: true };
+            row3.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+            row3.getCell(7).alignment = { horizontal: 'left', vertical: 'middle' };
+
+            // Row 4: Academic Year & Monthly Total Hours Header
             const totalMonthlyHours = Math.max(12, attendanceRecords.length) * hourWeight;
-            sheet.addRow([`၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ${month} လ`, '', '', '', '', '', `ယခုလတက်ချိန် - ${totalMonthlyHours} နာရီ`]);
+            const monthLabel = month && String(month).trim() !== '' ? month : 'ဇန်နဝါရီ (Jan)';
+            const row4 = sheet.addRow([`၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ${monthLabel} လ`, '', '', '', '', '', `ယခုလတက်ချိန် - ${totalMonthlyHours} နာရီ`]);
+            row4.font = { bold: true };
+            row4.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+            row4.getCell(7).alignment = { horizontal: 'left', vertical: 'middle' };
 
             // Table Header (Row 5)
             const headerValues = ['စဉ်', 'ခုံအမှတ်', 'အမည်'];
@@ -942,52 +1014,68 @@ const exportRollCallExcel = async (req, res) => {
                     const d = new Date(attendanceRecords[p - 1].date);
                     headerValues.push(`${d.getMonth() + 1}/${d.getDate()}`);
                 } else {
-                    headerValues.push(`P${p}`);
+                    headerValues.push('');
                 }
             }
             headerValues.push('တက်ချိန်ပေါင်း', 'ပျက်ချိန်ပေါင်း', 'ရာခိုင်နှုန်း');
 
             const tableHeader = sheet.addRow(headerValues);
             tableHeader.font = { bold: true };
-            tableHeader.alignment = { horizontal: 'center' };
+            tableHeader.alignment = { horizontal: 'center', vertical: 'middle' };
 
-            // Student Roster Rows
+            // Student Roster Rows (Rows 6+)
             studentsList.forEach((st, idx) => {
                 const rowNum = idx + 6; // 1-indexed row number starting at 6
-                const rowValues = [idx + 1, st.rollNo || `V-MC-${idx + 1}`, st.name];
+                const rollStr = deriveRollNo(st, idx);
+                const rowValues = [idx + 1, rollStr, st.name];
 
                 // Checkmarks for 19 period columns (D to V)
                 for (let p = 0; p < 19; p++) {
                     const rec = attendanceRecords[p];
-                    if (rec) {
-                        const studentRec = rec.records.find(r => r.studentId.toString() === String(st._id));
+                    if (rec && Array.isArray(rec.records)) {
+                        const studentRec = rec.records.find(r => String(r.studentId) === String(st._id) || String(r.studentId) === String(st.user?._id));
                         rowValues.push(studentRec && studentRec.status === 'Present' ? '✓' : '');
                     } else {
-                        // Sample checkmarks for demo if no record
-                        rowValues.push(idx % 2 === 0 || p % 3 !== 0 ? '✓' : '');
+                        rowValues.push('');
                     }
                 }
 
                 // Append empty strings for formulas
                 rowValues.push('', '', '');
                 const row = sheet.addRow(rowValues);
+                row.alignment = { vertical: 'middle' };
+                row.getCell(1).alignment = { horizontal: 'center' };
+                row.getCell(2).alignment = { horizontal: 'center' };
 
-                // Add Live Excel Formulas for Attended Hours (W), Absent Hours (X), and Percentage (Y)
-                const attendedCell = row.getCell(23); // Col W
+                // Add Live Excel Formulas matching official template:
+                // Column W: Attended Hours = COUNTIF(D6:V6, "✓") * hourWeight
+                const attendedCell = row.getCell(23);
                 attendedCell.value = { formula: `=COUNTIF(D${rowNum}:V${rowNum}, "✓") * ${hourWeight}` };
+                attendedCell.alignment = { horizontal: 'center' };
 
-                const absentCell = row.getCell(24); // Col X
+                // Column X: Absent Hours = (COUNTA(D$5:V$5) - COUNTIF(D6:V6, "✓")) * hourWeight
+                const absentCell = row.getCell(24);
                 absentCell.value = { formula: `=(COUNTA(D$5:V$5) - COUNTIF(D${rowNum}:V${rowNum}, "✓")) * ${hourWeight}` };
+                absentCell.alignment = { horizontal: 'center' };
 
-                const pctCell = row.getCell(25); // Col Y
+                // Column Y: Percentage = IF((W6+X6)>0, ROUND((W6/(W6+X6))*100, 1) & "%", "100%")
+                const pctCell = row.getCell(25);
                 pctCell.value = { formula: `=IF((W${rowNum}+X${rowNum})>0, ROUND((W${rowNum}/(W${rowNum}+X${rowNum}))*100, 1) & "%", "100%")` };
+                pctCell.alignment = { horizontal: 'center' };
             });
 
-            // Teacher Signature Footer
+            // Teacher Signature Footer matching official template merge ranges
             sheet.addRow([]);
-            sheet.addRow(['', '', 'လက်မှတ် -------------------------------------------']);
-            const sigRow = sheet.addRow(['', '', `ဘာသာရပ်ဆရာအမည် ------------------------------------------- (${courseInfo.teacher})`]);
-            sigRow.font = { italic: true };
+            const sig1RowNumber = sheet.rowCount + 1;
+            const sig1Row = sheet.addRow(['', '', 'လက်မှတ် -------------------------------------------']);
+            sheet.mergeCells(`C${sig1RowNumber}:Y${sig1RowNumber}`);
+            sig1Row.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
+
+            const sig2RowNumber = sheet.rowCount + 1;
+            const sig2Row = sheet.addRow(['', '', `ဘာသာရပ်ဆရာအမည် ------------------------------------------- (${courseInfo.teacher})`]);
+            sheet.mergeCells(`C${sig2RowNumber}:Y${sig2RowNumber}`);
+            sig2Row.font = { italic: true };
+            sig2Row.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
         }
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -998,7 +1086,7 @@ const exportRollCallExcel = async (req, res) => {
 
     } catch (error) {
         console.error('exportRollCallExcel error:', error.message);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ message: 'Failed to generate official Roll Call Excel workbook' });
     }
 };
 
