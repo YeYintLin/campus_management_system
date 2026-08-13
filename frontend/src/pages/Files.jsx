@@ -2,7 +2,7 @@ import React, { useState, useContext, useRef, useEffect, useCallback, useMemo } 
 import { Search, FileText, Download, Trash2, Upload, Folder, Filter, FileCode, FileImage, FileStack, ChevronRight, ArrowLeft, FolderPlus, X, ClipboardList, TrendingUp, Users, BarChart3 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { getNormalizedUserYear } from '../utils/userYear';
+import { getNormalizedUserYear, normalizeYear, parseYearNumber } from '../utils/userYear';
 import './Files.css';
 
 const initialFiles = [
@@ -41,18 +41,7 @@ const deriveYearTag = (code = '', defaultYear = null) => {
     return '1st Year';
 };
 
-const normalizeYear = (yr) => {
-    if (!yr) return 'All';
-    const str = String(yr).trim().toLowerCase();
-    if (str === 'all') return 'All';
-    if (str.includes('1') || str.includes('first')) return '1st Year';
-    if (str.includes('2') || str.includes('second')) return '2nd Year';
-    if (str.includes('3') || str.includes('third')) return '3rd Year';
-    if (str.includes('4') || str.includes('fourth')) return '4th Year';
-    if (str.includes('5') || str.includes('fifth')) return '5th Year';
-    if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
-    return yr;
-};
+
 
 const isCourseTaughtByTeacher = (course, user) => {
     if (!user) return false;

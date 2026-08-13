@@ -16,7 +16,7 @@ const courseSchema = new mongoose.Schema(
         year: {
             type: Number,
             min: 1,
-            max: 6,
+            max: 10,
             default: 1,
         },
         description: {

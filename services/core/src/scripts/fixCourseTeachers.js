@@ -45,11 +45,22 @@ async function fix() {
 
     // 1. Assign Daw Myat Thu Zar to her exact 6 courses
     for (const code of myatThuZarCourses) {
-        const course = await Course.findOne({ code: new RegExp(`^${code.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') });
+        const cleanPattern = code.replace(/\s+/g, '').replace('-', '-?\\s*');
+        let course = await Course.findOne({ code: new RegExp(`^${cleanPattern}$`, 'i') });
+        if (!course) {
+            const allCourses = await Course.find({});
+            course = allCourses.find(c => (c.code || '').replace(/\s+/g, '').toUpperCase() === code.replace(/\s+/g, '').toUpperCase());
+        }
+
         if (course) {
+            course.code = code; // Standardize code format
             course.teacher = teacherId;
+            const yearNum = course.year || (code.includes('4049') ? 2 : code.includes('320') ? 3 : code.includes('420') ? 4 : 5);
+            course.year = yearNum;
+            const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year' };
+            course.yearLabel = labels[yearNum] || `${yearNum}th Year`;
             await course.save();
-            console.log(`✅ Assigned ${teacher.name} to ${course.code} - ${course.name}`);
+            console.log(`✅ Assigned ${teacher.name} to ${course.code} - ${course.name} (${course.yearLabel})`);
         } else {
             console.log(`⚠️ Course ${code} not found in DB.`);
         }

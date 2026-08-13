@@ -4,6 +4,7 @@
   "description": "Core service managing users, courses, grades, exams, timetables",
   "main": "src/index.js",
   "scripts": {
+    "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "seed:users": "node seed.js",
     "seed:teachers": "node seedExcelTeachers.js",

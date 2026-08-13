@@ -2,7 +2,7 @@ import React, { useCallback, useState, useEffect, useContext, useRef } from 'rea
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
 import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Coffee, History, RotateCcw, ShieldAlert } from 'lucide-react';
-import { getNormalizedUserYear } from '../utils/userYear';
+import { getNormalizedUserYear, normalizeYear, parseYearNumber } from '../utils/userYear';
 import { exportAcademicMatrixExcel, exportDateScheduleExcel, exportExamScheduleExcel } from '../utils/excelExporter';
 import './TimeTable.css';
 
@@ -19,19 +19,6 @@ const TU_HMAWBI_PERIODS = [
 const yearNumberToLabel = (num) => {
     const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year' };
     return labels[num] || '1st Year';
-};
-
-const normalizeYear = (yr) => {
-    if (!yr) return 'All';
-    const str = String(yr).trim().toLowerCase();
-    if (str === 'all') return 'All';
-    if (str.includes('1') || str.includes('first')) return '1st Year';
-    if (str.includes('2') || str.includes('second')) return '2nd Year';
-    if (str.includes('3') || str.includes('third')) return '3rd Year';
-    if (str.includes('4') || str.includes('fourth')) return '4th Year';
-    if (str.includes('5') || str.includes('fifth')) return '5th Year';
-    if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
-    return yr;
 };
 
 const deriveYearTag = (code = '', defaultYear = null) => {
@@ -192,8 +179,8 @@ const TimeTable = () => {
 
     const years = isStudent
         ? [studentYear]
-        : isTeacher
-        ? (teacherYears.length > 0 ? teacherYears : ['5th Year'])
+        : (isTeacher && teacherYears.length > 0)
+        ? teacherYears
         : ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'];
     const semesters = ['Semester 1', 'Semester 2'];
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];

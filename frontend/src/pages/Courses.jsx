@@ -3,13 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { AuthContext } from '../context/AuthContext';
 import { X, BookOpen, FileText, CheckCircle, Calendar, Award, Download, Folder } from 'lucide-react';
-import { getNormalizedUserYear } from '../utils/userYear';
+import { getNormalizedUserYear, normalizeYear, parseYearNumber } from '../utils/userYear';
 import './Courses.css';
 
 const yearFilters = ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
 const palette = ['#6366f1', '#10b981', '#f97316', '#ec4899', '#0ea5e9'];
 
 const deriveYearTag = (code = '', defaultYear = null) => {
+    if (defaultYear) {
+        return normalizeYear(defaultYear);
+    }
     const clean = String(code).trim().toUpperCase();
     const match = clean.match(/[-_\s]?(\d{1,5})/);
     if (match) {
@@ -22,31 +25,12 @@ const deriveYearTag = (code = '', defaultYear = null) => {
         if (firstDigit === '2') return '2nd Year';
         if (firstDigit === '1') return '1st Year';
     }
-    
-    if (defaultYear) {
-        if (typeof defaultYear === 'number') return yearNumberToLabel(defaultYear);
-        if (typeof defaultYear === 'string' && defaultYear.includes('Year')) return defaultYear;
-    }
-    
-    return '4th Year';
+    return '1st Year';
 };
 
 const yearNumberToLabel = (num) => {
     const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year' };
     return labels[num] || '1st Year';
-};
-
-const normalizeYear = (yr) => {
-    if (!yr) return 'All';
-    const str = String(yr).trim().toLowerCase();
-    if (str === 'all') return 'All';
-    if (str.includes('1') || str.includes('first')) return '1st Year';
-    if (str.includes('2') || str.includes('second')) return '2nd Year';
-    if (str.includes('3') || str.includes('third')) return '3rd Year';
-    if (str.includes('4') || str.includes('fourth')) return '4th Year';
-    if (str.includes('5') || str.includes('fifth')) return '5th Year';
-    if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
-    return yr;
 };
 
 const isCourseTaughtByTeacher = (course, user) => {
@@ -125,7 +109,7 @@ const Courses = () => {
                 if (yLabel && yLabel !== 'All') set.add(yLabel);
             }
         });
-        const order = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+        const order = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'];
         return order.filter(y => set.has(y));
     }, [isTeacher, courses, user]);
 
@@ -133,7 +117,7 @@ const Courses = () => {
         ? [studentYear]
         : isTeacher
         ? (teacherYears.length > 0 ? ['All', ...teacherYears] : ['All'])
-        : ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+        : ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'];
 
     const canManageCourse = (course) => {
         if (isAdmin) return true;
@@ -234,8 +218,8 @@ TU Hmawbi Smart Campus Management System
             // Extract timetable legend items by code (timetable legend is authoritative)
             const timetableMap = new Map();
             timetableData.forEach(sheet => {
-                const sheetYear = sheet.yearLabel || (sheet.yearNumber ? yearNumberToLabel(sheet.yearNumber) : '4th Year');
-                const sheetYearNum = sheet.yearNumber || 4;
+                const sheetYearNum = sheet.yearNumber || (sheet.yearLabel ? parseYearNumber(sheet.yearLabel) : 1);
+                const sheetYear = sheet.yearLabel ? normalizeYear(sheet.yearLabel) : normalizeYear(sheetYearNum);
 
                 if (Array.isArray(sheet.legend)) {
                     sheet.legend.forEach(item => {
@@ -262,23 +246,25 @@ TU Hmawbi Smart Campus Management System
                 if (!cleanCode) return;
 
                 const ttInfo = timetableMap.get(cleanCode);
+                const effectiveYearNum = dbc.year || (ttInfo ? ttInfo.year : parseYearNumber(dbc.yearLabel));
+                const effectiveYearLabel = normalizeYear(dbc.yearLabel || effectiveYearNum);
+
                 let newCourseObj = null;
 
                 if (ttInfo) {
                     newCourseObj = {
                         ...dbc,
-                        name: ttInfo.name || dbc.name,
-                        year: ttInfo.year,
-                        yearLabel: ttInfo.yearLabel,
-                        teacher: ttInfo.teacherName ? (dbc.teacher || { name: ttInfo.teacherName }) : dbc.teacher,
+                        name: dbc.name || ttInfo.name,
+                        year: effectiveYearNum,
+                        yearLabel: effectiveYearLabel,
+                        teacher: dbc.teacher || (ttInfo.teacherName ? { name: ttInfo.teacherName } : null),
                         isFromTimetable: true
                     };
                 } else if (dbc.teacher) {
-                    // Only keep dbCourse if it has an explicit teacher assigned and valid code
-                    const yLabel = dbc.yearLabel ? normalizeYear(dbc.yearLabel) : deriveYearTag(dbc.code, dbc.year);
                     newCourseObj = {
                         ...dbc,
-                        yearLabel: yLabel
+                        year: effectiveYearNum,
+                        yearLabel: effectiveYearLabel
                     };
                 }
 

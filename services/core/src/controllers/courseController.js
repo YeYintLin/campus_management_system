@@ -1,3 +1,5 @@
+const Course = require('../models/Course');
+
 const deriveYearFromCourseCode = (code = '', fallbackYear = 4) => {
     const clean = String(code).trim().toUpperCase();
     const match = clean.match(/[-_\s]?(\d{1,5})/);
@@ -12,6 +14,7 @@ const syncCourseCollectionWithTimetable = async () => {
     try {
         const Semester = require('../models/Semester');
         const User = require('../models/User');
+        const Course = require('../models/Course');
 
         const semesters = await Semester.find({}).lean().exec();
         const allTeachers = await User.find({ role: { $regex: /teacher/i } }).lean().exec();
@@ -106,8 +109,9 @@ const syncCourseCollectionWithTimetable = async () => {
                 existing = await Course.findOne({ code: new RegExp(`^${flexPattern}$`, 'i') });
             }
 
-            const derivedY = deriveYearFromCourseCode(info.code, info.year);
-            const derivedLabel = `${derivedY}th Year`.replace('1th', '1st').replace('2th', '2nd').replace('3th', '3rd');
+            const derivedY = info.year || deriveYearFromCourseCode(info.code, 4);
+            const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year', 7: 'ME Program' };
+            const derivedLabel = info.yearLabel || labels[derivedY] || `${derivedY}th Year`;
 
             if (existing) {
                 existing.name = info.name || existing.name;
