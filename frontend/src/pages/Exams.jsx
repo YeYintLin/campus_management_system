@@ -9,6 +9,7 @@ import './Exams.css';
 const Exams = () => {
     const { user } = useContext(AuthContext);
     const roleStr = (user?.role || '').toLowerCase().trim();
+    const isAdmin = roleStr === 'admin' || roleStr === 'superadmin' || roleStr === 'academicadmin';
     const canManageExams = roleStr === 'admin' || roleStr === 'teacher' || roleStr === 'superadmin' || roleStr === 'academicadmin';
     const isStudent = roleStr === 'student';
     const studentYear = getNormalizedUserYear(user);
@@ -201,6 +202,10 @@ const Exams = () => {
     };
 
     const handleDelete = async (id) => {
+        if (!isAdmin) {
+            alert('Only administrators have permission to delete exams.');
+            return;
+        }
         if (!window.confirm('Are you sure you want to delete this exam?')) return;
 
         // Remove card instantly from UI state
@@ -389,14 +394,14 @@ const Exams = () => {
                                     </div>
                                     <div className="exam-actions">
                                         {canManageExams && (
-                                            <>
-                                                <button className="icon-btn" onClick={() => handleOpenModal(exam)} title="Edit">
-                                                    <Edit2 size={16} />
-                                                </button>
-                                                <button className="icon-btn delete" onClick={() => handleDelete(exam._id)} title="Delete">
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </>
+                                            <button className="icon-btn" onClick={() => handleOpenModal(exam)} title="Edit">
+                                                <Edit2 size={16} />
+                                            </button>
+                                        )}
+                                        {isAdmin && (
+                                            <button className="icon-btn delete" onClick={() => handleDelete(exam._id)} title="Delete">
+                                                <Trash2 size={16} />
+                                            </button>
                                         )}
                                     </div>
                                 </div>
