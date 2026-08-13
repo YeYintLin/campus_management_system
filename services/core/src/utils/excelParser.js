@@ -372,7 +372,11 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 const startMin = parseTimeToMinutes(timeStr.split('to')[0] || timeStr.split('-')[0] || '08:30');
                 const endMin = parseTimeToMinutes(timeStr.split('to')[1] || timeStr.split('-')[1] || '11:30') || (startMin + 180);
 
+                const derivedYearNum = (cleanCodeStr.match(/(\d)/) || [])[1] || '4';
+                const yearLabel = `${derivedYearNum}th Year`.replace('1th', '1st').replace('2th', '2nd').replace('3th', '3rd');
+
                 allSessions.push({
+                    year: yearLabel,
                     sessionType: targetCategory === 'Exam' ? 'Exam' : targetCategory === 'Tutorial' ? 'Tutorial' : 'Practical',
                     examType: targetCategory === 'Exam' ? 'Mid-Term' : 'N/A',
                     courseCode: cleanCodeStr,

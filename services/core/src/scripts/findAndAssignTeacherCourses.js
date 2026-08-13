@@ -61,9 +61,9 @@ async function run() {
             }
         });
 
-        // Add 5th year Mechatronics defaults if this is Daw Myat Thu Zar
+        // Add exact subjects for Daw Myat Thu Zar (excluding McE-52018 & McE-51001 where she is only Family Teacher)
         if (cleanTeacherName.includes('myat thu zar')) {
-            ['McE-51039', 'McE-52039', 'McE-52018', 'McE-51001', 'McE-42026', 'McE-32032', 'McE-31022'].forEach(c => assignedCodes.add(c.toUpperCase()));
+            ['McE-4049', 'McE-32032', 'McE-32022', 'McE-42026', 'McE-51039', 'McE-52039'].forEach(c => assignedCodes.add(c.toUpperCase()));
         }
 
         console.log(`   Total distinct course codes assigned to ${teacher.name}: ${assignedCodes.size}`);

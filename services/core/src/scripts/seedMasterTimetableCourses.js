@@ -14,7 +14,7 @@ if (!MONGODB_URI) {
 const Course = require('../models/Course');
 const User = require('../models/User');
 
-// Exact 4-year subject list for Daw Myat Thu Zar (excluding McE-52018 & McE-51001)
+// Exact 6-subject list for Daw Myat Thu Zar from master Timetable Excel
 const DAW_MYAT_THU_ZAR_COURSES = [
     // 2nd Year
     { code: 'McE-4049', name: 'Programmable Logic Controller', year: 2, yearLabel: '2nd Year', description: 'PLC Hardware, Ladder Logic Programming, and Relay Logic.' },

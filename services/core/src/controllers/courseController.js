@@ -1,4 +1,12 @@
-const Course = require('../models/Course');
+const deriveYearFromCourseCode = (code = '', fallbackYear = 4) => {
+    const clean = String(code).trim().toUpperCase();
+    const match = clean.match(/[-_\s]?(\d{1,5})/);
+    if (match) {
+        const digitNum = parseInt(match[1][0], 10);
+        if (digitNum >= 1 && digitNum <= 6) return digitNum;
+    }
+    return typeof fallbackYear === 'number' ? fallbackYear : 4;
+};
 
 const syncCourseCollectionWithTimetable = async () => {
     try {
@@ -6,8 +14,6 @@ const syncCourseCollectionWithTimetable = async () => {
         const User = require('../models/User');
 
         const semesters = await Semester.find({}).lean().exec();
-        if (!semesters || semesters.length === 0) return;
-
         const allTeachers = await User.find({ role: { $regex: /teacher/i } }).lean().exec();
         const stripHonorifics = (name = '') => name.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim().toLowerCase();
 
@@ -23,49 +29,44 @@ const syncCourseCollectionWithTimetable = async () => {
 
         // Build a map of code -> { name, yearNum, yearLabel, teacherId } from uploaded timetable legends
         const legendMap = new Map();
-        for (const sem of semesters) {
-            const yearNum = sem.yearNumber || 4;
-            const yearLabel = sem.yearLabel || `${yearNum}th Year`;
+        if (semesters && semesters.length > 0) {
+            for (const sem of semesters) {
+                const yearNum = sem.yearNumber || 4;
+                const yearLabel = sem.yearLabel || `${yearNum}th Year`;
 
-            if (Array.isArray(sem.legend)) {
-                for (const item of sem.legend) {
-                    if (item && item.code) {
-                        // Extract just the course code (e.g., "McE-51021") from potentially garbled data
-                        let rawCode = item.code.trim();
-                        const codeMatch = rawCode.match(/^[A-Za-z]{1,5}-?\s*\d{3,6}/);
-                        if (codeMatch) {
-                            rawCode = codeMatch[0].replace(/\s+/g, '');
+                if (Array.isArray(sem.legend)) {
+                    for (const item of sem.legend) {
+                        if (item && item.code) {
+                            let rawCode = item.code.trim();
+                            const codeMatch = rawCode.match(/^[A-Za-z]{1,5}-?\s*\d{3,6}/);
+                            if (codeMatch) {
+                                rawCode = codeMatch[0].replace(/\s+/g, '');
+                            }
+                            if (rawCode.length > 20) continue;
+
+                            const codeStr = rawCode.toUpperCase();
+                            let subjectName = item.subject ? item.subject.trim() : rawCode;
+                            const teacherInSubject = subjectName.match(/\s{2,}(Daw |U |Dr\.|Dr |Prof\.?|Sayar ).+$/i);
+                            if (teacherInSubject) {
+                                subjectName = subjectName.substring(0, teacherInSubject.index).trim();
+                            }
+
+                            let teacherName = item.teacher ? item.teacher.trim() : '';
+                            const teacherMatch = teacherName.match(/(Daw |U |Dr\.|Dr |Prof\.?|Sayar )(.+)$/i);
+                            if (teacherMatch) {
+                                teacherName = teacherMatch[0].trim();
+                            }
+
+                            const teacherObj = findTeacherByName(teacherName || item.teacher);
+
+                            legendMap.set(codeStr, {
+                                code: rawCode,
+                                name: subjectName || rawCode,
+                                year: yearNum,
+                                yearLabel: yearLabel,
+                                teacherId: teacherObj ? teacherObj._id : null
+                            });
                         }
-                        // Skip obviously garbled codes (real codes are short, like "McE-51021")
-                        if (rawCode.length > 20) continue;
-
-                        const codeStr = rawCode.toUpperCase();
-
-                        // Clean subject: strip teacher name if appended
-                        let subjectName = item.subject ? item.subject.trim() : rawCode;
-                        // Remove teacher name patterns from end of subject (e.g., "Subject Name    Daw Teacher Name")
-                        const teacherInSubject = subjectName.match(/\s{2,}(Daw |U |Dr\.|Dr |Prof\.?|Sayar ).+$/i);
-                        if (teacherInSubject) {
-                            subjectName = subjectName.substring(0, teacherInSubject.index).trim();
-                        }
-
-                        // Clean teacher: extract just the teacher name
-                        let teacherName = item.teacher ? item.teacher.trim() : '';
-                        // Strip "(n)CODE  Subject  " prefix from teacher field if present
-                        const teacherMatch = teacherName.match(/(Daw |U |Dr\.|Dr |Prof\.?|Sayar )(.+)$/i);
-                        if (teacherMatch) {
-                            teacherName = teacherMatch[0].trim();
-                        }
-
-                        const teacherObj = findTeacherByName(teacherName || item.teacher);
-
-                        legendMap.set(codeStr, {
-                            code: rawCode,
-                            name: subjectName || rawCode,
-                            year: yearNum,
-                            yearLabel: yearLabel,
-                            teacherId: teacherObj ? teacherObj._id : null
-                        });
                     }
                 }
             }
@@ -79,11 +80,13 @@ const syncCourseCollectionWithTimetable = async () => {
                 const cleanCode = sess.courseCode.toUpperCase().replace(/\s+/g, '');
                 const teacherObj = findTeacherByName(sess.teacher);
                 if (teacherObj) {
+                    const derivedY = deriveYearFromCourseCode(sess.courseCode, 4);
+                    const derivedLabel = `${derivedY}th Year`.replace('1th', '1st').replace('2th', '2nd').replace('3th', '3rd');
                     const existingEntry = legendMap.get(cleanCode) || {
                         code: sess.courseCode,
                         name: sess.courseName || sess.title || sess.courseCode,
-                        year: parseInt(sess.year) || 4,
-                        yearLabel: sess.year || '4th Year'
+                        year: derivedY,
+                        yearLabel: derivedLabel
                     };
                     existingEntry.teacherId = teacherObj._id;
                     legendMap.set(cleanCode, existingEntry);
@@ -93,46 +96,44 @@ const syncCourseCollectionWithTimetable = async () => {
 
         // Apply legendMap to Course collection: update year, name, AND teacher strictly
         for (const [cleanCode, info] of legendMap.entries()) {
-            // Normalize code by stripping all whitespace for matching
             const codeNoSpaces = info.code.replace(/\s+/g, '');
-            // Try exact match first, then match ignoring spaces
             let existing = await Course.findOne({ code: new RegExp(`^${info.code.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') });
             if (!existing) {
-                // Try matching with spaces stripped (e.g., "McE- 51039" matches "McE-51039")
                 existing = await Course.findOne({ code: new RegExp(`^${codeNoSpaces.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&')}$`, 'i') });
             }
             if (!existing) {
-                // Try matching by inserting optional whitespace after dashes
                 const flexPattern = codeNoSpaces.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&').replace(/-/g, '-\\s*');
                 existing = await Course.findOne({ code: new RegExp(`^${flexPattern}$`, 'i') });
             }
 
+            const derivedY = deriveYearFromCourseCode(info.code, info.year);
+            const derivedLabel = `${derivedY}th Year`.replace('1th', '1st').replace('2th', '2nd').replace('3th', '3rd');
+
             if (existing) {
-                existing.name = info.name;
-                existing.year = info.year;
-                existing.yearLabel = info.yearLabel;
-                existing.teacher = info.teacherId;
+                existing.name = info.name || existing.name;
+                existing.year = derivedY;
+                existing.yearLabel = derivedLabel;
+                if (info.teacherId) existing.teacher = info.teacherId;
                 await existing.save();
             } else {
                 try {
                     await Course.create({
                         code: codeNoSpaces.charAt(0).toUpperCase() === codeNoSpaces.charAt(0) ? info.code.replace(/\s+/g, '') : info.code.trim(),
                         name: info.name,
-                        year: info.year,
-                        yearLabel: info.yearLabel,
-                        description: `Official timetable subject offering for ${info.yearLabel}`,
+                        year: derivedY,
+                        yearLabel: derivedLabel,
+                        description: `Official timetable subject offering for ${derivedLabel}`,
                         teacher: info.teacherId,
                         students: []
                     });
                 } catch (createErr) {
                     if (createErr.code === 11000) {
-                        // Duplicate key - try updating instead
                         const dup = await Course.findOne({ code: new RegExp(codeNoSpaces.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&'), 'i') });
                         if (dup) {
                             dup.name = info.name;
-                            dup.year = info.year;
-                            dup.yearLabel = info.yearLabel;
-                            dup.teacher = info.teacherId;
+                            dup.year = derivedY;
+                            dup.yearLabel = derivedLabel;
+                            if (info.teacherId) dup.teacher = info.teacherId;
                             await dup.save();
                         }
                     }
