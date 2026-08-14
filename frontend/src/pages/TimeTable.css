@@ -461,7 +461,6 @@
    ========================================================= */
 
 .practical-schedule-wrapper {
-    padding: 1.25rem;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -469,37 +468,72 @@
 
 .practical-toolbar {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
     gap: 1rem;
-    padding: 1rem 1.25rem;
+    padding: 1.25rem;
     background: var(--surface-color);
     border: 1px solid var(--surface-border);
-    border-radius: 14px;
-    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
+}
+
+.practical-toolbar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.practical-filter-section {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+}
+
+.practical-pill-box {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--control-bg);
+    padding: 0.35rem 0.65rem;
+    border-radius: 12px;
+    border: 1px solid var(--surface-border);
+}
+
+.practical-pill-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-right: 0.2rem;
 }
 
 .practical-batch-pills {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.4rem;
 }
 
 .practical-search-box {
     position: relative;
     display: flex;
     align-items: center;
-    min-width: 240px;
+    min-width: 260px;
+    flex: 1;
+    max-width: 380px;
 }
 
 .practical-search-input {
     width: 100%;
-    padding: 0.45rem 0.85rem 0.45rem 2.2rem;
+    padding: 0.55rem 0.85rem 0.55rem 2.3rem;
     background: var(--control-bg);
     border: 1px solid var(--surface-border);
-    border-radius: 8px;
+    border-radius: 10px;
     color: var(--text-primary);
     font-size: 0.85rem;
     transition: all 0.2s ease;
@@ -520,22 +554,22 @@
 .practical-toggle-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.75rem;
+    gap: 0.45rem;
+    padding: 0.5rem 0.85rem;
     background: var(--control-bg);
     border: 1px solid var(--surface-border);
-    border-radius: 8px;
+    border-radius: 10px;
     color: var(--text-muted);
-    font-size: 0.8rem;
-    font-weight: 500;
+    font-size: 0.82rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .practical-toggle-btn.active, .practical-toggle-btn:hover {
     background: rgba(168, 85, 247, 0.15);
-    color: #a855f7;
-    border-color: rgba(168, 85, 247, 0.35);
+    color: #c084fc;
+    border-color: rgba(168, 85, 247, 0.4);
 }
 
 /* Date Group Card Section */
@@ -545,22 +579,22 @@
     border-radius: 16px;
     overflow: hidden;
     margin-bottom: 1.25rem;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
 }
 
 .date-group-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.9rem 1.25rem;
-    background: linear-gradient(90deg, rgba(168, 85, 247, 0.12), rgba(99, 102, 241, 0.04));
+    padding: 0.85rem 1.25rem;
+    background: linear-gradient(90deg, rgba(168, 85, 247, 0.15), rgba(99, 102, 241, 0.05));
     border-bottom: 1px solid var(--surface-border);
 }
 
 .date-group-title {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.65rem;
     font-size: 0.95rem;
     font-weight: 700;
     color: var(--text-primary);
@@ -568,13 +602,66 @@
 
 .date-group-badge {
     font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.2rem 0.6rem;
+    font-weight: 700;
+    padding: 0.2rem 0.65rem;
     border-radius: 20px;
-    background: rgba(168, 85, 247, 0.15);
-    color: #a855f7;
-    border: 1px solid rgba(168, 85, 247, 0.25);
+    background: rgba(168, 85, 247, 0.18);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.3);
 }
+
+/* Pristine Unified Table Grid for Session Schedules */
+.session-schedule-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+.session-schedule-table th,
+.session-schedule-table td {
+    padding: 0.8rem 1rem;
+    vertical-align: middle;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.session-schedule-table th {
+    background: rgba(10, 15, 30, 0.55);
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    user-select: none;
+    border-top: none;
+}
+
+.session-schedule-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.session-schedule-table tbody tr:hover {
+    background: rgba(168, 85, 247, 0.05);
+}
+
+.session-schedule-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Explicit Rigid Column Widths for Cross-Card Alignment */
+.session-col-year { width: 95px !important; text-align: center !important; }
+.session-col-code { width: 130px !important; }
+.session-col-topic { width: auto !important; min-width: 220px !important; white-space: normal !important; }
+.session-col-batch { width: 95px !important; text-align: center !important; }
+.session-col-date { width: 130px !important; }
+.session-col-time { width: 155px !important; }
+.session-col-room { width: 160px !important; }
+.session-col-teacher { width: 175px !important; }
+.session-col-status { width: 105px !important; text-align: center !important; }
 
 /* Status Badges */
 .status-pill {

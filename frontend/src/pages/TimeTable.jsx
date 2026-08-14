@@ -470,52 +470,41 @@ const PracticalScheduleView = ({
         <div className="practical-schedule-wrapper">
             {/* Filter & Search Toolbar */}
             <div className="practical-toolbar">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    {availableSubjects.length > 2 && (
-                        <div className="practical-batch-pills">
-                            <span style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', marginRight: '0.25rem' }}>
-                                Subject:
-                            </span>
-                            {availableSubjects.map(subj => (
-                                <button
-                                    key={subj}
-                                    className={`year-tag ${selectedSubject === subj ? 'active' : ''}`}
-                                    onClick={() => setSelectedSubject(subj)}
-                                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.78rem' }}
-                                >
-                                    {subj === 'All' ? 'All Subjects' : subj}
-                                </button>
-                            ))}
+                <div className="practical-toolbar-row">
+                    <div className="practical-filter-section">
+                        {availableSubjects.length > 2 && (
+                            <div className="practical-pill-box">
+                                <span className="practical-pill-label">Subject:</span>
+                                <div className="practical-batch-pills">
+                                    {availableSubjects.map(subj => (
+                                        <button
+                                            key={subj}
+                                            className={`year-tag ${selectedSubject === subj ? 'active' : ''}`}
+                                            onClick={() => setSelectedSubject(subj)}
+                                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.78rem' }}
+                                        >
+                                            {subj === 'All' ? 'All Subjects' : subj}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="practical-pill-box">
+                            <span className="practical-pill-label">Batch:</span>
+                            <div className="practical-batch-pills">
+                                {availableBatches.map(grp => (
+                                    <button
+                                        key={grp}
+                                        className={`year-tag ${selectedGroup === grp ? 'active' : ''}`}
+                                        onClick={() => setSelectedGroup(grp)}
+                                        style={{ padding: '0.25rem 0.75rem', fontSize: '0.78rem' }}
+                                    >
+                                        {grp === 'All' ? 'All Batches' : grp}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    )}
-
-                    <div className="practical-batch-pills">
-                        <span style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', marginRight: '0.25rem' }}>
-                            Batch:
-                        </span>
-                        {availableBatches.map(grp => (
-                            <button
-                                key={grp}
-                                className={`year-tag ${selectedGroup === grp ? 'active' : ''}`}
-                                onClick={() => setSelectedGroup(grp)}
-                                style={{ padding: '0.25rem 0.75rem', fontSize: '0.78rem' }}
-                            >
-                                {grp === 'All' ? 'All Batches' : grp}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <div className="practical-search-box">
-                        <Search size={14} style={{ position: 'absolute', left: '0.75rem', color: 'var(--text-muted)' }} />
-                        <input
-                            type="text"
-                            placeholder="Search topic, code, teacher..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="practical-search-input"
-                        />
                     </div>
 
                     <div className="practical-view-controls">
@@ -524,7 +513,7 @@ const PracticalScheduleView = ({
                             onClick={() => setViewMode('grouped')}
                             title="Group by Date"
                         >
-                            <Calendar size={13} />
+                            <Calendar size={14} />
                             <span>Group by Date</span>
                         </button>
                         <button
@@ -532,7 +521,7 @@ const PracticalScheduleView = ({
                             onClick={() => setViewMode('flat')}
                             title="Flat Table View"
                         >
-                            <Layers size={13} />
+                            <Layers size={14} />
                             <span>Table View</span>
                         </button>
                         <button
@@ -540,10 +529,28 @@ const PracticalScheduleView = ({
                             onClick={() => setSortAsc(!sortAsc)}
                             title={sortAsc ? 'Sorting: Earliest First' : 'Sorting: Latest First'}
                         >
-                            <ArrowUpDown size={13} />
+                            <ArrowUpDown size={14} />
                             <span>{sortAsc ? 'Earliest' : 'Latest'}</span>
                         </button>
                     </div>
+                </div>
+
+                <div className="practical-toolbar-row">
+                    <div className="practical-search-box">
+                        <Search size={15} style={{ position: 'absolute', left: '0.85rem', color: 'var(--text-muted)' }} />
+                        <input
+                            type="text"
+                            placeholder="Search topic, subject code, instructor, or room..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="practical-search-input"
+                        />
+                    </div>
+                    {approvalNote && (
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <span style={{ color: '#22c55e', fontWeight: 600 }}>● Verified:</span> {approvalNote}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -562,57 +569,57 @@ const PracticalScheduleView = ({
                                 </span>
                             </div>
                             <div className="table-container">
-                                <table className="attendance-table" style={{ width: '100%', margin: 0 }}>
+                                <table className="session-schedule-table">
                                     <thead>
                                         <tr>
-                                            <th>Year</th>
-                                            <th>Course Code</th>
-                                            <th>{selectedCategory === 'Tutorial' ? 'Tutorial / Problem Topic' : 'Practical / Experiment Topic'}</th>
-                                            <th>Batch</th>
-                                            <th>Time</th>
-                                            <th>{selectedCategory === 'Tutorial' ? 'Classroom / Location' : 'Lab Room / Location'}</th>
-                                            <th>Instructor</th>
-                                            <th>Status</th>
+                                            <th className="session-col-year">Year</th>
+                                            <th className="session-col-code">Course Code</th>
+                                            <th className="session-col-topic">{selectedCategory === 'Tutorial' ? 'Tutorial / Problem Topic' : 'Practical / Experiment Topic'}</th>
+                                            <th className="session-col-batch">Batch</th>
+                                            <th className="session-col-time">Time</th>
+                                            <th className="session-col-room">{selectedCategory === 'Tutorial' ? 'Classroom / Location' : 'Lab Room / Location'}</th>
+                                            <th className="session-col-teacher">Instructor</th>
+                                            <th className="session-col-status">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {grp.items.map((s, idx) => (
                                             <tr key={s._id || idx}>
-                                                <td>
+                                                <td className="session-col-year">
                                                     <span className="year-tag active" style={{ padding: '0.15rem 0.5rem', fontSize: '0.72rem' }}>
                                                         {s.year}
                                                     </span>
                                                 </td>
-                                                <td>
+                                                <td className="session-col-code">
                                                     <strong style={{ color: '#c084fc', fontFamily: 'monospace', fontSize: '0.9rem' }}>
                                                         {s.courseCode}
                                                     </strong>
                                                 </td>
-                                                <td>
-                                                    <div style={{ fontWeight: '600', color: '#fff', fontSize: '0.88rem' }}>{s.title}</div>
+                                                <td className="session-col-topic">
+                                                    <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.88rem' }}>{s.title}</div>
                                                 </td>
-                                                <td>
+                                                <td className="session-col-batch">
                                                     <span style={{ fontSize: '0.78rem', padding: '0.2rem 0.55rem', borderRadius: '6px', background: 'rgba(168,85,247,0.12)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.25)', fontWeight: '600' }}>
                                                         {s.groupTag}
                                                     </span>
                                                 </td>
-                                                <td style={{ fontSize: '0.82rem', color: '#e0e7ff', fontWeight: '500' }}>
-                                                    <Clock size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle', color: '#818cf8' }} />
+                                                <td className="session-col-time" style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: '500' }}>
+                                                    <Clock size={12} style={{ display: 'inline', marginRight: '0.35rem', verticalAlign: 'middle', color: '#818cf8' }} />
                                                     {s.startTime} - {s.endTime}
                                                 </td>
-                                                <td>
+                                                <td className="session-col-room">
                                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#818cf8', background: 'rgba(99,102,241,0.1)', padding: '0.2rem 0.55rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '600' }}>
                                                         <MapPin size={11} />
                                                         {s.place}
                                                     </span>
                                                 </td>
-                                                <td style={{ color: '#cbd5e1', fontSize: '0.82rem', fontWeight: '500' }}>
+                                                <td className="session-col-teacher" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: '500' }}>
                                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                                                         <User size={12} style={{ color: '#94a3b8' }} />
                                                         {s.teacher}
                                                     </span>
                                                 </td>
-                                                <td>
+                                                <td className="session-col-status">
                                                     <span className={`status-pill ${s.status === 'Approved' ? 'status-pill-approved' : s.status === 'Completed' ? 'status-pill-completed' : 'status-pill-scheduled'}`}>
                                                         <CheckCircle2 size={11} />
                                                         {s.status}
@@ -629,61 +636,61 @@ const PracticalScheduleView = ({
             ) : (
                 /* Flat Table View */
                 <div className="table-container">
-                    <table className="attendance-table" style={{ width: '100%' }}>
+                    <table className="session-schedule-table" style={{ width: '100%' }}>
                         <thead>
                             <tr>
-                                <th>Year</th>
-                                <th>Course Code</th>
-                                <th>{selectedCategory === 'Tutorial' ? 'Tutorial / Problem Topic' : 'Practical / Experiment Topic'}</th>
-                                <th>Batch</th>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>{selectedCategory === 'Tutorial' ? 'Classroom / Location' : 'Lab Room / Location'}</th>
-                                <th>Instructor</th>
-                                <th>Status</th>
+                                <th className="session-col-year">Year</th>
+                                <th className="session-col-code">Course Code</th>
+                                <th className="session-col-topic">{selectedCategory === 'Tutorial' ? 'Tutorial / Problem Topic' : 'Practical / Experiment Topic'}</th>
+                                <th className="session-col-batch">Batch</th>
+                                <th className="session-col-date">Date</th>
+                                <th className="session-col-time">Time</th>
+                                <th className="session-col-room">{selectedCategory === 'Tutorial' ? 'Classroom / Location' : 'Lab Room / Location'}</th>
+                                <th className="session-col-teacher">Instructor</th>
+                                <th className="session-col-status">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filteredSessions.map((s, idx) => (
                                 <tr key={s._id || idx}>
-                                    <td>
+                                    <td className="session-col-year">
                                         <span className="year-tag active" style={{ padding: '0.15rem 0.5rem', fontSize: '0.72rem' }}>
                                             {s.year}
                                         </span>
                                     </td>
-                                    <td>
+                                    <td className="session-col-code">
                                         <strong style={{ color: '#c084fc', fontFamily: 'monospace', fontSize: '0.9rem' }}>
                                             {s.courseCode}
                                         </strong>
                                     </td>
-                                    <td>
-                                        <div style={{ fontWeight: '600', color: '#fff', fontSize: '0.88rem' }}>{s.title}</div>
+                                    <td className="session-col-topic">
+                                        <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.88rem' }}>{s.title}</div>
                                     </td>
-                                    <td>
+                                    <td className="session-col-batch">
                                         <span style={{ fontSize: '0.78rem', padding: '0.2rem 0.55rem', borderRadius: '6px', background: 'rgba(168,85,247,0.12)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.25)', fontWeight: '600' }}>
                                             {s.groupTag}
                                         </span>
                                     </td>
-                                    <td style={{ color: '#4ade80', fontWeight: '600', fontSize: '0.85rem' }}>
+                                    <td className="session-col-date" style={{ color: '#4ade80', fontWeight: '600', fontSize: '0.85rem' }}>
                                         {s.date ? new Date(s.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Scheduled'}
                                     </td>
-                                    <td style={{ fontSize: '0.82rem', color: '#e0e7ff', fontWeight: '500' }}>
-                                        <Clock size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle', color: '#818cf8' }} />
+                                    <td className="session-col-time" style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: '500' }}>
+                                        <Clock size={12} style={{ display: 'inline', marginRight: '0.35rem', verticalAlign: 'middle', color: '#818cf8' }} />
                                         {s.startTime} - {s.endTime}
                                     </td>
-                                    <td>
+                                    <td className="session-col-room">
                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#818cf8', background: 'rgba(99,102,241,0.1)', padding: '0.2rem 0.55rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '600' }}>
                                             <MapPin size={11} />
                                             {s.place}
                                         </span>
                                     </td>
-                                    <td style={{ color: '#cbd5e1', fontSize: '0.82rem', fontWeight: '500' }}>
+                                    <td className="session-col-teacher" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: '500' }}>
                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                                             <User size={12} style={{ color: '#94a3b8' }} />
                                             {s.teacher}
                                         </span>
                                     </td>
-                                    <td>
+                                    <td className="session-col-status">
                                         <span className={`status-pill ${s.status === 'Approved' ? 'status-pill-approved' : s.status === 'Completed' ? 'status-pill-completed' : 'status-pill-scheduled'}`}>
                                             <CheckCircle2 size={11} />
                                             {s.status}
