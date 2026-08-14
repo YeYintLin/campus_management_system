@@ -189,57 +189,56 @@ const batchImportSessions = async (req, res) => {
                 count: parsedMatrix.length
             });
         } else {
-            const validSessions = (parsedSessions || []).filter(s => s && s.courseCode).map(s => ({
-                ...s,
-                date: (s.date && !isNaN(new Date(s.date).getTime())) ? s.date : new Date().toISOString()
-            }));
+            const validSessions = (parsedSessions || []).filter(s => s && s.courseCode).map(s => {
+                const sYear = normalizeYear(s.year || year);
+                const sSem = normalizeSemester(s.semester || semester);
+                const sMajor = s.major || major || 'MC';
+                const sDate = (s.date && !isNaN(new Date(s.date).getTime())) ? new Date(s.date) : new Date();
+                const startM = Number(s.startTimeMinutes) || parseTimeToMinutes(s.startTime, 540);
+                const endM = Number(s.endTimeMinutes) || parseTimeToMinutes(s.endTime, startM + 50);
+
+                return {
+                    year: sYear,
+                    semester: sSem,
+                    major: sMajor,
+                    sessionType: ['Practical', 'Tutorial', 'Exam'].includes(s.sessionType) ? s.sessionType : (['Practical', 'Tutorial', 'Exam'].includes(sessionType) ? sessionType : 'Practical'),
+                    examType: s.examType || 'N/A',
+                    courseCode: String(s.courseCode).trim().toUpperCase(),
+                    courseName: s.courseName || s.title || s.courseCode,
+                    title: s.title || s.courseName || s.courseCode,
+                    teacher: s.teacher || 'Faculty Member',
+                    groupTag: s.groupTag || 'All',
+                    date: sDate,
+                    startTime: s.startTime || '09:00 AM',
+                    endTime: s.endTime || '09:50 AM',
+                    startTimeMinutes: startM,
+                    endTimeMinutes: endM,
+                    place: s.place || '3/212-A',
+                    status: 'Draft'
+                };
+            });
+
             if (validSessions.length === 0) {
                 return res.status(400).json({ message: `No valid ${sessionType} sessions found in uploaded Excel file.` });
             }
 
-            const bulkOps = validSessions.map(session => {
-                const normType = ['Practical', 'Tutorial', 'Exam'].includes(session.sessionType) 
-                    ? session.sessionType 
-                    : (['Practical', 'Tutorial', 'Exam'].includes(sessionType) ? sessionType : 'Practical');
-                const sYear = normalizeYear(session.year || year);
-                const sSem = normalizeSemester(session.semester || semester);
-
-                return {
-                    updateOne: {
-                        filter: {
-                            year: sYear,
-                            semester: sSem,
-                            major: session.major || major,
-                            sessionType: normType,
-                            courseCode: session.courseCode,
-                            date: session.date,
-                            startTimeMinutes: session.startTimeMinutes || 540
-                        },
-                        update: {
-                            $set: {
-                                year: sYear,
-                                semester: sSem,
-                                major: session.major || major,
-                                sessionType: normType,
-                                examType: session.examType || 'N/A',
-                                courseCode: session.courseCode,
-                                courseName: session.courseName || session.courseCode,
-                                title: session.title || session.courseName || session.courseCode,
-                                teacher: session.teacher || 'Faculty Member',
-                                groupTag: session.groupTag || 'All',
-                                date: session.date,
-                                startTime: session.startTime || '08:30 AM',
-                                endTime: session.endTime || '11:30 AM',
-                                startTimeMinutes: session.startTimeMinutes || 540,
-                                endTimeMinutes: session.endTimeMinutes || 710,
-                                place: session.place || '3/212-A',
-                                status: 'Draft'
-                            }
-                        },
-                        upsert: true
-                    }
-                };
-            });
+            const bulkOps = validSessions.map(session => ({
+                updateOne: {
+                    filter: {
+                        year: session.year,
+                        semester: session.semester,
+                        major: session.major,
+                        sessionType: session.sessionType,
+                        courseCode: session.courseCode,
+                        date: session.date,
+                        startTimeMinutes: session.startTimeMinutes
+                    },
+                    update: {
+                        $set: session
+                    },
+                    upsert: true
+                }
+            }));
 
             await ScheduledSession.bulkWrite(bulkOps);
 
@@ -270,6 +269,19 @@ const batchImportSessions = async (req, res) => {
         console.error('Batch Import Error:', error.message);
         return res.status(400).json({ message: error.message || 'Failed to import Excel file.' });
     }
+};
+
+const parseTimeToMinutes = (timeStr, defaultMinutes = 540) => {
+    if (!timeStr) return defaultMinutes;
+    const match = String(timeStr).match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+    if (!match) return defaultMinutes;
+    let h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    const meridian = (match[3] || '').toLowerCase();
+    if (meridian === 'pm' && h < 12) h += 12;
+    if (meridian === 'am' && h === 12) h = 0;
+    if (!meridian && h >= 1 && h <= 6) h += 12;
+    return h * 60 + m;
 };
 
 const normalizeSemester = (sem = '') => {
