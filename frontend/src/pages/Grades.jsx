@@ -1,59 +1,19 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Award, BookOpen, Download, Printer, TrendingUp, HelpCircle, ChevronLeft, User, Search, Users, FileText, Eye, X, Upload, FileSpreadsheet, Check, FileUp } from 'lucide-react';
+import {
+    Award, BookOpen, Download, Printer, TrendingUp, HelpCircle,
+    ChevronLeft, User, Search, Users, FileText, Eye, X, Upload,
+    FileSpreadsheet, Check, FileUp, Calendar, Hash, CheckCircle2,
+    Clock, AlertCircle, Edit3, ShieldAlert
+} from 'lucide-react';
 import apiClient from '../api/apiClient';
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType, AlignmentType, TableBorders, TextRun, VerticalAlign } from 'docx';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
-import { getNormalizedUserYear } from '../utils/userYear';
 import './Grades.css';
 
 const yearLookup = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
-
-const semesterToYearLabel = (semester) => {
-    if (!semester) return '1st Year';
-    const bucket = Math.min(6, Math.max(1, Math.ceil(semester / 2)));
-    return yearLookup[bucket - 1] || `${bucket}th Year`;
-};
-
-const deriveYearTag = (code = '') => {
-    const digits = code?.match(/\d+/);
-    if (!digits) return '1st Year';
-    const number = parseInt(digits[0], 10);
-    if (number < 200) return '1st Year';
-    if (number < 300) return '2nd Year';
-    if (number < 400) return '3rd Year';
-    if (number < 500) return '4th Year';
-    if (number < 600) return '5th Year';
-    return '6th Year';
-};
-
-const getAvatarUrl = (name, id) => {
-    const initials = name ? encodeURIComponent(name) : encodeURIComponent(id || 'Student');
-    return `https://ui-avatars.com/api/?name=${initials}&background=1f2937&color=ffffff`;
-};
-
-const gradeYearFilters = [...yearLookup];
-
-const normalizeGradeRecords = (records) => {
-    const map = { default: [] };
-    records.forEach(record => {
-        const studentId = record.student?._id || record.student;
-        if (!studentId) return;
-
-        const entry = {
-            term: record.term || 'Current Term',
-            course: record.course?.code || record.course || 'GEN101',
-            title: record.assessmentType || record.course?.name || 'Assessment',
-            credits: record.course?.credits || 3,
-            score: record.score ?? 0,
-        };
-
-        map[studentId] = [...(map[studentId] || []), entry];
-    });
-    return map;
-};
 
 const Grades = () => {
     const { user } = useContext(AuthContext);
@@ -62,1175 +22,614 @@ const Grades = () => {
 
     const location = useLocation();
     const navigate = useNavigate();
+
+    // Student multi-year history state
+    const [studentHistoryData, setStudentHistoryData] = useState(null);
+    const [selectedHistoryYear, setSelectedHistoryYear] = useState(null);
+
+    // Admin / Teacher Matrix state
     const [studentList, setStudentList] = useState([]);
     const [courses, setCourses] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [selectedYear, setSelectedYear] = useState('5th Year');
-    const [selectedSemester, setSelectedSemester] = useState('Sem 1');
+    const [selectedSemester, setSelectedSemester] = useState('Sem 2');
     const [searchTerm, setSearchTerm] = useState('');
-    const [gradesData, setGradesData] = useState({ default: [] });
+    const [gradesData, setGradesData] = useState([]);
     const [dataLoading, setDataLoading] = useState(true);
     const [dataError, setDataError] = useState('');
-    const [editingCell, setEditingCell] = useState(null); // { studentId, course }
-    const [showPreview, setShowPreview] = useState(false);
+
+    // Grade Entry / Edit Modal State
+    const [editGradeModal, setEditGradeModal] = useState(null); // { student, course, academicYear, semester, letterGrade, semester1Score, comments }
+    const [submittingGrade, setSubmittingGrade] = useState(false);
+    const [gradeModalError, setGradeModalError] = useState('');
+
+    // Excel Bulk Import Modal State
     const [showImportModal, setShowImportModal] = useState(false);
     const [excelFile, setExcelFile] = useState(null);
     const [parsedMarks, setParsedMarks] = useState([]);
     const [importStatus, setImportStatus] = useState({ loading: false, error: '', success: '' });
 
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        if (params.get('import') === 'true' || location.state?.openImport) {
-            setShowImportModal(true);
-        }
-    }, [location.search, location.state]);
-
-    const handleDownloadMarksTemplate = () => {
-        const templateData = [
-            ['Roll No / ID', 'Student Name', 'Student Email', 'Course Code', 'Assessment Type', 'Score', 'Max Score', 'Comments'],
-        ];
-
-        if (studentList.length > 0) {
-            studentList.forEach((s) => {
-                const sampleCourse = courses[0]?.code || 'McE 61011';
-                templateData.push([s.rollNo || s.id, s.name, s.email, sampleCourse, 'Final Exam', '', 100, '']);
-            });
-        } else {
-            templateData.push(['STU-6001', 'Ye Yint Lin', 'studentuser@gmail.com', 'McE 61011', 'Final Exam', 85, 100, 'Sample grade']);
-            templateData.push(['STU-6002', 'Aung Aung', 'aung@gmail.com', 'McE 61011', 'Final Exam', 90, 100, 'Sample grade']);
-        }
-
-        const ws = XLSX.utils.aoa_to_sheet(templateData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Student Marks');
-        XLSX.writeFile(wb, `Student_Marks_Import_Template.xlsx`);
-    };
-
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        setExcelFile(file);
-        setImportStatus({ loading: true, error: '', success: '' });
-
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            try {
-                const buffer = evt.target.result;
-                const workbook = XLSX.read(buffer, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                if (rawData.length < 2) {
-                    setImportStatus({ loading: false, error: 'Excel sheet appears empty or missing rows.', success: '' });
-                    return;
-                }
-
-                const records = [];
-                for (let i = 1; i < rawData.length; i++) {
-                    const row = rawData[i];
-                    if (!row || row.length < 4) continue;
-
-                    const rollNo = String(row[0] || '').trim();
-                    const studentName = String(row[1] || '').trim();
-                    const studentEmail = String(row[2] || '').trim();
-                    const courseCode = String(row[3] || '').trim();
-                    const assessmentType = String(row[4] || 'Final Exam').trim();
-                    const score = Number(row[5]);
-                    const maxScore = Number(row[6] || 100);
-                    const comments = String(row[7] || '').trim();
-
-                    if (!isNaN(score) && (rollNo || studentEmail || studentName) && courseCode) {
-                        records.push({
-                            rollNo,
-                            studentName,
-                            studentEmail,
-                            courseCode,
-                            assessmentType,
-                            score,
-                            maxScore,
-                            comments
-                        });
-                    }
-                }
-
-                if (records.length === 0) {
-                    setImportStatus({ loading: false, error: 'No valid mark records found in Excel sheet. Check column headers & scores.', success: '' });
-                } else {
-                    setParsedMarks(records);
-                    setImportStatus({ loading: false, error: '', success: `Successfully parsed ${records.length} mark records.` });
-                }
-            } catch (err) {
-                console.error('Excel parse error:', err);
-                setImportStatus({ loading: false, error: 'Failed to read Excel file. Please ensure it is a valid .xlsx or .csv file.', success: '' });
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    };
-
-    const handleSaveImportedMarks = async () => {
-        if (parsedMarks.length === 0) return;
-        setImportStatus({ loading: true, error: '', success: '' });
+    // ─────────────────────────────────────────────
+    // Fetch Student Multi-Year Academic History
+    // ─────────────────────────────────────────────
+    const fetchStudentHistory = async (targetStudentId = null) => {
         try {
-            const { data } = await apiClient.post('/grades/bulk', { grades: parsedMarks });
-            setImportStatus({ loading: false, error: '', success: data.message || 'Marks imported successfully!' });
-            setTimeout(() => {
-                setShowImportModal(false);
-                setParsedMarks([]);
-                setExcelFile(null);
-                window.location.reload();
-            }, 1200);
-        } catch (err) {
-            setImportStatus({ loading: false, error: err.response?.data?.message || 'Failed to save imported marks.', success: '' });
-        }
-    };
-
-    const years = gradeYearFilters;
-
-    useEffect(() => {
-        if (!user) return;
-        const fetchCoursesAndTimetable = async () => {
-            try {
-                const [coursesRes, timetableRes] = await Promise.all([
-                    apiClient.get('/courses').catch(() => ({ data: [] })),
-                    apiClient.get('/timetable').catch(() => ({ data: [] })),
-                ]);
-
-                const dbCourses = Array.isArray(coursesRes.data) ? coursesRes.data : [];
-                const timetableData = Array.isArray(timetableRes.data) ? timetableRes.data : [];
-
-                const combinedMap = new Map();
-
-                // 1. Process DB courses
-                dbCourses.forEach(dbc => {
-                    const cleanCode = (dbc.code || '').replace(/\s+/g, '').toUpperCase();
-                    if (cleanCode) {
-                        combinedMap.set(cleanCode, dbc);
-                    }
-                });
-
-                // 2. Extract timetable legend subjects and add if missing or update details
-                timetableData.forEach(sheet => {
-                    const sheetYearNum = sheet.yearNumber || 4;
-                    const sheetYearLabel = sheet.yearLabel || `${sheetYearNum}th Year`;
-
-                    if (Array.isArray(sheet.legend)) {
-                        sheet.legend.forEach(item => {
-                            if (item && item.code) {
-                                let rawCode = item.code.trim();
-                                const codeMatch = rawCode.match(/^[A-Za-z]{1,5}-?\s*\d{3,6}/);
-                                if (codeMatch) {
-                                    rawCode = codeMatch[0].replace(/\s+/g, '');
-                                }
-                                const cleanCode = rawCode.toUpperCase();
-                                const existing = combinedMap.get(cleanCode);
-
-                                const ttCourseObj = {
-                                    _id: existing?._id || `tt_${cleanCode}`,
-                                    code: cleanCode,
-                                    name: item.subject ? item.subject.trim() : (existing?.name || cleanCode),
-                                    year: sheetYearNum,
-                                    yearLabel: sheetYearLabel,
-                                    teacher: item.teacher ? { name: item.teacher.trim() } : (existing?.teacher || null),
-                                    students: existing?.students || [],
-                                };
-
-                                combinedMap.set(cleanCode, ttCourseObj);
-                            }
-                        });
-                    }
-                });
-
-                setCourses(Array.from(combinedMap.values()));
-            } catch (error) {
-                console.error('Unable to load courses and timetable', error);
-            }
-        };
-
-        fetchCoursesAndTimetable();
-    }, [user]);
-
-    useEffect(() => {
-        if (!canManageGrades) return;
-        const fetchStudents = async () => {
-            try {
-                const { data } = await apiClient.get('/students');
-
-                const resolveYearLabel = (s) => {
-                    if (s.year && String(s.year).trim()) {
-                        const str = String(s.year).trim().toLowerCase();
-                        if (str.includes('1') || str.includes('first')) return '1st Year';
-                        if (str.includes('2') || str.includes('second')) return '2nd Year';
-                        if (str.includes('3') || str.includes('third')) return '3rd Year';
-                        if (str.includes('4') || str.includes('fourth')) return '4th Year';
-                        if (str.includes('5') || str.includes('fifth')) return '5th Year';
-                        if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
-                    }
-                    if (s.user?.year && String(s.user.year).trim()) {
-                        const str = String(s.user.year).trim().toLowerCase();
-                        if (str.includes('1') || str.includes('first')) return '1st Year';
-                        if (str.includes('2') || str.includes('second')) return '2nd Year';
-                        if (str.includes('3') || str.includes('third')) return '3rd Year';
-                        if (str.includes('4') || str.includes('fourth')) return '4th Year';
-                        if (str.includes('5') || str.includes('fifth')) return '5th Year';
-                        if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
-                    }
-                    if (s.user?.email) {
-                        const prefix = s.user.email.split('@')[0].toLowerCase();
-                        if (prefix.startsWith('i.') || prefix.startsWith('imc') || prefix.startsWith('i-')) return '1st Year';
-                        if (prefix.startsWith('ii.') || prefix.startsWith('iimc') || prefix.startsWith('ii-')) return '2nd Year';
-                        if (prefix.startsWith('iii.') || prefix.startsWith('iiimc') || prefix.startsWith('iii-')) return '3rd Year';
-                        if (prefix.startsWith('iv.') || prefix.startsWith('ivmc') || prefix.startsWith('iv-')) return '4th Year';
-                        if (prefix.startsWith('v.') || prefix.startsWith('vmc') || prefix.startsWith('v-')) return '5th Year';
-                        if (prefix.startsWith('vi.') || prefix.startsWith('vimc') || prefix.startsWith('vi-')) return '6th Year';
-                    }
-                    return semesterToYearLabel(s.semester);
-                };
-
-                const mapped = data.map(student => ({
-                    id: student.user?._id || student._id,
-                    displayId: student.enrollmentNumber || student.user?.rollNo,
-                    name: student.user?.name || 'Student',
-                    major: student.department || student.user?.department || 'Mechatronics Engineering',
-                    year: resolveYearLabel(student),
-                    avatar: getAvatarUrl(student.user?.name, student.user?._id),
-                    semester: student.semester,
-                    user: student.user,
-                }));
-                setStudentList(mapped);
-            } catch (error) {
-                console.error('Failed to load students', error);
-            }
-        };
-
-        fetchStudents();
-    }, [canManageGrades]);
-
-    useEffect(() => {
-        if (!user) return;
-        if (!courses.length) {
-            setGradesData({ default: [] });
-            setDataLoading(false);
-            setDataError('');
-            return;
-        }
-        const fetchGradeRecords = async () => {
             setDataLoading(true);
             setDataError('');
-            try {
-                if (isStudent) {
-                    const res = await apiClient.get('/grades').catch(() => ({ data: [] }));
-                    const records = res?.data || [];
-                    const normalized = normalizeGradeRecords(records);
-                    normalized.default = normalized.default || [];
-                    setGradesData(normalized);
-                } else {
-                    const validCourses = courses.filter(course => course && course._id && !String(course._id).startsWith('tt_'));
-                    const gradePromises = validCourses.map(course => {
-                        return apiClient.get(`/grades/course/${course._id}`).catch(() => ({ data: [] }));
-                    });
-                    const responses = await Promise.all(gradePromises);
-                    const records = responses.flatMap((res) => res?.data || []);
-                    const normalized = normalizeGradeRecords(records);
-                    normalized.default = normalized.default || [];
-                    setGradesData(normalized);
-                }
-            } catch (error) {
-                console.warn('Grade records load warning:', error);
-            } finally {
-                setDataLoading(false);
+            let endpoint = '/records/my-history';
+            if (targetStudentId && targetStudentId !== user?._id) {
+                endpoint = `/records/student/${targetStudentId}`;
             }
-        };
 
-        fetchGradeRecords();
-    }, [courses, user, canManageGrades, isStudent]);
+            const res = await apiClient.get(endpoint);
+            setStudentHistoryData(res.data);
+
+            const hist = res.data?.history || [];
+            if (hist.length > 0) {
+                // Select latest enrollment year by default
+                setSelectedHistoryYear(hist[hist.length - 1].academicYear);
+            }
+        } catch (err) {
+            console.error('Failed to load academic history:', err);
+            setDataError(err.response?.data?.message || 'Failed to load academic record history');
+        } finally {
+            setDataLoading(false);
+        }
+    };
+
+    // ─────────────────────────────────────────────
+    // Fetch Teacher / Admin Master Grade Roster
+    // ─────────────────────────────────────────────
+    const fetchMasterGrades = async () => {
+        try {
+            setDataLoading(true);
+            setDataError('');
+
+            // Fetch students & courses
+            const [studentsRes, coursesRes, gradesRes] = await Promise.all([
+                apiClient.get('/students').catch(() => ({ data: [] })),
+                apiClient.get('/courses').catch(() => ({ data: [] })),
+                apiClient.get('/grades').catch(() => ({ data: [] })),
+            ]);
+
+            const sList = (studentsRes.data || []).map(s => ({
+                id: s.user?._id || s._id,
+                displayId: s.user?.currentRollNo || s.user?.rollNo || s.enrollmentNumber || 'Not yet assigned',
+                permanentRegNo: s.user?.permanentRegNo || 'STU-' + (s.user?._id || s._id).toString().slice(-6).toUpperCase(),
+                name: s.user?.name || 'Unknown Student',
+                email: s.user?.email,
+                year: s.year || s.user?.year || '5th Year',
+                department: s.department || s.user?.department || 'Mechatronics Engineering',
+            }));
+
+            setStudentList(sList);
+            setCourses(coursesRes.data || []);
+            setGradesData(gradesRes.data || []);
+        } catch (err) {
+            console.error('Failed to load master grades:', err);
+            setDataError(err.response?.data?.message || 'Failed to load grade roster');
+        } finally {
+            setDataLoading(false);
+        }
+    };
 
     useEffect(() => {
-        if (location.state?.studentId && studentList.length) {
-            const student = studentList.find(s => s.id === location.state.studentId);
-            if (student) {
-                setSelectedStudent(student);
-                return;
-            }
-        }
-
-        if (canManageGrades) {
-            setSelectedStudent(null);
-            return;
-        }
-
         if (isStudent) {
-            const studentYear = getNormalizedUserYear(user) || semesterToYearLabel(user?.semester);
-            const rollNo = user?.enrollmentNumber || user?.rollNo || (user?.email ? user.email.split('@')[0] : '');
+            fetchStudentHistory();
+        } else if (selectedStudent) {
+            fetchStudentHistory(selectedStudent.id);
+        } else {
+            fetchMasterGrades();
+        }
+    }, [isStudent, selectedStudent]);
+
+    useEffect(() => {
+        if (location.state?.studentId && !isStudent) {
             setSelectedStudent({
-                id: user?._id,
-                displayId: rollNo,
-                name: user?.name || 'Student',
-                year: studentYear,
-                department: user?.department || 'Mechatronics Engineering',
+                id: location.state.studentId,
+                name: location.state.studentName || 'Student',
             });
-            return;
         }
+    }, [location.state, isStudent]);
 
-        setSelectedStudent(null);
-    }, [location.state, location.pathname, user, studentList, canManageGrades, isStudent]);
-
-    const handleSelectStudent = (student) => {
-        setSelectedStudent(student);
-        navigate('/grades', { replace: true, state: {} });
-    };
-
-    const calculateLetterGrade = (score) => {
-        if (score >= 81) return 'A';
-        if (score >= 61) return 'B';
-        if (score >= 41) return 'C';
-        if (score >= 21) return 'D';
-        return 'E';
-    };
-
-    const getGradePoints = (grade) => {
-        const points = { 'A': 4.0, 'B': 3.0, 'C': 2.0, 'D': 1.0, 'E': 0.0 };
-        return points[grade] || 0;
-    };
-
-    const calculateGPA = (studentId) => {
-        const grades = gradesData[studentId] || gradesData['default'];
-        const totalPoints = grades.reduce((acc, g) => {
-            const letterGrade = calculateLetterGrade(g.score);
-            return acc + (getGradePoints(letterGrade) * g.credits);
-        }, 0);
-        const totalCredits = grades.reduce((acc, g) => acc + g.credits, 0);
-        return totalCredits > 0 ? (totalPoints / totalCredits).toFixed(2) : '0.00';
-    };
-
-    const handleSaveScore = async (studentId, courseCode, newScore) => {
-        if (!canManageGrades || !studentId) return;
-
-        const score = Math.max(0, Math.min(100, Number.isFinite(Number(newScore)) ? Math.round(Number(newScore)) : 0));
-        const gradeRecord = (gradesData[studentId] || []).find(g => g.course === courseCode);
-        const courseCandidates = courses.find(c => c.code === courseCode) || {};
-        const courseIdForPost = gradeRecord?.courseId || courseCandidates._id;
-        const assessmentType = gradeRecord?.assessmentType || courseCode;
-
-        if (!courseIdForPost) {
-            setDataError(`Unable to determine course id for ${courseCode}`);
-            setEditingCell(null);
-            return;
-        }
+    // Handle grade submission from edit modal
+    const handleSaveGradeModal = async (e) => {
+        e.preventDefault();
+        if (!editGradeModal) return;
 
         try {
-            const { data } = await apiClient.post('/grades', {
-                course: courseIdForPost,
+            setSubmittingGrade(true);
+            setGradeModalError('');
+
+            const { courseId, studentId, academicYear, yearLevel, semester, letterGrade, semester1Score, comments } = editGradeModal;
+
+            await apiClient.post('/grades', {
+                course: courseId,
                 student: studentId,
-                assessmentType,
-                score,
-                maxScore: 100,
+                academicYear,
+                yearLevel,
+                semester: parseInt(semester, 10),
+                letterGrade: parseInt(semester, 10) === 2 ? letterGrade : undefined,
+                semester1Score: parseInt(semester, 10) === 1 ? semester1Score : undefined,
+                comments,
             });
 
-            const updatedEntry = {
-                courseId: data.course?._id || courseIdForPost,
-                course: data.course?.code || courseCode,
-                title: data.course?.name || assessmentType,
-                credits: data.course?.credits || 3,
-                score: data.score ?? score,
-                assessmentType: data.assessmentType || assessmentType,
-            };
-
-            setGradesData(prev => {
-                const studentGrades = [...(prev[studentId] || [])];
-                const gradeIndex = studentGrades.findIndex(g => g.course === updatedEntry.course && g.assessmentType === updatedEntry.assessmentType);
-                if (gradeIndex > -1) {
-                    studentGrades[gradeIndex] = updatedEntry;
-                } else {
-                    studentGrades.push(updatedEntry);
-                }
-
-                return { ...prev, [studentId]: studentGrades };
-            });
-            setDataError('');
-        } catch (error) {
-            console.error('Failed to save grade', error);
-            setDataError(error.response?.data?.message || error.message || `Unable to save grade for ${courseCode}`);
+            setEditGradeModal(null);
+            if (isStudent || selectedStudent) {
+                fetchStudentHistory(selectedStudent?.id);
+            } else {
+                fetchMasterGrades();
+            }
+        } catch (err) {
+            setGradeModalError(err.response?.data?.message || 'Failed to save grade');
         } finally {
-            setEditingCell(null);
+            setSubmittingGrade(false);
         }
     };
 
-    const handleExportWord = async () => {
-        const tableHeaderRows = [
+    // Export Official Transcript to Word (.docx)
+    const handleExportWordTranscript = async () => {
+        if (!studentHistoryData) return;
+        const s = studentHistoryData.student;
+        const currentHist = (studentHistoryData.history || []).find(h => h.academicYear === selectedHistoryYear) || studentHistoryData.history?.[0];
+        if (!currentHist) return;
+
+        const tableRows = [
             new TableRow({
+                tableHeader: true,
                 children: [
-                    new TableCell({
-                        children: [new Paragraph({ text: "ID", alignment: AlignmentType.CENTER, style: "Normal" })],
-                        shading: { fill: "f3f4f6" },
-                        verticalAlign: VerticalAlign.CENTER
-                    }),
-                    new TableCell({
-                        children: [new Paragraph({ text: "NAME", alignment: AlignmentType.CENTER, style: "Normal" })],
-                        shading: { fill: "f3f4f6" },
-                        verticalAlign: VerticalAlign.CENTER
-                    }),
-                    ...allSubjects.map(sub => new TableCell({
-                        children: [new Paragraph({ text: sub, alignment: AlignmentType.CENTER, style: "Normal" })],
-                        shading: { fill: "f3f4f6" },
-                        verticalAlign: VerticalAlign.CENTER
-                    })),
-                    ],
+                    new TableCell({ children: [new Paragraph({ text: 'Course Code', alignment: AlignmentType.CENTER })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+                    new TableCell({ children: [new Paragraph({ text: 'Course Title', alignment: AlignmentType.LEFT })], width: { size: 45, type: WidthType.PERCENTAGE } }),
+                    new TableCell({ children: [new Paragraph({ text: 'Credits', alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                    new TableCell({ children: [new Paragraph({ text: 'Final Letter Grade', alignment: AlignmentType.CENTER })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                ],
             }),
         ];
 
-        const tableBodyRows = studentList.map(student => {
-            const studentGrades = getGrades(student.id);
-
-            return new TableRow({
-                children: [
-                    new TableCell({ children: [new Paragraph({ text: student.displayId || student.id, alignment: AlignmentType.CENTER })] }),
-                    new TableCell({ children: [new Paragraph({ text: student.name.toUpperCase() })] }),
-                    
-                    ...allSubjects.map(sub => {
-                        const gradeRecord = studentGrades.find(g => g.course === sub);
-                        const letterGrade = gradeRecord ? calculateLetterGrade(gradeRecord.score) : "-";
-                        return new TableCell({ children: [new Paragraph({ text: letterGrade, alignment: AlignmentType.CENTER })] });
-                    }),
-                    
-                ],
-            });
+        (currentHist.courses || []).forEach(c => {
+            tableRows.push(
+                new TableRow({
+                    children: [
+                        new TableCell({ children: [new Paragraph({ text: c.code || 'N/A', alignment: AlignmentType.CENTER })] }),
+                        new TableCell({ children: [new Paragraph({ text: c.name || 'Course Title', alignment: AlignmentType.LEFT })] }),
+                        new TableCell({ children: [new Paragraph({ text: String(c.credits || 3), alignment: AlignmentType.CENTER })] }),
+                        new TableCell({ children: [new Paragraph({ text: c.letterGrade || 'In Progress', alignment: AlignmentType.CENTER })] }),
+                    ],
+                })
+            );
         });
 
         const doc = new Document({
             sections: [{
-                properties: {
-                    page: {
-                        margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } // 1 inch margins
-                    }
-                },
+                properties: {},
                 children: [
-                    // Institutional Header
                     new Paragraph({
-                        children: [
-                            new TextRun({ text: "ALTAIR INSTITUTE OF TECHNOLOGY", bold: true, size: 28 }),
-                        ],
+                        text: 'TECHNOLOGICAL UNIVERSITY (HMAWBI)',
+                        alignment: AlignmentType.CENTER,
+                        heading: 'Heading1',
+                    }),
+                    new Paragraph({
+                        text: 'DEPARTMENT OF MECHATRONICS ENGINEERING',
                         alignment: AlignmentType.CENTER,
                     }),
                     new Paragraph({
-                        children: [
-                            new TextRun({ text: "Office of the Registrar | Academic Records Division", size: 20 }),
-                        ],
+                        text: 'OFFICIAL ACADEMIC RECORD & GRADE TRANSCRIPT',
                         alignment: AlignmentType.CENTER,
-                        spacing: { after: 400 },
                     }),
-
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: "OFFICIAL ACADEMIC PERFORMANCE REGISTRY", bold: true, size: 24, underline: {} }),
-                        ],
-                        alignment: AlignmentType.CENTER,
-                        spacing: { after: 400 },
-                    }),
-
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: `Date Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, size: 20 }),
-                        ],
-                        alignment: AlignmentType.RIGHT,
-                        spacing: { after: 400 }
-                    }),
-
+                    new Paragraph({ text: '' }),
+                    new Paragraph({ text: `Student Name: ${s?.name}   |   Permanent Reg No: ${s?.permanentRegNo}` }),
+                    new Paragraph({ text: `Academic Year: ${currentHist.academicYear}   |   Year Level: ${currentHist.yearLevel}` }),
+                    new Paragraph({ text: `Assigned Roll No: ${currentHist.rollNo || 'Not yet assigned'}   |   Attendance Rate: ${currentHist.attendanceRate || 0}%` }),
+                    new Paragraph({ text: '' }),
                     new Table({
+                        rows: tableRows,
                         width: { size: 100, type: WidthType.PERCENTAGE },
-                        rows: [...tableHeaderRows, ...tableBodyRows],
                     }),
-
-                    new Paragraph({ text: "", spacing: { before: 800 } }),
-
-                    // Signatures
-                    new Table({
-                        width: { size: 100, type: WidthType.PERCENTAGE },
-                        borders: TableBorders.NONE,
-                        rows: [
-                            new TableRow({
-                                children: [
-                                    new TableCell({
-                                        children: [
-                                            new Paragraph({ text: "__________________________", alignment: AlignmentType.CENTER }),
-                                            new Paragraph({ text: "Registrar Signature", alignment: AlignmentType.CENTER, bold: true }),
-                                        ],
-                                    }),
-                                    new TableCell({
-                                        children: [
-                                            new Paragraph({ text: "__________________________", alignment: AlignmentType.CENTER }),
-                                            new Paragraph({ text: "Date of Approval", alignment: AlignmentType.CENTER, bold: true }),
-                                        ],
-                                    }),
-                                ],
-                            }),
-                        ],
-                    }),
-
-                    new Paragraph({
-                        text: "This document is an official record of the Altair Institute of Technology.",
-                        alignment: AlignmentType.CENTER,
-                        spacing: { before: 400 },
-                        children: [
-                            new TextRun({ text: "\nVerification Code: AIT-REG-" + Math.random().toString(36).substring(7).toUpperCase(), size: 16, color: "666666" })
-                        ]
-                    }),
+                    new Paragraph({ text: '' }),
+                    new Paragraph({ text: `Date Issued: ${new Date().toLocaleDateString()}` }),
+                    new Paragraph({ text: 'Notice: Official letter grades are released at the end of Semester 2 upon completion of final examinations.' }),
                 ],
             }],
         });
 
         const blob = await Packer.toBlob(doc);
-        saveAs(blob, `Academic_Registry_${new Date().getFullYear()}.docx`);
+        saveAs(blob, `Academic_Transcript_${s?.name?.replace(/\s+/g, '_')}_${currentHist.academicYear}.docx`);
     };
 
-    const getGrades = (studentId) => {
-        return gradesData[studentId] || gradesData['default'];
-    };
-
-    // Get filtered students first
-    const filteredStudents = studentList.filter(s => {
-        const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.id.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesYear = selectedYear === 'All' || s.year === selectedYear;
-        return matchesSearch && matchesYear;
-    });
-
-    // Robust helper: derive academic year label from course object (yearLabel, year string/num, or course code digits e.g. McE-52039 -> 5th Year)
-    const deriveCourseYearLabel = (c) => {
-        if (!c) return '1st Year';
-        if (c.yearLabel) {
-            const str = String(c.yearLabel).trim().toLowerCase();
-            if (str.includes('1') || str.includes('first')) return '1st Year';
-            if (str.includes('2') || str.includes('second')) return '2nd Year';
-            if (str.includes('3') || str.includes('third')) return '3rd Year';
-            if (str.includes('4') || str.includes('fourth')) return '4th Year';
-            if (str.includes('5') || str.includes('fifth')) return '5th Year';
-            if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
-        }
-        if (c.year) {
-            if (typeof c.year === 'number') {
-                const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year' };
-                if (labels[c.year]) return labels[c.year];
-            }
-            const str = String(c.year).trim().toLowerCase();
-            if (str.includes('1') || str.includes('first')) return '1st Year';
-            if (str.includes('2') || str.includes('second')) return '2nd Year';
-            if (str.includes('3') || str.includes('third')) return '3rd Year';
-            if (str.includes('4') || str.includes('fourth')) return '4th Year';
-            if (str.includes('5') || str.includes('fifth')) return '5th Year';
-            if (str.includes('6') || str.includes('sixth') || str.includes('final')) return '6th Year';
-        }
-        const codeStr = c.code || c.name || '';
-        const digits = codeStr.replace(/[^0-9]/g, '');
-        if (digits.length > 0) {
-            const firstDigit = digits.charAt(0);
-            const labels = { '1': '1st Year', '2': '2nd Year', '3': '3rd Year', '4': '4th Year', '5': '5th Year', '6': '6th Year' };
-            if (labels[firstDigit]) return labels[firstDigit];
-        }
-        return '1st Year';
-    };
-
-    // Helper: derive semester label from course (e.g. McE-51039 -> Sem 1, McE-52039 -> Sem 2)
-    const deriveCourseSemesterLabel = (subOrCourse) => {
-        let codeStr = '';
-        if (typeof subOrCourse === 'string') {
-            codeStr = subOrCourse;
-        } else if (subOrCourse) {
-            codeStr = subOrCourse.code || subOrCourse.name || '';
-        }
-        const digits = codeStr.replace(/[^0-9]/g, '');
-        if (digits.length >= 2) {
-            const semDigit = digits.charAt(1);
-            if (semDigit === '1') return 'Sem 1';
-            if (semDigit === '2') return 'Sem 2';
-        }
-        return 'Sem 1';
-    };
-
-    // Get all unique subjects for table headers — filtered by derived course academic year AND semester
-    const allSubjects = Array.from(new Set([
-        ...courses
-            .filter(c => selectedYear === 'All' || deriveCourseYearLabel(c) === selectedYear)
-            .filter(c => selectedSemester === 'All Semesters' || deriveCourseSemesterLabel(c) === selectedSemester)
-            .map(c => c.code),
-        ...Object.values(gradesData).flat().map(g => g.course)
-    ]))
-    .filter(sub => {
-        const matchingCourse = courses.find(c => (c.code || '').toUpperCase().replace(/\s+/g, '') === sub.toUpperCase().replace(/\s+/g, ''));
-        const yearOk = selectedYear === 'All' || (matchingCourse ? deriveCourseYearLabel(matchingCourse) === selectedYear : deriveCourseYearLabel({ code: sub }) === selectedYear);
-        const semOk = selectedSemester === 'All Semesters' || (matchingCourse ? deriveCourseSemesterLabel(matchingCourse) === selectedSemester : deriveCourseSemesterLabel(sub) === selectedSemester);
-        return yearOk && semOk;
-    })
-    .sort();
-
-    const ExportPreviewPanel = () => (
-        <div className="preview-modal-overlay animate-fade-in" onClick={() => setShowPreview(false)}>
-            <div
-                className="preview-floating-modal"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="preview-panel-header">
-                    <div className="header-info">
-                        <h2>Formal Registry Preview</h2>
-                        <p>Standard Institutional Format (.docx)</p>
-                    </div>
-                    <div className="panel-actions">
-                        <button className="export-btn-premium" onClick={() => { handleExportWord(); setShowPreview(false); }}>
-                            <Download size={16} />
-                            Download
-                        </button>
-                        <button className="close-panel-btn" onClick={() => setShowPreview(false)}>
-                            <X size={18} />
-                        </button>
-                    </div>
-                </div>
-
-                <div className="preview-content-scroll">
-                    <div className="document-paper side-preview">
-                        <div className="doc-formal-header">
-                            <div className="school-name">ALTAIR INSTITUTE OF TECHNOLOGY</div>
-                            <div className="office-name">Office of the Registrar | Academic Records Division</div>
-                            <div className="doc-title-main">OFFICIAL ACADEMIC PERFORMANCE REGISTRY</div>
-                        </div>
-
-                        <div className="doc-meta-right">
-                            Date Generated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-                        </div>
-
-                        <div className="doc-table-wrapper">
-                            <table className="formal-doc-table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>NAME</th>
-                                        {allSubjects.map(sub => <th key={sub}>{sub}</th>)}
-                                        <th>GPA</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {studentList.map(student => {
-                                        const studentGrades = getGrades(student.id);
-                                        const gpa = calculateGPA(student.id);
-                                        return (
-                                            <tr key={student.id}>
-                                                <td className="text-center">{student.displayId || student.id}</td>
-                                                <td className="font-bold">{student.name.toUpperCase()}</td>
-                                                
-                                                {allSubjects.map(sub => {
-                                                    const gradeRecord = studentGrades.find(g => g.course === sub);
-                                                    return (
-                                                        <td key={sub} className="text-center">
-                                                            {gradeRecord ? calculateLetterGrade(gradeRecord.score) : "-"}
-                                                        </td>
-                                                    );
-                                                })}
-                                                <td className="text-center">{gpa}</td>
-                                                
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div className="doc-signature-block">
-                            <div className="sig-column">
-                                <div className="sig-line">__________________________</div>
-                                <div className="sig-label">Registrar Signature</div>
-                            </div>
-                            <div className="sig-column">
-                                <div className="sig-line">__________________________</div>
-                                <div className="sig-label">Date of Approval</div>
-                            </div>
-                        </div>
-
-                        <div className="doc-footer-official">
-                            <p>This document is an official record of the Altair Institute of Technology.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    const ImportMarksModal = () => (
-        <div className="preview-modal-overlay animate-fade-in" onClick={() => setShowImportModal(false)}>
-            <div className="import-marks-modal glass-panel" onClick={(e) => e.stopPropagation()}>
-                <div className="preview-panel-header">
-                    <div className="modal-header-title">
-                        <FileSpreadsheet size={22} className="text-primary" />
-                        <h2>Import Marks from Excel Sheet</h2>
-                    </div>
-                    <button className="close-panel-btn" onClick={() => setShowImportModal(false)}>
-                        <X size={18} />
-                    </button>
-                </div>
-
-                <div className="import-modal-body">
-                    <div className="import-step-card glass-panel">
-                        <div className="step-badge">Step 1</div>
-                        <div>
-                            <h4>Download Standard Template</h4>
-                            <p className="sub-text">Download the pre-structured Excel template populated with your active student roster and course codes.</p>
-                            <button className="btn btn-secondary-glass mt-2" onClick={handleDownloadMarksTemplate}>
-                                <Download size={16} /> Download Template (.xlsx)
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="import-step-card glass-panel">
-                        <div className="step-badge">Step 2</div>
-                        <div>
-                            <h4>Upload Completed Excel Sheet</h4>
-                            <p className="sub-text">Select your completed `.xlsx` or `.csv` spreadsheet containing student grades.</p>
-                            <div className="file-upload-dropzone mt-2">
-                                <FileUp size={28} className="upload-icon-pulse" />
-                                <label htmlFor="marks-file-input" className="file-upload-label">
-                                    {excelFile ? excelFile.name : 'Choose Excel File (.xlsx, .csv)'}
-                                </label>
-                                <input
-                                    id="marks-file-input"
-                                    type="file"
-                                    accept=".xlsx, .xls, .csv"
-                                    onChange={handleFileUpload}
-                                    style={{ display: 'none' }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {importStatus.error && (
-                        <div className="import-alert error-alert">
-                            <p>{importStatus.error}</p>
-                        </div>
-                    )}
-
-                    {importStatus.success && (
-                        <div className="import-alert success-alert">
-                            <p>{importStatus.success}</p>
-                        </div>
-                    )}
-
-                    {parsedMarks.length > 0 && (
-                        <div className="parsed-preview-section">
-                            <h4>Preview Parsed Marks ({parsedMarks.length} records)</h4>
-                            <div className="parsed-table-scroll">
-                                <table className="premium-table mini-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Student</th>
-                                            <th>Course</th>
-                                            <th>Type</th>
-                                            <th className="text-center">Score</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {parsedMarks.slice(0, 5).map((m, idx) => (
-                                            <tr key={idx}>
-                                                <td>{m.studentName || m.rollNo || m.studentEmail}</td>
-                                                <td><span className="course-code-tag">{m.courseCode}</span></td>
-                                                <td>{m.assessmentType}</td>
-                                                <td className="text-center"><strong>{m.score} / {m.maxScore}</strong></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                                {parsedMarks.length > 5 && (
-                                    <p className="sub-text mt-1">+ {parsedMarks.length - 5} more records ready for import...</p>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="import-modal-footer">
-                    <button className="btn btn-secondary-glass" onClick={() => setShowImportModal(false)}>
-                        Cancel
-                    </button>
-                    <button
-                        className="export-btn-premium"
-                        onClick={handleSaveImportedMarks}
-                        disabled={parsedMarks.length === 0 || importStatus.loading}
-                    >
-                        <Check size={18} />
-                        {importStatus.loading ? 'Saving Marks...' : 'Confirm & Save Marks'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-
-    // Master View for Admins/Teachers
-    if ((user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'teacher') && !selectedStudent) {
-        const classAvg = studentList.length
-            ? (studentList.reduce((acc, s) => acc + parseFloat(calculateGPA(s.id) || '0'), 0) / studentList.length).toFixed(2)
-            : '0.00';
-
-        const isLoading = dataLoading && !dataError;
+    // ─────────────────────────────────────────────
+    // STUDENT VIEW (Multi-Year Letter Grades & Roll Banner)
+    // ─────────────────────────────────────────────
+    if (isStudent || selectedStudent) {
+        const studentInfo = studentHistoryData?.student;
+        const historyList = studentHistoryData?.history || [];
+        const activeEnrollment = historyList.find(h => h.academicYear === selectedHistoryYear) || historyList[0];
 
         return (
             <div className="grades-page animate-fade-in">
+                {/* Header */}
                 <header className="page-header">
-                    <div>
-                        <h1>Master Grades Registry</h1>
-                        <p className="subtitle">Consolidated academic performance matrix</p>
+                    <div className="header-left">
+                        {selectedStudent && !isStudent && (
+                            <button className="btn btn-secondary" onClick={() => setSelectedStudent(null)} style={{ marginRight: '1rem' }}>
+                                <ChevronLeft size={16} /> Back to Master Roster
+                            </button>
+                        )}
+                        <div>
+                            <h1>{studentInfo?.name || 'Student'}'s Academic Records</h1>
+                            <p className="subtitle">
+                                Multi-Year Academic History, Official Letter Grades & Attendance Registry
+                            </p>
+                        </div>
                     </div>
                     <div className="header-actions">
-                        <div className="search-box glass-panel">
-                            <Search size={18} />
-                            <input
-                                type="text"
-                                placeholder="Filter Registry..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={handleExportWordTranscript}
+                            disabled={!activeEnrollment}
+                        >
+                            <Download size={16} /> Export Transcript (.docx)
+                        </button>
                     </div>
                 </header>
 
-                <div className="year-filter-bar glass-panel">
-                    {years.map(year => (
-                        <button
-                            key={year}
-                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                            onClick={() => setSelectedYear(year)}
-                        >
-                            {year}
-                        </button>
-                    ))}
-                </div>
+                {/* Student Identity Banner */}
+                <div className="glass-panel student-identity-banner">
+                    <div className="identity-grid">
+                        <div className="identity-col">
+                            <span className="text-muted text-xs uppercase font-bold">Student Name</span>
+                            <h3>{studentInfo?.name}</h3>
+                            <span className="text-muted text-xs">{studentInfo?.email}</span>
+                        </div>
 
-                <div className="year-filter-bar glass-panel" style={{ marginTop: '0.5rem', background: 'rgba(99, 102, 241, 0.05)' }}>
-                    {['Sem 1', 'Sem 2', 'All Semesters'].map(sem => (
-                        <button
-                            key={sem}
-                            className={`year-tag ${selectedSemester === sem ? 'active' : ''}`}
-                            onClick={() => setSelectedSemester(sem)}
-                            style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
-                        >
-                            {sem === 'Sem 1' ? 'Semester 1' : sem === 'Sem 2' ? 'Semester 2' : 'All Semesters'}
-                        </button>
-                    ))}
-                </div>
-
-                {dataError && (
-                    <div className="glass-panel empty-state">
-                        <p>{dataError}</p>
-                    </div>
-                )}
-
-                {isLoading ? (
-                    <div className="glass-panel empty-state">
-                        <p>Loading grade data...</p>
-                    </div>
-                ) : (
-                    <div className="grades-main-layout">
-                        <div className="grades-overview-grid">
-                            <div className="glass-panel gpa-card-premium">
-                                <div className="card-accent primary"></div>
-                                <div className="card-content">
-                                    <div className="icon-badge primary"><Users size={24} /></div>
-                                    <div className="info">
-                                        <span className="label">Registry Size</span>
-                                        <div className="main-value">{studentList.length}</div>
-                                        <span className="sub-text">Total Active Records</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="glass-panel gpa-card-premium">
-                                <div className="card-accent info"></div>
-                                <div className="card-content">
-                                    <div className="icon-badge info"><BookOpen size={24} /></div>
-                                    <div className="info">
-                                        <span className="label">Subjects Tracked</span>
-                                        <div className="main-value">{allSubjects.length}</div>
-                                        <span className="sub-text">Academic Modules</span>
-                                    </div>
-                                </div>
+                        <div className="identity-col">
+                            <span className="text-muted text-xs uppercase font-bold">Permanent Registration No</span>
+                            <div className="permanent-reg-pill">
+                                <Hash size={14} />
+                                <strong>{studentInfo?.permanentRegNo || 'N/A'}</strong>
                             </div>
                         </div>
 
-                        <div className="glass-panel matrix-registry-container">
-                            <div className="panel-header">
-                                <h2>Academic Performance Matrix</h2>
-                                <div className="panel-tip">
-                                    <HelpCircle size={14} />
-                                    <span>Live sync with central database</span>
-                                </div>
+                        <div className="identity-col">
+                            <span className="text-muted text-xs uppercase font-bold">Current Roll No ({activeEnrollment?.academicYear || 'Session'})</span>
+                            {activeEnrollment?.rollNo ? (
+                                <span className="roll-assigned-badge">{activeEnrollment.rollNo}</span>
+                            ) : (
+                                <span className="roll-unassigned-badge">Not yet assigned</span>
+                            )}
+                        </div>
+
+                        <div className="identity-col">
+                            <span className="text-muted text-xs uppercase font-bold">Annual Attendance Rate</span>
+                            <div className="attendance-indicator">
+                                <span className={`att-badge ${activeEnrollment?.attendanceRate >= 75 ? 'good' : 'warning'}`}>
+                                    {activeEnrollment?.attendanceRate || 0}%
+                                </span>
+                                <span className="text-muted text-xs">
+                                    {activeEnrollment?.attendanceRate >= 75 ? 'Qualified (≥75%)' : 'Below 75% Requirement'}
+                                </span>
                             </div>
-                            <div className="matrix-scroll-wrapper">
-                                <table className="master-grades-table">
-                                    <thead>
-                                        <tr>
-                                            <th className="sticky-col id-col">ID</th>
-                                            <th className="sticky-col name-col">Name</th>
-                                            {allSubjects.map(sub => (
-                                                <th key={sub} className="text-center">{sub}</th>
-                                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Multi-Year Academic Tabs */}
+                <div className="year-tabs-container">
+                    {historyList.map(h => (
+                        <button
+                            key={h.academicYear}
+                            type="button"
+                            className={`year-tab-btn ${selectedHistoryYear === h.academicYear ? 'active' : ''}`}
+                            onClick={() => setSelectedHistoryYear(h.academicYear)}
+                        >
+                            <Calendar size={15} />
+                            <span>{h.yearLevel} ({h.academicYear})</span>
+                            {h.status === 'Active' && <span className="active-dot" />}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Grades & Subjects Table */}
+                <div className="glass-panel transcript-container">
+                    <div className="panel-header">
+                        <h2>Curriculum Subjects & Official Letter Grades</h2>
+                        <div className="panel-tip">
+                            <HelpCircle size={14} />
+                            <span>Letter grades are finalized at end of Semester 2</span>
+                        </div>
+                    </div>
+
+                    {dataLoading ? (
+                        <div className="p-8 text-center"><Clock size={24} className="spin" /> Loading courses & grades...</div>
+                    ) : !activeEnrollment || !activeEnrollment.courses || activeEnrollment.courses.length === 0 ? (
+                        <div className="p-8 text-center text-muted">No course records found for this academic session.</div>
+                    ) : (
+                        <div className="table-responsive">
+                            <table className="premium-table">
+                                <thead>
+                                    <tr>
+                                        <th>Course Code</th>
+                                        <th>Course Title</th>
+                                        <th>Credits</th>
+                                        <th>Semester</th>
+                                        <th className="text-center">Official Letter Grade</th>
+                                        <th className="text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {activeEnrollment.courses.map((course, idx) => (
+                                        <tr key={idx}>
+                                            <td><span className="course-code-tag">{course.code}</span></td>
+                                            <td><strong>{course.name}</strong></td>
+                                            <td>{course.credits} Credits</td>
+                                            <td>Semester {course.semester}</td>
+                                            <td className="text-center">
+                                                {course.letterGrade ? (
+                                                    <span className="letter-grade-pill">{course.letterGrade}</span>
+                                                ) : (
+                                                    <span className="in-progress-pill">In Progress</span>
+                                                )}
+                                            </td>
+                                            <td className="text-center">
+                                                <span className={`status-badge-mini ${course.status === 'Finalized' ? 'good' : 'pending'}`}>
+                                                    {course.status}
+                                                </span>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredStudents.map(student => {
-                                            const studentGrades = getGrades(student.id);
-
-                                            return (
-                                                <tr key={student.id} className="hover-row">
-                                                    <td
-                                                        className="sticky-col id-col font-mono"
-                                                        onClick={() => handleSelectStudent(student)}
-                                                    >
-                                                        {student.displayId || student.id}
-                                                    </td>
-                                                    <td
-                                                        className="sticky-col name-col font-semibold"
-                                                        onClick={() => handleSelectStudent(student)}
-                                                    >
-                                                        {student.name}
-                                                    </td>
-                                                    
-                                                    {allSubjects.map(sub => {
-                                                        const gradeRecord = studentGrades.find(g => g.course === sub);
-                                                        const isEditing = editingCell?.studentId === student.id && editingCell?.course === sub;
-                                                        const letterGrade = gradeRecord ? calculateLetterGrade(gradeRecord.score) : null;
-
-                                                        return (
-                                                            <td
-                                                                key={`${student.id}-${sub}`}
-                                                                className={`grade-cell text-center ${!gradeRecord ? 'empty-editable' : ''}`}
-                                                                onClick={() => setEditingCell({ studentId: student.id, course: sub })}
-                                                            >
-                                                                {isEditing ? (
-                                                                    <input
-                                                                        type="number"
-                                                                        className="matrix-edit-input"
-                                                                        defaultValue={gradeRecord ? gradeRecord.score : ''}
-                                                                        placeholder="0-100"
-                                                                        autoFocus
-                                                                        onBlur={(e) => handleSaveScore(student.id, sub, e.target.value)}
-                                                                        onKeyDown={(e) => {
-                                                                            if (e.key === 'Enter') {
-                                                                                e.preventDefault();
-                                                                                handleSaveScore(student.id, sub, e.target.value);
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                 ) : (
-                                                                    gradeRecord ? (
-                                                                        <div className="matrix-grade-container">
-                                                                            <span className={`matrix-grade-pill grade-${letterGrade?.toLowerCase()}`}>
-                                                                                {letterGrade}
-                                                                            </span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span className="add-grade-placeholder">-</span>
-                                                                    )
-                                                                )}
-                                                            </td>
-                                                        );
-                                                    })}
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                )}
-
-                {!isLoading && showPreview && <ExportPreviewPanel />}
-                {showImportModal && <ImportMarksModal />}
+                    )}
+                </div>
             </div>
         );
     }
 
-    // Student Detail View or Individual Student Login View
-    const currentGrades = getGrades(selectedStudent?.id || user?._id);
-    const displayUser = selectedStudent || {
-        id: user?._id,
-        displayId: user?.enrollmentNumber || user?.rollNo || (user?.email ? user.email.split('@')[0] : ''),
-        name: user?.name,
-        year: getNormalizedUserYear(user) || semesterToYearLabel(user?.semester),
-        department: user?.department || 'Mechatronics Engineering',
-    };
-
-    const studentYearLabel = displayUser?.year || '5th Year';
-    const studentEnrolledCourses = courses.filter(c => {
-        if (!c) return false;
-        const yLabel = c.yearLabel || (c.year ? `${c.year}th Year` : '') || deriveYearTag(c.code);
-        return yLabel === studentYearLabel;
+    // ─────────────────────────────────────────────
+    // ADMIN / TEACHER MASTER ROSTER VIEW
+    // ─────────────────────────────────────────────
+    const filteredStudents = studentList.filter(s => {
+        const matchesSearch = !searchTerm || (
+            s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.permanentRegNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.displayId?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        const matchesYear = selectedYear === 'All' || s.year === selectedYear;
+        return matchesSearch && matchesYear;
     });
 
-    const displayCoursesList = studentEnrolledCourses.length > 0 ? studentEnrolledCourses : courses.slice(0, 6);
-
-    const breakdownRows = displayCoursesList.map(course => {
-        const cleanCode = (course.code || '').replace(/\s+/g, '').toUpperCase();
-        const existingGrade = currentGrades.find(g => {
-            const gCode = (g.course || '').replace(/\s+/g, '').toUpperCase();
-            return gCode === cleanCode || g.course === course._id;
-        });
-
-        return {
-            term: existingGrade?.term || 'Semester 1',
-            course: course.code,
-            title: course.name,
-            credits: course.credits || 3,
-            score: existingGrade?.score,
-            grade: existingGrade ? calculateLetterGrade(existingGrade.score) : null,
-            isGraded: !!existingGrade,
-        };
+    const activeYearCourses = courses.filter(c => {
+        const yNum = parseInt(String(selectedYear).replace(/\D/g, ''), 10) || 5;
+        const semNum = selectedSemester === 'Sem 1' ? 1 : 2;
+        return c.year === yNum && (c.semester === semNum || !c.semester);
     });
 
     return (
         <div className="grades-page animate-fade-in">
             <header className="page-header">
-                <div className="header-left">
-                    {selectedStudent && !isStudent && (
-                        <button className="back-btn-minimal" onClick={() => setSelectedStudent(null)}>
-                            <ChevronLeft size={20} />
-                            Back
-                        </button>
-                    )}
-                    <div>
-                        <h1>{displayUser?.name}'s Performance</h1>
-                        <p className="subtitle">
-                            Academic Record {displayUser?.displayId ? `• ${displayUser.displayId}` : ''} {displayUser?.year ? `• ${displayUser.year}` : ''} {displayUser?.department ? `• ${displayUser.department}` : ''}
-                        </p>
+                <div>
+                    <h1>Official Grades & Evaluation Registry</h1>
+                    <p className="subtitle">Teacher entry for Semester 1 tracking & Semester 2 official letter grades</p>
+                </div>
+                <div className="header-actions">
+                    <div className="search-box glass-panel">
+                        <Search size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search by student, reg no, or roll no..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
                     </div>
                 </div>
             </header>
 
-            <div className="grades-overview-grid">
-                <div className="glass-panel gpa-card-premium">
-                    <div className="card-accent primary"></div>
-                    <div className="card-content">
-                        <div className="icon-badge primary">
-                            <Award size={24} />
-                        </div>
-                        <div className="info">
-                            <span className="label">{isStudent ? 'Academic Standing' : 'Cumulative GPA'}</span>
-                            <div className="main-value">{isStudent ? 'Good Standing' : calculateGPA(displayUser?.id)}</div>
-                            <div className="sub-value">
-                                <TrendingUp size={14} className="text-success" />
-                                <span>{isStudent ? 'Verified Record' : 'Above average'}</span>
-                            </div>
-                        </div>
-                    </div>
+            {/* Year & Semester Filter Bar */}
+            <div className="year-filter-bar glass-panel">
+                {yearLookup.map(year => (
+                    <button
+                        key={year}
+                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                        onClick={() => setSelectedYear(year)}
+                    >
+                        {year}
+                    </button>
+                ))}
+            </div>
+
+            <div className="year-filter-bar glass-panel" style={{ marginTop: '0.5rem' }}>
+                <button
+                    className={`year-tag ${selectedSemester === 'Sem 1' ? 'active' : ''}`}
+                    onClick={() => setSelectedSemester('Sem 1')}
+                >
+                    Semester 1 (Internal Score)
+                </button>
+                <button
+                    className={`year-tag ${selectedSemester === 'Sem 2' ? 'active' : ''}`}
+                    onClick={() => setSelectedSemester('Sem 2')}
+                >
+                    Semester 2 (Official Letter Grade A–E)
+                </button>
+            </div>
+
+            {/* Matrix Table */}
+            <div className="glass-panel matrix-registry-container" style={{ marginTop: '1.25rem' }}>
+                <div className="panel-header">
+                    <h2>Grade Evaluation Matrix ({selectedYear} - {selectedSemester === 'Sem 1' ? 'Semester 1' : 'Semester 2'})</h2>
+                    <span className="text-muted text-xs">Click any cell to edit or submit student grade</span>
                 </div>
 
-                <div className="glass-panel gpa-card-premium">
-                    <div className="card-accent secondary"></div>
-                    <div className="card-content">
-                        <div className="icon-badge secondary">
-                            <BookOpen size={24} />
-                        </div>
-                        <div className="info">
-                            <span className="label">Course Load</span>
-                            <div className="main-value">{breakdownRows.length} / 6</div>
-                            <div className="progress-bar">
-                                <div className="progress-fill" style={{ width: `${Math.min(100, (breakdownRows.length / 6) * 100)}%` }}></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <div className="matrix-scroll-wrapper">
+                    <table className="master-grades-table">
+                        <thead>
+                            <tr>
+                                <th className="sticky-col id-col">Permanent Reg No</th>
+                                <th className="sticky-col name-col">Student Name</th>
+                                <th className="text-center">Roll No</th>
+                                {activeYearCourses.map(c => (
+                                    <th key={c._id} className="text-center">{c.code}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredStudents.map(student => (
+                                <tr key={student.id} className="hover-row">
+                                    <td
+                                        className="sticky-col id-col font-mono"
+                                        onClick={() => setSelectedStudent(student)}
+                                        style={{ cursor: 'pointer', color: '#818cf8' }}
+                                    >
+                                        {student.permanentRegNo}
+                                    </td>
+                                    <td
+                                        className="sticky-col name-col font-semibold"
+                                        onClick={() => setSelectedStudent(student)}
+                                        style={{ cursor: 'pointer' }}
+                                    >
+                                        {student.name}
+                                    </td>
+                                    <td className="text-center font-mono text-sm">
+                                        {student.displayId}
+                                    </td>
 
-                <div className="glass-panel gpa-card-premium">
-                    <div className="card-accent info"></div>
-                    <div className="card-content">
-                        <div className="icon-badge info">
-                            <User size={24} />
-                        </div>
-                        <div className="info">
-                            <span className="label">Status</span>
-                            <div className="main-value" style={{ fontSize: '1.5rem' }}>Full-Time</div>
-                            <span className="sub-text">Degree Candidate</span>
-                        </div>
-                    </div>
+                                    {activeYearCourses.map(c => {
+                                        const semNum = selectedSemester === 'Sem 1' ? 1 : 2;
+                                        const gradeRecord = gradesData.find(g =>
+                                            g.student?._id === student.id &&
+                                            (g.course?._id === c._id || g.course === c._id) &&
+                                            g.semester === semNum
+                                        );
+
+                                        return (
+                                            <td
+                                                key={`${student.id}-${c._id}`}
+                                                className="grade-cell text-center"
+                                                onClick={() => {
+                                                    setEditGradeModal({
+                                                        courseId: c._id,
+                                                        courseCode: c.code,
+                                                        courseName: c.name,
+                                                        studentId: student.id,
+                                                        studentName: student.name,
+                                                        permanentRegNo: student.permanentRegNo,
+                                                        academicYear: '2025-2026',
+                                                        yearLevel: selectedYear,
+                                                        semester: semNum,
+                                                        letterGrade: gradeRecord?.letterGrade || 'A',
+                                                        semester1Score: gradeRecord?.semester1Score ?? '',
+                                                        comments: gradeRecord?.comments || '',
+                                                    });
+                                                }}
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                {semNum === 2 ? (
+                                                    gradeRecord?.letterGrade ? (
+                                                        <span className="letter-grade-pill">{gradeRecord.letterGrade}</span>
+                                                    ) : (
+                                                        <span className="text-muted text-xs">--</span>
+                                                    )
+                                                ) : (
+                                                    gradeRecord?.semester1Score !== null && gradeRecord?.semester1Score !== undefined ? (
+                                                        <span className="score-pill">{gradeRecord.semester1Score}</span>
+                                                    ) : (
+                                                        <span className="text-muted text-xs">--</span>
+                                                    )
+                                                )}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            {dataError && (
-                <div className="glass-panel empty-state">
-                    <p>{dataError}</p>
-                </div>
-            )}
-            {dataLoading ? (
-                <div className="glass-panel empty-state">
-                    <p>Loading transcript...</p>
-                </div>
-            ) : (
-                <div className="glass-panel transcript-container">
-                    <div className="panel-header">
-                        <h2>Subject Grades Breakdown</h2>
-                        <div className="panel-tip">
-                            <HelpCircle size={14} />
-                            <span>Viewing current academic term</span>
+            {/* Grade Entry / Edit Modal */}
+            {editGradeModal && (
+                <div className="modal-backdrop" onClick={() => setEditGradeModal(null)}>
+                    <div className="modal-card" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3><Edit3 size={18} /> Grade Entry: {editGradeModal.courseCode}</h3>
+                            <button type="button" className="btn-close" onClick={() => setEditGradeModal(null)}>×</button>
                         </div>
-                    </div>
-                    <div className="grades-table-wrapper">
-                        <table className="premium-table">
-                            <thead>
-                                <tr>
-                                    <th>Term</th>
-                                    <th>Subject</th>
-                                    <th>Credits</th>
-                                    <th className="text-center">Grade</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {breakdownRows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="4" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
-                                            No enrolled subjects found for this term.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    breakdownRows.map((item, index) => {
-                                        return (
-                                            <tr key={index}>
-                                                <td className="term-cell">{item.term}</td>
-                                                <td>
-                                                    <div className="subject-info">
-                                                        <span className="course-code-tag">{item.course}</span>
-                                                        <span className="course-title-inline">{item.title}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="credits-cell">{item.credits} Units</td>
-                                                <td>
-                                                    <div className="grade-cell-content">
-                                                        {item.isGraded ? (
-                                                            <div className="grade-result-pill">
-                                                                {item.grade}
-                                                            </div>
-                                                        ) : (
-                                                            <span style={{
-                                                                padding: '0.35rem 0.75rem',
-                                                                borderRadius: '20px',
-                                                                fontSize: '0.78rem',
-                                                                fontWeight: '600',
-                                                                background: 'rgba(99, 102, 241, 0.12)',
-                                                                color: '#818cf8',
-                                                                border: '1px solid rgba(99, 102, 241, 0.3)',
-                                                                display: 'inline-flex',
-                                                                alignItems: 'center',
-                                                                gap: '0.3rem'
-                                                            }}>
-                                                                In Progress
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
+                        <form onSubmit={handleSaveGradeModal}>
+                            <div className="modal-body">
+                                <p className="text-sm text-muted">
+                                    Entering grade for <strong>{editGradeModal.studentName}</strong> ({editGradeModal.permanentRegNo}).
+                                </p>
+
+                                {gradeModalError && (
+                                    <div className="alert-banner error-banner">
+                                        <AlertCircle size={16} />
+                                        <span>{gradeModalError}</span>
+                                    </div>
                                 )}
-                            </tbody>
-                        </table>
+
+                                <div className="form-field">
+                                    <label>Academic Session & Term</label>
+                                    <input
+                                        type="text"
+                                        value={`${editGradeModal.academicYear} • Semester ${editGradeModal.semester}`}
+                                        disabled
+                                    />
+                                </div>
+
+                                {editGradeModal.semester === 2 ? (
+                                    <div className="form-field">
+                                        <label>Official Letter Grade (Semester 2 Final) *</label>
+                                        <select
+                                            className="form-select"
+                                            value={editGradeModal.letterGrade || 'A'}
+                                            onChange={e => setEditGradeModal(prev => ({ ...prev, letterGrade: e.target.value }))}
+                                            required
+                                        >
+                                            <option value="A">Grade A (Excellent / 81–100%)</option>
+                                            <option value="B">Grade B (Good / 61–80%)</option>
+                                            <option value="C">Grade C (Satisfactory / 41–60%)</option>
+                                            <option value="D">Grade D (Pass / 21–40%)</option>
+                                            <option value="E">Grade E (Fail / 0–20%)</option>
+                                        </select>
+                                    </div>
+                                ) : (
+                                    <div className="form-field">
+                                        <label>Semester 1 Internal Tracking Score (0–100)</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            placeholder="e.g. 85"
+                                            value={editGradeModal.semester1Score}
+                                            onChange={e => setEditGradeModal(prev => ({ ...prev, semester1Score: e.target.value }))}
+                                        />
+                                        <span className="text-muted text-xs">Note: Internal score for teacher tracking. Official letter grades are entered in Semester 2.</span>
+                                    </div>
+                                )}
+
+                                <div className="form-field">
+                                    <label>Evaluation Comments</label>
+                                    <textarea
+                                        rows={2}
+                                        placeholder="Optional academic remarks..."
+                                        value={editGradeModal.comments}
+                                        onChange={e => setEditGradeModal(prev => ({ ...prev, comments: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn-secondary" onClick={() => setEditGradeModal(null)}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn-primary" disabled={submittingGrade}>
+                                    {submittingGrade ? 'Saving...' : 'Save & Log Audit'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
-
-            {showImportModal && <ImportMarksModal />}
         </div>
     );
 };

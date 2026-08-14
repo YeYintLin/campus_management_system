@@ -4,6 +4,28 @@ const SessionOverride = require('../models/SessionOverride');
 const axios = require('axios');
 
 const CORE_SERVICE_URL = process.env.CORE_SERVICE_URL || 'http://localhost:5002';
+const INTERNAL_SERVICE_SECRET = process.env.INTERNAL_SERVICE_SECRET || 'cms-internal-secret-token';
+
+// Helper: Fire async attendance rate recalculation to core service
+const notifyAttendanceRecalculation = async (studentIds) => {
+    if (!studentIds) return;
+    const ids = Array.isArray(studentIds) ? studentIds : [studentIds];
+    for (const sid of ids) {
+        if (!sid) continue;
+        try {
+            axios.post(
+                `${CORE_SERVICE_URL}/api/enrollments/recalculate-attendance`,
+                { studentId: sid.toString() },
+                {
+                    headers: { 'x-internal-service-token': INTERNAL_SERVICE_SECRET },
+                    timeout: 4000,
+                }
+            ).catch(err => {
+                // Non-blocking background sync
+            });
+        } catch {}
+    }
+};
 
 // ─────────────────────────────────────────────
 // GET /api/attendance/active-session
@@ -211,6 +233,7 @@ const scanQRAttendance = async (req, res) => {
         });
 
         await attendanceRecord.save();
+        notifyAttendanceRecalculation(studentId);
 
         res.json({
             success: true,
@@ -525,6 +548,8 @@ const markAttendance = async (req, res) => {
                 records: dbRecords,
             });
         }
+
+        notifyAttendanceRecalculation(dbRecords.map(r => r.studentId));
 
         const token = req.headers.authorization;
         const resolvedStudentRecords = [];

@@ -22,7 +22,7 @@ const getAvatarUrl = (name, id) => {
 
 const formatRollNumberDisplay = (rollInput, yearLabel, department) => {
     const raw = String(rollInput || '').trim();
-    if (!raw) return 'N/A';
+    if (!raw || raw.toLowerCase() === 'null' || raw.toLowerCase() === 'undefined' || raw === 'N/A') return 'Not yet assigned';
     if (raw.includes('-') || raw.includes(' ')) return raw;
 
     const getYearPrefix = (yearStr) => {

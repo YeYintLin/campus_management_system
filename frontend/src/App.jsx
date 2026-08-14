@@ -22,6 +22,7 @@ const Assignments = lazy(() => import('./pages/Assignments'));
 const AIPromptSettings = lazy(() => import('./pages/AIPromptSettings'));
 const AccountManagement = lazy(() => import('./pages/AccountManagement'));
 const AcademicSettings = lazy(() => import('./pages/AcademicSettings'));
+const AssignRollNumbers = lazy(() => import('./pages/admin/AssignRollNumbers'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const Chat = lazy(() => import('./pages/Chat'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
@@ -64,6 +65,7 @@ function App() {
             <Route path="/admin/ai-settings" element={<AIPromptSettings />} />
             <Route path="/admin/accounts" element={<AccountManagement />} />
             <Route path="/admin/academic-settings" element={<AcademicSettings />} />
+            <Route path="/admin/assign-roll-numbers" element={<AssignRollNumbers />} />
           </Route>
 
           <Route path="/" element={<Navigate to="/login" />} />

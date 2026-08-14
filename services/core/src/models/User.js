@@ -38,6 +38,28 @@ const userSchema = new mongoose.Schema(
             trim: true,
             default: 'Pending',
         },
+        permanentRegNo: {
+            type: String,
+            unique: true,
+            sparse: true,
+            trim: true,
+            uppercase: true,
+        },
+        currentYear: {
+            type: String,
+            trim: true,
+        },
+        currentRollNo: {
+            type: String,
+            trim: true,
+            default: null,
+        },
+        accountStatus: {
+            type: String,
+            enum: ['Active', 'Graduated', 'Withdrawn', 'On Leave'],
+            default: 'Active',
+            trim: true,
+        },
         year: {
             type: String,
             trim: true,

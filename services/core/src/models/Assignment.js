@@ -7,6 +7,14 @@ const assignmentSchema = new mongoose.Schema(
             ref: 'Course',
             required: true,
         },
+        academicYear: {
+            type: String, // e.g. "2025-2026"
+            trim: true,
+        },
+        yearLevel: {
+            type: String, // e.g. "5th Year"
+            trim: true,
+        },
         title: {
             type: String,
             required: true,

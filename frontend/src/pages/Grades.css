@@ -1037,3 +1037,141 @@
     gap: 0.75rem;
     background: rgba(0, 0, 0, 0.2);
 }
+
+/* ── Multi-Year Academic Banner & Tabs ── */
+.student-identity-banner {
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.5rem;
+}
+
+.identity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.identity-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.identity-col h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #f8fafc;
+}
+
+.permanent-reg-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #0f172a;
+    border: 1px solid #334155;
+    padding: 0.35rem 0.65rem;
+    border-radius: 8px;
+    font-family: monospace;
+    color: #a5b4fc;
+    font-size: 0.875rem;
+}
+
+.attendance-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.year-tabs-container {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.year-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(51, 65, 85, 0.6);
+    color: #94a3b8;
+    padding: 0.65rem 1.1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.year-tab-btn:hover {
+    color: #f8fafc;
+    border-color: #6366f1;
+}
+
+.year-tab-btn.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: #6366f1;
+    color: #818cf8;
+}
+
+.active-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #4ade80;
+}
+
+.letter-grade-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 0.95rem;
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.score-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    background: #1e293b;
+    color: #cbd5e1;
+}
+
+.in-progress-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.7rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-badge-mini {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-badge-mini.good {
+    color: #4ade80;
+}
+
+.status-badge-mini.pending {
+    color: #94a3b8;
+}
+
