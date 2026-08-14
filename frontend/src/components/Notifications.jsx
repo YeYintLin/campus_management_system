@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { X, Bell, FileText, FileEdit, Info, Check, MessageSquare } from 'lucide-react';
 
 const ICON_BY_TYPE = {
@@ -8,7 +9,23 @@ const ICON_BY_TYPE = {
 };
 
 const Notifications = ({ notifications, onMarkAsRead, onClose }) => {
+    const navigate = useNavigate();
     const getIcon = (type) => ICON_BY_TYPE[type] || <Bell size={16} />;
+
+    const handleViewAll = () => {
+        if (onClose) onClose();
+        navigate('/notifications');
+    };
+
+    const handleNotifClick = (notif) => {
+        if (!notif.read && onMarkAsRead) {
+            onMarkAsRead(notif._id);
+        }
+        if (notif.link) {
+            if (onClose) onClose();
+            navigate(notif.link);
+        }
+    };
 
     return (
         <div className="notifications-tray glass-panel animate-slide-in">
@@ -26,7 +43,12 @@ const Notifications = ({ notifications, onMarkAsRead, onClose }) => {
                     </div>
                 ) : (
                     notifications.map(notif => (
-                        <div key={notif._id} className={`notif-item ${notif.read ? 'read' : 'unread'}`}>
+                        <div
+                            key={notif._id}
+                            className={`notif-item ${notif.read ? 'read' : 'unread'}`}
+                            onClick={() => handleNotifClick(notif)}
+                            style={{ cursor: notif.link ? 'pointer' : 'default' }}
+                        >
                             <div className="notif-icon-wrapper">
                                 {getIcon(notif.type)}
                             </div>
@@ -38,7 +60,10 @@ const Notifications = ({ notifications, onMarkAsRead, onClose }) => {
                                 <button
                                     type="button"
                                     className="mark-read-btn"
-                                    onClick={() => onMarkAsRead(notif._id)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onMarkAsRead(notif._id);
+                                    }}
                                     title="Mark as read"
                                 >
                                     <Check size={14} />
@@ -50,7 +75,9 @@ const Notifications = ({ notifications, onMarkAsRead, onClose }) => {
             </div>
             {notifications.length > 0 && (
                 <div className="tray-footer">
-                    <button type="button" className="view-all">View All Activity</button>
+                    <button type="button" className="view-all" onClick={handleViewAll}>
+                        View All Activity
+                    </button>
                 </div>
             )}
         </div>
