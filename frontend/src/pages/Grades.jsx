@@ -318,18 +318,23 @@ const Grades = () => {
             setDataLoading(true);
             setDataError('');
             try {
-                const validCourses = courses.filter(course => course && course._id && !String(course._id).startsWith('tt_'));
-                const gradePromises = validCourses.map(course => {
-                    if (canManageGrades) {
+                if (isStudent) {
+                    const res = await apiClient.get('/grades').catch(() => ({ data: [] }));
+                    const records = res?.data || [];
+                    const normalized = normalizeGradeRecords(records);
+                    normalized.default = normalized.default || [];
+                    setGradesData(normalized);
+                } else {
+                    const validCourses = courses.filter(course => course && course._id && !String(course._id).startsWith('tt_'));
+                    const gradePromises = validCourses.map(course => {
                         return apiClient.get(`/grades/course/${course._id}`).catch(() => ({ data: [] }));
-                    }
-                    return apiClient.get(`/grades/student/${user._id}/course/${course._id}`).catch(() => ({ data: [] }));
-                });
-                const responses = await Promise.all(gradePromises);
-                const records = responses.flatMap((res) => res?.data || []);
-                const normalized = normalizeGradeRecords(records);
-                normalized.default = normalized.default || [];
-                setGradesData(normalized);
+                    });
+                    const responses = await Promise.all(gradePromises);
+                    const records = responses.flatMap((res) => res?.data || []);
+                    const normalized = normalizeGradeRecords(records);
+                    normalized.default = normalized.default || [];
+                    setGradesData(normalized);
+                }
             } catch (error) {
                 console.warn('Grade records load warning:', error);
             } finally {
@@ -338,7 +343,7 @@ const Grades = () => {
         };
 
         fetchGradeRecords();
-    }, [courses, user, canManageGrades]);
+    }, [courses, user, canManageGrades, isStudent]);
 
     useEffect(() => {
         if (location.state?.studentId && studentList.length) {
@@ -355,10 +360,14 @@ const Grades = () => {
         }
 
         if (isStudent) {
+            const studentYear = getNormalizedUserYear(user) || semesterToYearLabel(user?.semester);
+            const rollNo = user?.enrollmentNumber || user?.rollNo || (user?.email ? user.email.split('@')[0] : '');
             setSelectedStudent({
                 id: user?._id,
+                displayId: rollNo,
                 name: user?.name || 'Student',
-                year: semesterToYearLabel(user?.semester),
+                year: studentYear,
+                department: user?.department || 'Mechatronics Engineering',
             });
             return;
         }
@@ -1038,9 +1047,11 @@ const Grades = () => {
     // Student Detail View or Individual Student Login View
     const currentGrades = getGrades(selectedStudent?.id || user?._id);
     const displayUser = selectedStudent || {
-        id: user?.enrollmentNumber || user?.rollNumber || (user?.email ? user.email.split('@')[0] : ''),
+        id: user?._id,
+        displayId: user?.enrollmentNumber || user?.rollNo || (user?.email ? user.email.split('@')[0] : ''),
         name: user?.name,
         year: getNormalizedUserYear(user) || semesterToYearLabel(user?.semester),
+        department: user?.department || 'Mechatronics Engineering',
     };
 
     return (
@@ -1056,7 +1067,7 @@ const Grades = () => {
                     <div>
                         <h1>{displayUser?.name}'s Performance</h1>
                         <p className="subtitle">
-                            Academic Record {displayUser?.id ? `• ${displayUser.id}` : ''} {displayUser?.year ? `• ${displayUser.year}` : ''}
+                            Academic Record {displayUser?.displayId ? `• ${displayUser.displayId}` : ''} {displayUser?.year ? `• ${displayUser.year}` : ''} {displayUser?.department ? `• ${displayUser.department}` : ''}
                         </p>
                     </div>
                 </div>
@@ -1140,28 +1151,36 @@ const Grades = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {currentGrades.map((item, index) => {
-                                    const letterGrade = calculateLetterGrade(item.score);
-                                    return (
-                                        <tr key={index}>
-                                            <td className="term-cell">{item.term}</td>
-                                            <td>
-                                                <div className="subject-info">
-                                                    <span className="course-code-tag">{item.course}</span>
-                                                    <span className="course-title-inline">{item.title}</span>
-                                                </div>
-                                            </td>
-                                            <td className="credits-cell">{item.credits} Units</td>
-                                            <td>
-                                                <div className="grade-cell-content">
-                                                    <div className="grade-result-pill">
-                                                        {letterGrade}
+                                {currentGrades.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="4" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
+                                            No graded subject records found for this term yet.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    currentGrades.map((item, index) => {
+                                        const letterGrade = calculateLetterGrade(item.score);
+                                        return (
+                                            <tr key={index}>
+                                                <td className="term-cell">{item.term}</td>
+                                                <td>
+                                                    <div className="subject-info">
+                                                        <span className="course-code-tag">{item.course}</span>
+                                                        <span className="course-title-inline">{item.title}</span>
                                                     </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                                </td>
+                                                <td className="credits-cell">{item.credits} Units</td>
+                                                <td>
+                                                    <div className="grade-cell-content">
+                                                        <div className="grade-result-pill">
+                                                            {letterGrade}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
                             </tbody>
                         </table>
                     </div>
