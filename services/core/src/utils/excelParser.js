@@ -78,94 +78,97 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
             return s === 'monday' || s === 'tuesday' || s === 'wednesday' || s === 'thursday' || s === 'friday' || s.startsWith('mon') || s.startsWith('tue') || s.startsWith('wed') || s.startsWith('thu') || s.startsWith('fri');
         }));
 
+        let titleText = '';
+        jsonRows.forEach(row => {
+            if (!Array.isArray(row)) return;
+            const lineStr = row.filter(Boolean).map(c => String(c).trim()).join(' ');
+            if (lineStr.toLowerCase().includes('timetable for') || lineStr.toLowerCase().includes('technological university') || lineStr.toLowerCase().includes('department of')) {
+                titleText = lineStr;
+            }
+        });
+
+        const rawTitle = titleText || sheetName;
+        const parenIndex = rawTitle.indexOf('(');
+        let yearPart = rawTitle;
+        let semPart = rawTitle;
+
+        if (parenIndex !== -1) {
+            yearPart = rawTitle.substring(0, parenIndex).trim();
+            const closeParenIndex = rawTitle.indexOf(')', parenIndex);
+            if (closeParenIndex !== -1) {
+                semPart = rawTitle.substring(parenIndex + 1, closeParenIndex).trim();
+            } else {
+                semPart = rawTitle.substring(parenIndex + 1).trim();
+            }
+        }
+
+        // 1. Detect Year
+        const cleanY = yearPart.toUpperCase();
+        let detectedYear = '3rd Year';
+
+        if (/\bVI\b/.test(cleanY) || cleanY.includes('SIXTH') || cleanY.includes('6TH') || cleanY.includes('6')) {
+            detectedYear = '6th Year';
+        } else if (/\bV\b/.test(cleanY) || cleanY.includes('FIFTH') || cleanY.includes('5TH') || cleanY.includes('5')) {
+            detectedYear = '5th Year';
+        } else if (/\bIV\b/.test(cleanY) || cleanY.includes('FOURTH') || cleanY.includes('4TH') || cleanY.includes('4')) {
+            detectedYear = '4th Year';
+        } else if (/\bIII\b/.test(cleanY) || cleanY.includes('THIRD') || cleanY.includes('3RD') || cleanY.includes('3')) {
+            detectedYear = '3rd Year';
+        } else if (/\bII\b/.test(cleanY) || cleanY.includes('SECOND') || cleanY.includes('2ND') || cleanY.includes('2')) {
+            detectedYear = '2nd Year';
+        } else if (/\bI\b/.test(cleanY) || cleanY.includes('FIRST') || cleanY.includes('1ST') || cleanY.includes('1')) {
+            detectedYear = '1st Year';
+        } else if (cleanY.includes('ME') || cleanY.includes('MASTER')) {
+            detectedYear = 'ME Program';
+        }
+
+        // 2. Detect Semester
+        const cleanS = semPart.toUpperCase();
+        let detectedSemester = 'Semester 1';
+
+        if (
+            /\b(2|4|6|8|10)\b/.test(cleanS) ||
+            /\b(II|IV|VI|VIII|X)\b/.test(cleanS) ||
+            cleanS.includes('SECOND') ||
+            cleanS.includes('SEM 2') ||
+            cleanS.includes('SEM 4') ||
+            cleanS.includes('S2') ||
+            cleanS.includes('S4')
+        ) {
+            detectedSemester = 'Semester 2';
+        } else if (
+            /\b(1|3|5|7|9)\b/.test(cleanS) ||
+            /\b(I|III|V|VII|IX)\b/.test(cleanS) ||
+            cleanS.includes('FIRST') ||
+            cleanS.includes('SEM 1') ||
+            cleanS.includes('SEM 3') ||
+            cleanS.includes('S1') ||
+            cleanS.includes('S3')
+        ) {
+            detectedSemester = 'Semester 1';
+        }
+
+        let majorRoom = '3/212-A';
+        let familyTeacher = 'Faculty Member';
+
+        jsonRows.forEach(row => {
+            if (!Array.isArray(row)) return;
+            const lineStr = row.filter(Boolean).map(c => String(c).trim()).join(' ');
+
+            if (lineStr.toLowerCase().includes('major room')) {
+                const match = lineStr.match(/major room\s*\(([^)]+)\)/i);
+                if (match) majorRoom = match[1].trim();
+            }
+
+            if (lineStr.toLowerCase().includes('family teacher')) {
+                const match = lineStr.match(/family teacher\s*[-:]?\s*(.+)/i);
+                if (match) familyTeacher = match[1].trim();
+            }
+        });
+
         const isGridFormat = (targetCategory === 'Academic' || hasDayNames) && (fullText.includes('period') || fullText.includes('lunch') || fullText.includes('09:00') || fullText.includes('9:00') || hasDayNames);
 
         if (isGridFormat) {
-            let titleText = '';
-            jsonRows.forEach(row => {
-                if (!Array.isArray(row)) return;
-                const lineStr = row.filter(Boolean).map(c => String(c).trim()).join(' ');
-                if (lineStr.toLowerCase().includes('timetable for')) titleText = lineStr;
-            });
-
-            const rawTitle = titleText || sheetName;
-            const parenIndex = rawTitle.indexOf('(');
-            let yearPart = rawTitle;
-            let semPart = rawTitle;
-
-            if (parenIndex !== -1) {
-                yearPart = rawTitle.substring(0, parenIndex).trim();
-                const closeParenIndex = rawTitle.indexOf(')', parenIndex);
-                if (closeParenIndex !== -1) {
-                    semPart = rawTitle.substring(parenIndex + 1, closeParenIndex).trim();
-                } else {
-                    semPart = rawTitle.substring(parenIndex + 1).trim();
-                }
-            }
-
-            // 1. Detect Year ONLY from text before parenthesis
-            const cleanY = yearPart.toUpperCase();
-            let detectedYear = '2nd Year';
-
-            if (/\bVI\b/.test(cleanY) || cleanY.includes('SIXTH') || cleanY.includes('6TH') || cleanY.includes('6')) {
-                detectedYear = '6th Year';
-            } else if (/\bV\b/.test(cleanY) || cleanY.includes('FIFTH') || cleanY.includes('5TH') || cleanY.includes('5')) {
-                detectedYear = '5th Year';
-            } else if (/\bIV\b/.test(cleanY) || cleanY.includes('FOURTH') || cleanY.includes('4TH') || cleanY.includes('4')) {
-                detectedYear = '4th Year';
-            } else if (/\bIII\b/.test(cleanY) || cleanY.includes('THIRD') || cleanY.includes('3RD') || cleanY.includes('3')) {
-                detectedYear = '3rd Year';
-            } else if (/\bII\b/.test(cleanY) || cleanY.includes('SECOND') || cleanY.includes('2ND') || cleanY.includes('2')) {
-                detectedYear = '2nd Year';
-            } else if (/\bI\b/.test(cleanY) || cleanY.includes('FIRST') || cleanY.includes('1ST') || cleanY.includes('1')) {
-                detectedYear = '1st Year';
-            } else if (cleanY.includes('ME') || cleanY.includes('MASTER')) {
-                detectedYear = 'ME Program';
-            }
-
-            // 2. Detect Semester ONLY from text inside parenthesis
-            const cleanS = semPart.toUpperCase();
-            let detectedSemester = 'Semester 2';
-
-            if (
-                /\b(2|4|6|8|10)\b/.test(cleanS) ||
-                /\b(II|IV|VI|VIII|X)\b/.test(cleanS) ||
-                cleanS.includes('SECOND') ||
-                cleanS.includes('SEM 2') ||
-                cleanS.includes('SEM 4') ||
-                cleanS.includes('S2') ||
-                cleanS.includes('S4')
-            ) {
-                detectedSemester = 'Semester 2';
-            } else if (
-                /\b(1|3|5|7|9)\b/.test(cleanS) ||
-                /\b(I|III|V|VII|IX)\b/.test(cleanS) ||
-                cleanS.includes('FIRST') ||
-                cleanS.includes('SEM 1') ||
-                cleanS.includes('SEM 3') ||
-                cleanS.includes('S1') ||
-                cleanS.includes('S3')
-            ) {
-                detectedSemester = 'Semester 1';
-            }
-
-            let majorRoom = '3/212-A';
-            let familyTeacher = 'Faculty Member';
-
-            jsonRows.forEach(row => {
-                if (!Array.isArray(row)) return;
-                const lineStr = row.filter(Boolean).map(c => String(c).trim()).join(' ');
-
-                if (lineStr.toLowerCase().includes('major room')) {
-                    const match = lineStr.match(/major room\s*\(([^)]+)\)/i);
-                    if (match) majorRoom = match[1].trim();
-                }
-
-                if (lineStr.toLowerCase().includes('family teacher')) {
-                    const match = lineStr.match(/family teacher\s*[-:]?\s*(.+)/i);
-                    if (match) familyTeacher = match[1].trim();
-                }
-            });
 
             // Parse Legend Table at bottom for Course Codes, Names, and Teachers
             const courseLegend = {};
