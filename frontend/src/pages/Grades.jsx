@@ -1054,6 +1054,33 @@ const Grades = () => {
         department: user?.department || 'Mechatronics Engineering',
     };
 
+    const studentYearLabel = displayUser?.year || '5th Year';
+    const studentEnrolledCourses = courses.filter(c => {
+        if (!c) return false;
+        const yLabel = c.yearLabel || (c.year ? `${c.year}th Year` : '') || deriveYearTag(c.code);
+        return yLabel === studentYearLabel;
+    });
+
+    const displayCoursesList = studentEnrolledCourses.length > 0 ? studentEnrolledCourses : courses.slice(0, 6);
+
+    const breakdownRows = displayCoursesList.map(course => {
+        const cleanCode = (course.code || '').replace(/\s+/g, '').toUpperCase();
+        const existingGrade = currentGrades.find(g => {
+            const gCode = (g.course || '').replace(/\s+/g, '').toUpperCase();
+            return gCode === cleanCode || g.course === course._id;
+        });
+
+        return {
+            term: existingGrade?.term || 'Semester 1',
+            course: course.code,
+            title: course.name,
+            credits: course.credits || 3,
+            score: existingGrade?.score,
+            grade: existingGrade ? calculateLetterGrade(existingGrade.score) : null,
+            isGraded: !!existingGrade,
+        };
+    });
+
     return (
         <div className="grades-page animate-fade-in">
             <header className="page-header">
@@ -1099,9 +1126,9 @@ const Grades = () => {
                         </div>
                         <div className="info">
                             <span className="label">Course Load</span>
-                            <div className="main-value">{currentGrades.length} / 6</div>
+                            <div className="main-value">{breakdownRows.length} / 6</div>
                             <div className="progress-bar">
-                                <div className="progress-fill" style={{ width: `${(currentGrades.length / 6) * 100}%` }}></div>
+                                <div className="progress-fill" style={{ width: `${Math.min(100, (breakdownRows.length / 6) * 100)}%` }}></div>
                             </div>
                         </div>
                     </div>
@@ -1137,7 +1164,7 @@ const Grades = () => {
                         <h2>Subject Grades Breakdown</h2>
                         <div className="panel-tip">
                             <HelpCircle size={14} />
-                            <span>Viewing verified records only</span>
+                            <span>Viewing current academic term</span>
                         </div>
                     </div>
                     <div className="grades-table-wrapper">
@@ -1151,15 +1178,14 @@ const Grades = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {currentGrades.length === 0 ? (
+                                {breakdownRows.length === 0 ? (
                                     <tr>
                                         <td colSpan="4" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
-                                            No graded subject records found for this term yet.
+                                            No enrolled subjects found for this term.
                                         </td>
                                     </tr>
                                 ) : (
-                                    currentGrades.map((item, index) => {
-                                        const letterGrade = calculateLetterGrade(item.score);
+                                    breakdownRows.map((item, index) => {
                                         return (
                                             <tr key={index}>
                                                 <td className="term-cell">{item.term}</td>
@@ -1172,9 +1198,26 @@ const Grades = () => {
                                                 <td className="credits-cell">{item.credits} Units</td>
                                                 <td>
                                                     <div className="grade-cell-content">
-                                                        <div className="grade-result-pill">
-                                                            {letterGrade}
-                                                        </div>
+                                                        {item.isGraded ? (
+                                                            <div className="grade-result-pill">
+                                                                {item.grade}
+                                                            </div>
+                                                        ) : (
+                                                            <span style={{
+                                                                padding: '0.35rem 0.75rem',
+                                                                borderRadius: '20px',
+                                                                fontSize: '0.78rem',
+                                                                fontWeight: '600',
+                                                                background: 'rgba(99, 102, 241, 0.12)',
+                                                                color: '#818cf8',
+                                                                border: '1px solid rgba(99, 102, 241, 0.3)',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.3rem'
+                                                            }}>
+                                                                In Progress
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
