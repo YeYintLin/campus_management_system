@@ -1,10 +1,143 @@
 import React, { useCallback, useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
+import * as XLSX from 'xlsx';
 import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Coffee, History, RotateCcw, ShieldAlert, User, Search, Filter, ShieldCheck, Tag, Sparkles, Layers, ArrowUpDown, CheckCircle2, Eye, Trash2, RefreshCw } from 'lucide-react';
 import { getNormalizedUserYear, normalizeYear, parseYearNumber } from '../utils/userYear';
 import { exportAcademicMatrixExcel, exportDateScheduleExcel, exportExamScheduleExcel } from '../utils/excelExporter';
 import './TimeTable.css';
+
+// Client-side parser for Practical / Tutorial / Exam Excel preview (zero network dependency)
+const parseClientPracticalExcel = (file, category, defaultYear, defaultSemester) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const sessions = [];
+
+                workbook.SheetNames.forEach(sheetName => {
+                    const sheet = workbook.Sheets[sheetName];
+                    const jsonRows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
+                    if (!jsonRows || jsonRows.length === 0) return;
+
+                    let headerRowIdx = -1;
+                    let colMap = { year: 0, code: 1, title: 2, teacher: 3, group: 4, date: 5, time: 6, place: 7 };
+
+                    for (let i = 0; i < Math.min(jsonRows.length, 25); i++) {
+                        const row = jsonRows[i];
+                        if (!Array.isArray(row)) continue;
+                        const cells = row.map(c => String(c || '').toLowerCase().trim());
+                        const cIdxCode = cells.findIndex(h => h.includes('code') || h === 'subject' || h === 'course');
+                        const cIdxTitle = cells.findIndex(h => h.includes('title') || h.includes('topic') || h.includes('exp') || h.includes('name'));
+                        const cIdxDate = cells.findIndex(h => h.includes('date') || h.includes('day'));
+
+                        if (cIdxCode !== -1 || (cIdxTitle !== -1 && cIdxDate !== -1)) {
+                            headerRowIdx = i;
+                            const cIdxYear = cells.findIndex(h => h.includes('year') || h.includes('yr'));
+                            const cIdxTeacher = cells.findIndex(h => h.includes('teacher') || h.includes('instructor') || h.includes('faculty') || h.includes('staff'));
+                            const cIdxGroup = cells.findIndex(h => h.includes('group') || h.includes('batch') || h.includes('sec'));
+                            const cIdxTime = cells.findIndex(h => h.includes('time') || h.includes('hour') || h.includes('period'));
+                            const cIdxPlace = cells.findIndex(h => h.includes('place') || h.includes('room') || h.includes('lab') || h.includes('loc'));
+
+                            if (cIdxYear !== -1) colMap.year = cIdxYear;
+                            if (cIdxCode !== -1) colMap.code = cIdxCode;
+                            if (cIdxTitle !== -1) colMap.title = cIdxTitle;
+                            if (cIdxTeacher !== -1) colMap.teacher = cIdxTeacher;
+                            if (cIdxGroup !== -1) colMap.group = cIdxGroup;
+                            if (cIdxDate !== -1) colMap.date = cIdxDate;
+                            if (cIdxTime !== -1) colMap.time = cIdxTime;
+                            if (cIdxPlace !== -1) colMap.place = cIdxPlace;
+                            break;
+                        }
+                    }
+
+                    const startRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
+                    let consecutiveBlank = 0;
+
+                    for (let r = startRow; r < jsonRows.length; r++) {
+                        const row = jsonRows[r];
+                        if (!Array.isArray(row) || row.every(c => c === null || c === undefined || String(c).trim() === '')) {
+                            consecutiveBlank++;
+                            if (consecutiveBlank >= 3) break;
+                            continue;
+                        }
+                        consecutiveBlank = 0;
+
+                        const fullRowText = row.map(c => String(c || '').trim()).join(' ');
+                        const lowerRowText = fullRowText.toLowerCase();
+                        if (lowerRowText.includes('prepared by') || lowerRowText.includes('approved by') || lowerRowText.includes('head of department') || lowerRowText.includes('professor head')) {
+                            break;
+                        }
+
+                        let rawYear = row[colMap.year];
+                        let rawCode = row[colMap.code];
+                        let rawTitle = row[colMap.title];
+                        let rawTeacher = row[colMap.teacher];
+                        let rawGroup = row[colMap.group];
+                        let rawDate = row[colMap.date];
+                        let rawTime = row[colMap.time];
+                        let rawPlace = row[colMap.place];
+
+                        const cleanCode = String(rawCode || '').trim();
+                        if (!cleanCode || cleanCode.length < 2) continue;
+                        if (/^\d{1,2}[./-]\d{1,2}[./-](\d{2}|\d{4})$/.test(cleanCode) || /^GROUP/i.test(cleanCode) || /\d{1,2}:\d{2}/.test(cleanCode)) continue;
+                        if (['CODE', 'SUBJECT', 'COURSE', 'SR', 'NO', 'YEAR', 'DATE', 'TIME', 'TITLE', 'TOPIC', 'TEACHER', 'PLACE', 'ROOM'].includes(cleanCode.toUpperCase())) continue;
+
+                        let cleanTitle = String(rawTitle || '').trim();
+                        if (!cleanTitle) cleanTitle = category === 'Tutorial' ? 'Tutorial Problem Solving' : 'Practical Lab Experiment';
+
+                        let cleanTeacher = String(rawTeacher || '').trim();
+                        if (!cleanTeacher || cleanTeacher.toLowerCase().includes('faculty')) cleanTeacher = 'Daw Thin Yu Maw';
+
+                        let cleanGroup = String(rawGroup || '').trim() || 'All';
+                        let cleanPlace = String(rawPlace || '').trim() || (category === 'Tutorial' ? 'Classroom 3/212-A' : 'Mechatronics Lab');
+
+                        let parsedDate = rawDate ? new Date(rawDate).toISOString() : new Date().toISOString();
+                        const timeStr = String(rawTime || '09:00 AM - 09:50 AM');
+                        const timeParts = timeStr.includes('to') ? timeStr.split('to') : timeStr.split('-');
+                        const startTime = timeParts[0]?.trim() || '09:00 AM';
+                        const endTime = timeParts[1]?.trim() || '09:50 AM';
+
+                        let yearLabel = defaultYear || '3rd Year';
+                        if (rawYear && String(rawYear).trim().length > 0) {
+                            const yStr = String(rawYear).trim().toUpperCase();
+                            if (yStr.includes('1')) yearLabel = '1st Year';
+                            else if (yStr.includes('2')) yearLabel = '2nd Year';
+                            else if (yStr.includes('3')) yearLabel = '3rd Year';
+                            else if (yStr.includes('4')) yearLabel = '4th Year';
+                            else if (yStr.includes('5')) yearLabel = '5th Year';
+                            else if (yStr.includes('6')) yearLabel = '6th Year';
+                        }
+
+                        sessions.push({
+                            year: yearLabel,
+                            semester: defaultSemester || 'Semester 1',
+                            sessionType: category,
+                            courseCode: cleanCode,
+                            courseName: cleanTitle,
+                            title: cleanTitle,
+                            teacher: cleanTeacher,
+                            groupTag: cleanGroup,
+                            date: parsedDate,
+                            startTime,
+                            endTime,
+                            place: cleanPlace,
+                            status: 'Scheduled'
+                        });
+                    }
+                });
+
+                resolve(sessions);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+    });
+};
 
 const PracticalScheduleView = ({
     sessions = [],
@@ -833,18 +966,16 @@ const TimeTable = () => {
 
         try {
             if (selectedCategory !== 'Academic') {
-                // Intercept with Preview Modal first
-                const { data } = await apiClient.post('/sessions/preview-import', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                // Parse locally in browser with XLSX — instant, zero 404 network failure risk
+                const parsedSessions = await parseClientPracticalExcel(file, selectedCategory, selectedYear, selectedSemester);
 
-                if (!data.sessions || data.sessions.length === 0) {
+                if (!parsedSessions || parsedSessions.length === 0) {
                     throw new Error(`No valid ${selectedCategory} sessions found in the uploaded file.`);
                 }
 
                 setPreviewData({
-                    sessions: data.sessions || [],
-                    count: data.count || (data.sessions || []).length,
+                    sessions: parsedSessions,
+                    count: parsedSessions.length,
                     file,
                     fileName: file.name,
                     sessionType: selectedCategory
