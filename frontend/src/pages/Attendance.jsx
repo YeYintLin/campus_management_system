@@ -6,7 +6,7 @@ import jsQR from 'jsqr';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
 import { Calendar, Users, BookOpen, ChevronRight, ArrowLeft, CheckCircle2, XCircle, Clock, Save, Search, Award, TrendingUp, Zap, KeyRound, Send, Check, Camera, QrCode, X, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
-import { normalizeYear, parseYearNumber } from '../utils/userYear';
+import { getNormalizedUserYear, normalizeYear, parseYearNumber } from '../utils/userYear';
 import './Attendance.css';
 
 const yearNumberToLabel = (num) => {
@@ -105,6 +105,7 @@ const Attendance = () => {
     const isTeacher = user?.role === 'Teacher';
     const isAdmin = user?.role === 'Admin';
     const canManageAttendance = isAdmin || isTeacher;
+    const studentYear = getNormalizedUserYear(user);
 
     // State for Teacher / Admin view
     const [view, setView] = useState('courses'); // 'courses' or 'marking'
@@ -572,18 +573,21 @@ const Attendance = () => {
     // Load personal attendance for Student
     useEffect(() => {
         if (!isStudent) return;
+        const studentId = user?._id || user?.id;
+        if (!studentId) return;
+
         const fetchStudentAttendance = async () => {
             setLoading(true);
             try {
-                const { data } = await apiClient.get(`/attendance?student=${user._id}`);
-                setStudentAttendanceLogs(data);
+                const { data } = await apiClient.get(`/attendance?student=${studentId}`);
+                setStudentAttendanceLogs(Array.isArray(data) ? data : []);
 
                 let present = 0;
                 let late = 0;
                 let absent = 0;
                 let total = 0;
 
-                data.forEach(log => {
+                (Array.isArray(data) ? data : []).forEach(log => {
                     log.records?.forEach(r => {
                         total += 1;
                         if (r.status === 'Present') present += 1;
@@ -601,7 +605,7 @@ const Attendance = () => {
             }
         };
         fetchStudentAttendance();
-    }, [isStudent, user._id]);
+    }, [isStudent, user?._id, user?.id]);
 
     // Compute Subject-by-Subject Attendance breakdown for Student View
     const perSubjectAttendance = useMemo(() => {
