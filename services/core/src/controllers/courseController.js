@@ -59,6 +59,12 @@ const syncCourseCollectionWithTimetable = async () => {
                     for (const item of sem.legend) {
                         if (item && item.code) {
                             let rawCode = item.code.trim();
+                            const codeUpper = rawCode.toUpperCase();
+                            // Skip non-subject activities (Tutorial, Practical, Library, Assembly)
+                            if (['TUTORIAL', 'PRACTICAL', 'LIBRARY', 'LIB', 'ASSEMBLY', 'SEMINAR', 'MEETING', 'LUNCH', 'BREAK'].some(k => codeUpper === k || codeUpper.startsWith(`${k} `) || codeUpper.startsWith(`${k}-`))) {
+                                continue;
+                            }
+
                             const codeMatch = rawCode.match(/^[A-Za-z]{1,5}-?\s*\d{3,6}/);
                             if (codeMatch) {
                                 rawCode = codeMatch[0].replace(/\s+/g, '');
@@ -67,6 +73,9 @@ const syncCourseCollectionWithTimetable = async () => {
 
                             const codeStr = rawCode.toUpperCase();
                             let subjectName = item.subject ? item.subject.trim() : rawCode;
+                            if (['TUTORIAL', 'PRACTICAL', 'LIBRARY', 'LIB', 'ASSEMBLY'].some(k => subjectName.toUpperCase() === k)) {
+                                continue;
+                            }
                             const teacherInSubject = subjectName.match(/\s{2,}(Daw |U |Dr\.|Dr |Prof\.?|Sayar ).+$/i);
                             if (teacherInSubject) {
                                 subjectName = subjectName.substring(0, teacherInSubject.index).trim();
@@ -93,7 +102,13 @@ const syncCourseCollectionWithTimetable = async () => {
                     }
                 }
             }
-        }
+        // Clean up any legacy non-course entries (Tutorial, Practical, Lib, etc.)
+        await Course.deleteMany({
+            $or: [
+                { code: { $in: ['TUTORIAL', 'PRACTICAL', 'LIBRARY', 'LIB', 'ASSEMBLY', 'SEMINAR'] } },
+                { name: { $in: ['Tutorial', 'Practical', 'Library', 'Assembly', 'Tutorial Problem Solving'] } }
+            ]
+        });
 
         // Apply legendMap to Course collection: update year, semester, name, AND teacher strictly
         for (const [cleanCode, info] of legendMap.entries()) {
