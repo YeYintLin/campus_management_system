@@ -327,6 +327,7 @@ const getImportHistory = async (req, res) => {
         const TimetableFile = require('../models/TimetableFile');
         const files = await TimetableFile.find()
             .select('-data')
+            .populate('uploadedBy', 'name email role')
             .sort({ createdAt: -1 })
             .lean();
 
@@ -336,7 +337,12 @@ const getImportHistory = async (req, res) => {
             createdAt: f.createdAt,
             size: f.size || 0,
             isActive: f.isActive || idx === 0,
-            uploadedBy: f.uploadedBy || null
+            uploadedBy: f.uploadedBy ? {
+                id: f.uploadedBy._id,
+                name: f.uploadedBy.name || 'Unknown User',
+                email: f.uploadedBy.email || '',
+                role: f.uploadedBy.role || ''
+            } : null
         }));
 
         res.json(history);

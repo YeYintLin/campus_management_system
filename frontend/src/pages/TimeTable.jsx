@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Coffee, History, RotateCcw, ShieldAlert } from 'lucide-react';
+import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Coffee, History, RotateCcw, ShieldAlert, User } from 'lucide-react';
 import { getNormalizedUserYear, normalizeYear, parseYearNumber } from '../utils/userYear';
 import { exportAcademicMatrixExcel, exportDateScheduleExcel, exportExamScheduleExcel } from '../utils/excelExporter';
 import './TimeTable.css';
@@ -888,8 +888,14 @@ const TimeTable = () => {
                                                 <span className="badge" style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)' }}>v{importHistory.length - idx}</span>
                                             )}
                                         </div>
-                                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.85rem', display: 'flex', gap: '1rem' }}>
+                                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.85rem', display: 'flex', gap: '0.85rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                             <span>Uploaded: {new Date(item.createdAt).toLocaleString()}</span>
+                                            {item.uploadedBy?.name && (
+                                                <span style={{ color: '#818cf8', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                    <User size={13} />
+                                                    Uploaded by: {item.uploadedBy.name} {item.uploadedBy.role ? `(${item.uploadedBy.role})` : ''}
+                                                </span>
+                                            )}
                                             {item.size > 0 && <span>Size: {(item.size / 1024).toFixed(1)} KB</span>}
                                         </div>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
