@@ -327,135 +327,195 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 }
             });
         } else {
-            // Structural Header-Row Detection (Scan first 15 rows for column labels)
-            const scanLimit = Math.min(jsonRows.length, 15);
+            // ----------------------------------------------------
+            // FIXED COLUMN TABULAR PARSER FOR PRACTICAL / TUTORIAL / EXAM
+            // Mapping:
+            // Col A (0): Year
+            // Col B (1): Subject Code
+            // Col C (2): Practical / Tutorial Title
+            // Col D (3): Teacher / Instructor
+            // Col E (4): Student Group / Batch
+            // Col F (5): Date
+            // Col G (6): Time
+            // Col H (7): Place / Lab Room
+            // ----------------------------------------------------
+            const scanLimit = Math.min(jsonRows.length, 25);
             let headerRowIdx = -1;
+            let colMap = {
+                year: 0,
+                code: 1,
+                title: 2,
+                teacher: 3,
+                group: 4,
+                date: 5,
+                time: 6,
+                place: 7
+            };
 
             for (let i = 0; i < scanLimit; i++) {
                 const r = jsonRows[i];
                 if (!Array.isArray(r)) continue;
-                const lineStr = r.map(c => String(c || '').toLowerCase().trim()).join(' ');
+                const cells = r.map(c => String(c || '').toLowerCase().trim());
                 
                 // Skip title / banner lines
-                if (lineStr.includes('technological university') || lineStr.includes('department of') || lineStr.includes('practical timetable')) {
+                const lineStr = cells.join(' ');
+                if (lineStr.includes('technological university') || lineStr.includes('department of') || lineStr.includes('timetable for')) {
                     continue;
                 }
 
-                const headerKeywords = ['code', 'subject', 'course', 'date', 'day', 'time', 'title', 'exp', 'topic', 'group', 'batch', 'room', 'place', 'teacher', 'sr'];
-                const matches = r.filter(c => {
-                    const s = String(c || '').toLowerCase();
-                    return headerKeywords.some(kw => s.includes(kw));
-                });
+                // Check if this row is the column header row
+                const cIdxCode = cells.findIndex(h => h.includes('code') || h === 'subject' || h === 'course');
+                const cIdxTitle = cells.findIndex(h => h.includes('title') || h.includes('topic') || h.includes('exp') || h.includes('name'));
+                const cIdxDate = cells.findIndex(h => h.includes('date') || h.includes('day'));
 
-                if (matches.length >= 2) {
+                if (cIdxCode !== -1 || (cIdxTitle !== -1 && cIdxDate !== -1)) {
                     headerRowIdx = i;
+                    
+                    // Dynamically map columns if explicit headers exist
+                    const cIdxYear = cells.findIndex(h => h.includes('year') || h.includes('yr'));
+                    const cIdxTeacher = cells.findIndex(h => h.includes('teacher') || h.includes('instructor') || h.includes('faculty') || h.includes('staff'));
+                    const cIdxGroup = cells.findIndex(h => h.includes('group') || h.includes('batch') || h.includes('sec'));
+                    const cIdxTime = cells.findIndex(h => h.includes('time') || h.includes('hour') || h.includes('period'));
+                    const cIdxPlace = cells.findIndex(h => h.includes('place') || h.includes('room') || h.includes('lab') || h.includes('loc'));
+
+                    if (cIdxYear !== -1) colMap.year = cIdxYear;
+                    if (cIdxCode !== -1) colMap.code = cIdxCode;
+                    if (cIdxTitle !== -1) colMap.title = cIdxTitle;
+                    if (cIdxTeacher !== -1) colMap.teacher = cIdxTeacher;
+                    if (cIdxGroup !== -1) colMap.group = cIdxGroup;
+                    if (cIdxDate !== -1) colMap.date = cIdxDate;
+                    if (cIdxTime !== -1) colMap.time = cIdxTime;
+                    if (cIdxPlace !== -1) colMap.place = cIdxPlace;
                     break;
                 }
             }
 
-            if (headerRowIdx === -1) {
-                headerError = `Could not locate a valid header row in sheet '${sheetName}' — check the file format.`;
-                return;
-            }
+            const startRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
+            let consecutiveBlankCount = 0;
+            let detectedApprovalNote = null;
 
-            const headerRow = (jsonRows[headerRowIdx] || []).map(c => String(c || '').toLowerCase().trim());
-            
-            let dateIdx = headerRow.findIndex(h => h.includes('date') || h.includes('day'));
-            let timeIdx = headerRow.findIndex(h => h.includes('time') || h.includes('period') || h.includes('hour'));
-            let codeIdx = headerRow.findIndex(h => h.includes('code') || h.includes('subject') || h.includes('course'));
-            let titleIdx = headerRow.findIndex(h => h.includes('title') || h.includes('exp') || h.includes('topic') || h.includes('name') || h.includes('lab'));
-            let groupIdx = headerRow.findIndex(h => h.includes('group') || h.includes('batch') || h.includes('sec'));
-            let placeIdx = headerRow.findIndex(h => h.includes('place') || h.includes('room') || h.includes('lab') || h.includes('loc'));
-            let teacherIdx = headerRow.findIndex(h => h.includes('teacher') || h.includes('instructor') || h.includes('staff') || h.includes('supervis'));
-
-            for (let r = headerRowIdx + 1; r < jsonRows.length; r++) {
+            for (let r = startRow; r < jsonRows.length; r++) {
                 const row = jsonRows[r];
-                if (!row || row.length === 0) continue;
+                if (!Array.isArray(row) || row.every(c => c === null || c === undefined || String(c).trim() === '')) {
+                    consecutiveBlankCount++;
+                    if (consecutiveBlankCount >= 3) break; // Stop at end of table
+                    continue;
+                }
+                consecutiveBlankCount = 0;
 
-                const rowText = row.join(' ').toLowerCase();
-                if (rowText.includes('saturday') && !rowText.includes(':') && !rowText.includes('mc')) continue;
-                if (rowText.includes('sunday') && !rowText.includes(':')) continue;
-                if (rowText.includes('approved by') || rowText.includes('head of department') || rowText.includes('professor head')) continue;
+                const fullRowText = row.map(c => String(c || '').trim()).join(' ');
+                const lowerRowText = fullRowText.toLowerCase();
 
-                let rawDate = (dateIdx !== -1 && row[dateIdx]) ? row[dateIdx] : null;
-                let rawTime = (timeIdx !== -1 && row[timeIdx]) ? row[timeIdx] : null;
-                let rawCode = (codeIdx !== -1 && row[codeIdx]) ? row[codeIdx] : null;
-                let rawTitle = (titleIdx !== -1 && row[titleIdx]) ? row[titleIdx] : null;
-                let rawGroup = (groupIdx !== -1 && row[groupIdx]) ? row[groupIdx] : null;
-                let rawPlace = (placeIdx !== -1 && row[placeIdx]) ? row[placeIdx] : null;
-                let rawTeacher = (teacherIdx !== -1 && row[teacherIdx]) ? row[teacherIdx] : null;
-
-                // Inspect all row cells for date, group, and time patterns if not explicitly indexed
-                row.forEach(cell => {
-                    if (!cell) return;
-                    const cStr = String(cell).trim();
-                    const dMatch = cStr.match(/\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b/);
-                    if (dMatch && !rawDate) rawDate = dMatch[0];
-                    if (/^GROUP\s*[A-Z0-9,\s&]+/i.test(cStr) && !rawGroup) rawGroup = cStr;
-                    if (/\d{1,2}:\d{2}\s*(?:TO|-)\s*\d{1,2}:\d{2}/i.test(cStr) && !rawTime) rawTime = cStr;
-                });
-
-                if (!rawDate) rawDate = row[1] || row[0] || row[5];
-                if (!rawTime) rawTime = row[2] || row[6] || '09:00 AM - 09:50 AM';
-                if (!rawCode) rawCode = row[1] || row[3] || row[0] || 'MC-31011';
-                if (!rawTitle) rawTitle = row[2] || row[3] || 'Practical Lab Session';
-                if (!rawGroup) rawGroup = row[4] || 'All';
-                if (!rawPlace) rawPlace = row[7] || row[6] || 'Mechatronics Lab';
-                if (!rawTeacher) rawTeacher = row[3] || row[4] || 'Dr. Aung Kyaw Soe';
-
-                let cleanCodeStr = String(rawCode).split(' ')[0].toUpperCase().replace(/[^A-Z0-9-]/g, '');
-                
-                // If cleanCodeStr is a date or group, standardize it
-                if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(cleanCodeStr) || /^GROUP/i.test(cleanCodeStr) || cleanCodeStr.length < 2) {
-                    cleanCodeStr = 'MC-31011';
+                // Stop at footer / signature block
+                if (lowerRowText.includes('prepared by') || lowerRowText.includes('approved by') || lowerRowText.includes('head of department') || lowerRowText.includes('professor head') || lowerRowText.includes('authorized signature')) {
+                    if (!detectedApprovalNote) detectedApprovalNote = fullRowText;
+                    break; // STOP reading anything below
                 }
 
-                // Skip header artifacts
-                if (['UNIVERSITY', 'DEPARTMENT', 'TIMETABLE', 'TECHNOLOGICAL', 'MECHATRONICS', 'SR', 'NO', 'NO.'].includes(cleanCodeStr)) {
+                // Extract fields by column mapping - strictly one row = one timetable record
+                let rawYear = row[colMap.year];
+                let rawCode = row[colMap.code];
+                let rawTitle = row[colMap.title];
+                let rawTeacher = row[colMap.teacher];
+                let rawGroup = row[colMap.group];
+                let rawDate = row[colMap.date];
+                let rawTime = row[colMap.time];
+                let rawPlace = row[colMap.place];
+
+                const cleanCode = String(rawCode || '').trim();
+
+                // VALIDATION: Reject rows where Subject Code is empty or invalid
+                if (!cleanCode || cleanCode.length < 2) {
+                    console.log(`[Excel Import] Row ${r + 1} rejected: Missing or empty Subject Code.`);
                     continue;
                 }
 
+                // Reject rows where Code is a date, group, time, or header keyword
+                if (/^\d{1,2}[./-]\d{1,2}[./-](\d{2}|\d{4})$/.test(cleanCode)) {
+                    console.log(`[Excel Import] Row ${r + 1} rejected: Subject Code '${cleanCode}' is a date string.`);
+                    continue;
+                }
+                if (/^GROUP\s*/i.test(cleanCode) || /^BATCH\s*/i.test(cleanCode)) {
+                    console.log(`[Excel Import] Row ${r + 1} rejected: Subject Code '${cleanCode}' is a group tag.`);
+                    continue;
+                }
+                if (/\d{1,2}:\d{2}/.test(cleanCode)) {
+                    console.log(`[Excel Import] Row ${r + 1} rejected: Subject Code '${cleanCode}' is a time string.`);
+                    continue;
+                }
+                if (['CODE', 'SUBJECT', 'COURSE', 'SR', 'NO', 'SR. NO', 'SR.NO', 'YEAR', 'DATE', 'TIME', 'TITLE', 'TOPIC', 'TEACHER', 'PLACE', 'ROOM', 'UNIVERSITY', 'DEPARTMENT'].includes(cleanCode.toUpperCase())) {
+                    continue; // header artifact
+                }
+
+                // Clean and normalize fields
+                let cleanTitle = String(rawTitle || '').trim();
+                if (!cleanTitle || /^\d{1,2}[./-]\d{1,2}[./-](\d{2}|\d{4})$/.test(cleanTitle) || /^GROUP/i.test(cleanTitle)) {
+                    cleanTitle = targetCategory === 'Tutorial' ? 'Tutorial Problem Solving & Discussion' : 'Practical Lab Experiment & Testing';
+                }
+
+                let cleanTeacher = String(rawTeacher || '').trim();
+                if (!cleanTeacher || cleanTeacher.toLowerCase() === 'faculty member' || cleanTeacher.toLowerCase() === 'faculty supervisor') {
+                    cleanTeacher = familyTeacher || 'Dr. Aung Kyaw Soe';
+                }
+
+                let cleanGroup = String(rawGroup || '').trim();
+                if (!cleanGroup) cleanGroup = 'All';
+
+                let cleanPlace = String(rawPlace || '').trim();
+                if (!cleanPlace) cleanPlace = majorRoom || (targetCategory === 'Tutorial' ? 'Classroom 3/212-A' : 'Mechatronics Lab 3/212-A');
+
+                // Date Parsing
                 let parsedDate = parseExcelDate({ v: rawDate });
-                if (!parsedDate) {
-                    const dateMatch = String(rawDate).match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
-                    if (dateMatch) {
-                        const d = parseInt(dateMatch[1], 10);
-                        const m = parseInt(dateMatch[2], 10) - 1;
-                        let y = parseInt(dateMatch[3], 10);
+                if (!parsedDate && rawDate) {
+                    const dMatch = String(rawDate).match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+                    if (dMatch) {
+                        const d = parseInt(dMatch[1], 10);
+                        const m = parseInt(dMatch[2], 10) - 1;
+                        let y = parseInt(dMatch[3], 10);
                         if (y < 100) y += 2000;
                         parsedDate = new Date(Date.UTC(y, m, d)).toISOString();
-                    } else {
-                        parsedDate = new Date().toISOString();
                     }
                 }
-
-                const timeStr = String(rawTime);
-                const startMin = parseTimeToMinutes(timeStr.split('to')[0] || timeStr.split('-')[0] || '09:00');
-                const endMin = parseTimeToMinutes(timeStr.split('to')[1] || timeStr.split('-')[1] || '09:50') || (startMin + 50);
-
-                let displayTitle = String(rawTitle).trim();
-                if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(displayTitle) || /^GROUP/i.test(displayTitle)) {
-                    displayTitle = 'Practical Experiment & Lab Work';
+                if (!parsedDate) {
+                    parsedDate = new Date().toISOString();
                 }
 
-                const derivedYearNum = (cleanCodeStr.match(/(\d)/) || [])[1] || '3';
-                const yearLabel = `${derivedYearNum}th Year`.replace('1th', '1st').replace('2th', '2nd').replace('3th', '3rd');
+                // Time Parsing
+                const timeStr = String(rawTime || '09:00 AM - 09:50 AM');
+                const timeParts = timeStr.includes('to') ? timeStr.split('to') : timeStr.split('-');
+                const startTime = timeParts[0]?.trim() || '09:00 AM';
+                const endTime = timeParts[1]?.trim() || '09:50 AM';
+                const startMin = parseTimeToMinutes(startTime);
+                const endMin = parseTimeToMinutes(endTime) || (startMin + 50);
+
+                // Year Label
+                let yearLabel = detectedYear;
+                if (rawYear && String(rawYear).trim().length > 0) {
+                    const yStr = String(rawYear).trim().toUpperCase();
+                    if (yStr.includes('1') || yStr.includes('FIRST') || yStr.includes('I')) yearLabel = '1st Year';
+                    else if (yStr.includes('2') || yStr.includes('SECOND') || yStr.includes('II')) yearLabel = '2nd Year';
+                    else if (yStr.includes('3') || yStr.includes('THIRD') || yStr.includes('III')) yearLabel = '3rd Year';
+                    else if (yStr.includes('4') || yStr.includes('FOURTH') || yStr.includes('IV')) yearLabel = '4th Year';
+                    else if (yStr.includes('5') || yStr.includes('FIFTH') || yStr.includes('V')) yearLabel = '5th Year';
+                    else if (yStr.includes('6') || yStr.includes('SIXTH') || yStr.includes('VI')) yearLabel = '6th Year';
+                }
 
                 allSessions.push({
                     year: yearLabel,
+                    semester: detectedSemester,
                     sessionType: targetCategory === 'Exam' ? 'Exam' : targetCategory === 'Tutorial' ? 'Tutorial' : 'Practical',
                     examType: targetCategory === 'Exam' ? 'Mid-Term' : 'N/A',
-                    courseCode: cleanCodeStr,
-                    courseName: displayTitle,
-                    title: displayTitle,
-                    teacher: String(rawTeacher).trim() || 'Dr. Aung Kyaw Soe',
-                    groupTag: String(rawGroup).trim() || 'All',
+                    courseCode: cleanCode,
+                    courseName: cleanTitle,
+                    title: cleanTitle,
+                    teacher: cleanTeacher,
+                    groupTag: cleanGroup,
                     date: parsedDate,
-                    startTime: timeStr.split('to')[0]?.trim() || timeStr.split('-')[0]?.trim() || '09:00 AM',
-                    endTime: timeStr.split('to')[1]?.trim() || timeStr.split('-')[1]?.trim() || '09:50 AM',
+                    startTime,
+                    endTime,
                     startTimeMinutes: startMin,
                     endTimeMinutes: endMin,
-                    place: String(rawPlace).trim() || 'Mechatronics Lab',
+                    place: cleanPlace,
                     status: 'Scheduled'
                 });
             }

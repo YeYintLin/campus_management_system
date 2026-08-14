@@ -357,7 +357,70 @@ const getSessions = async (req, res) => {
     }
 };
 
+// @desc    Preview Excel import before committing
+// @route   POST /api/sessions/preview-import
+// @access  Private (Admin, Teacher)
+const previewImportSessions = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'Please upload an Excel file (.xlsx or .xls).' });
+        }
+
+        const { sessionType = 'Practical' } = req.body;
+        const { parsedMatrix, parsedSessions, headerError } = parseTUHmawbiExcel(req.file.buffer, sessionType);
+
+        if (headerError && sessionType === 'Academic') {
+            return res.status(400).json({ message: headerError });
+        }
+
+        const sessions = (parsedSessions || []).filter(s => s && s.courseCode && s.courseCode.length >= 2);
+
+        return res.json({
+            success: true,
+            count: sessions.length,
+            sessions: sessions.slice(0, 100), // Preview up to 100 sessions
+            sessionType
+        });
+    } catch (error) {
+        console.error('Preview Import Error:', error.message);
+        return res.status(400).json({ message: error.message || 'Failed to preview Excel file.' });
+    }
+};
+
+// @desc    Cleanup corrupted sessions in database
+// @route   POST /api/sessions/cleanup-corrupted
+// @access  Private (Admin, Teacher)
+const cleanupCorruptedSessions = async (req, res) => {
+    try {
+        const deleteQuery = {
+            $or: [
+                { courseCode: { $regex: '^[0-9]{1,2}[./-][0-9]{1,2}[./-][0-9]{2,4}$' } },
+                { courseCode: { $regex: '^GROUP', $options: 'i' } },
+                { courseCode: { $regex: '^BATCH', $options: 'i' } },
+                { courseCode: { $regex: '[0-9]{1,2}:[0-9]{2}' } },
+                { courseCode: { $regex: 'APPROVED|PREPARED|DEPARTMENT|UNIVERSITY|HEAD', $options: 'i' } },
+                { courseCode: { $in: ['', null, 'undefined', 'null', 'SR', 'NO', 'SR. NO', 'SR.NO'] } }
+            ]
+        };
+
+        const result = await ScheduledSession.deleteMany(deleteQuery);
+        console.log(`[Cleanup] Deleted ${result.deletedCount} corrupted ScheduledSession documents.`);
+
+        return res.json({
+            success: true,
+            deletedCount: result.deletedCount,
+            message: `Successfully cleaned up ${result.deletedCount} corrupted sessions.`
+        });
+    } catch (error) {
+        console.error('Cleanup Corrupted Sessions Error:', error.message);
+        return res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     batchImportSessions,
+    previewImportSessions,
+    cleanupCorruptedSessions,
     getSessions
 };
+

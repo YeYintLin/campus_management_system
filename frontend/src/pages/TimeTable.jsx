@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Coffee, History, RotateCcw, ShieldAlert, User, Search, Filter, ShieldCheck, Tag, Sparkles, Layers, ArrowUpDown, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Coffee, History, RotateCcw, ShieldAlert, User, Search, Filter, ShieldCheck, Tag, Sparkles, Layers, ArrowUpDown, CheckCircle2, Eye, Trash2, RefreshCw } from 'lucide-react';
 import { getNormalizedUserYear, normalizeYear, parseYearNumber } from '../utils/userYear';
 import { exportAcademicMatrixExcel, exportDateScheduleExcel, exportExamScheduleExcel } from '../utils/excelExporter';
 import './TimeTable.css';
@@ -540,6 +540,12 @@ const TimeTable = () => {
     const [importing, setImporting] = useState(false);
     const [importError, setImportError] = useState('');
     const [importSuccess, setImportSuccess] = useState('');
+    
+    // Import Preview State
+    const [previewData, setPreviewData] = useState(null); // { sessions: [], count: 0, file: null, fileName: '', sessionType: '' }
+    const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+    const [confirmingImport, setConfirmingImport] = useState(false);
+    const [cleaningCorrupted, setCleaningCorrupted] = useState(false);
 
     useEffect(() => {
         if (!isTeacher) return;
@@ -826,25 +832,95 @@ const TimeTable = () => {
         formData.append('sessionType', selectedCategory);
 
         try {
-            const endpoint = selectedCategory === 'Academic' ? '/timetable/import' : '/sessions/batch-import';
-            const { data } = await apiClient.post(endpoint, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            setImportSuccess(data.message || `Imported ${selectedCategory} timetable successfully!`);
-            if (Array.isArray(data.warnings) && data.warnings.length > 0) {
-                setImportWarnings(data.warnings);
+            if (selectedCategory !== 'Academic') {
+                // Intercept with Preview Modal first
+                const { data } = await apiClient.post('/sessions/preview-import', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+
+                if (!data.sessions || data.sessions.length === 0) {
+                    throw new Error(`No valid ${selectedCategory} sessions found in the uploaded file.`);
+                }
+
+                setPreviewData({
+                    sessions: data.sessions || [],
+                    count: data.count || (data.sessions || []).length,
+                    file,
+                    fileName: file.name,
+                    sessionType: selectedCategory
+                });
+                setIsPreviewModalOpen(true);
+            } else {
+                // Academic timetable import directly
+                const { data } = await apiClient.post('/timetable/import', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                setImportSuccess(data.message || `Imported ${selectedCategory} timetable successfully!`);
+                if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+                    setImportWarnings(data.warnings);
+                }
+                fetchTimetableData();
+                loadHistory();
+                setTimeout(() => setImportSuccess(''), 6000);
             }
-            fetchTimetableData();
-            loadHistory();
-            setTimeout(() => setImportSuccess(''), 6000);
         } catch (err) {
             console.error('Import failed error object:', err);
-            console.error('Import failed response data:', err.response?.data);
-            const detailedMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to import Excel file.';
+            const detailedMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to parse Excel file.';
             setImportError(detailedMsg);
         } finally {
             setImporting(false);
             e.target.value = '';
+        }
+    };
+
+    const handleConfirmImport = async () => {
+        if (!previewData?.file) return;
+
+        setConfirmingImport(true);
+        setImportError('');
+        setImportSuccess('');
+
+        const formData = new FormData();
+        formData.append('file', previewData.file);
+        formData.append('year', selectedYear);
+        formData.append('semester', selectedSemester);
+        formData.append('major', selectedMajor);
+        formData.append('category', previewData.sessionType || selectedCategory);
+        formData.append('sessionType', previewData.sessionType || selectedCategory);
+
+        try {
+            const { data } = await apiClient.post('/sessions/batch-import', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setImportSuccess(data.message || `Successfully imported ${previewData.count} sessions!`);
+            setIsPreviewModalOpen(false);
+            setPreviewData(null);
+            fetchTimetableData();
+            loadHistory();
+            setTimeout(() => setImportSuccess(''), 6000);
+        } catch (err) {
+            console.error('Commit import failed:', err);
+            const detailedMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to commit import.';
+            setImportError(detailedMsg);
+        } finally {
+            setConfirmingImport(false);
+        }
+    };
+
+    const handleCleanupCorrupted = async () => {
+        if (!window.confirm('Are you sure you want to clean up corrupted timetable records (dates/groups in course code)?')) return;
+
+        setCleaningCorrupted(true);
+        try {
+            const { data } = await apiClient.post('/sessions/cleanup-corrupted');
+            setImportSuccess(data.message || `Cleaned up ${data.deletedCount || 0} corrupted sessions.`);
+            fetchTimetableData();
+            setTimeout(() => setImportSuccess(''), 6000);
+        } catch (err) {
+            console.error('Cleanup failed:', err);
+            setImportError(err.response?.data?.message || 'Failed to clean up corrupted sessions.');
+        } finally {
+            setCleaningCorrupted(false);
         }
     };
 
@@ -908,6 +984,12 @@ const TimeTable = () => {
                 <div className="header-actions">
                     {canManageTimetable && (
                         <>
+                            {selectedCategory !== 'Academic' && (
+                                <button className="btn btn-secondary" onClick={handleCleanupCorrupted} disabled={cleaningCorrupted} title="Purge Corrupted Records" style={{ color: '#f87171', borderColor: 'rgba(239,68,68,0.3)' }}>
+                                    <Trash2 size={16} />
+                                    {cleaningCorrupted ? 'Cleaning...' : 'Clean Corrupted'}
+                                </button>
+                            )}
                             <button className="btn btn-secondary" onClick={handleOpenHistoryDrawer} title="View Upload History & Rollback Versions">
                                 <History size={18} />
                                 Version History
@@ -1000,7 +1082,7 @@ const TimeTable = () => {
             </div>
 
             {/* Class Section Info Bar */}
-            <div className="glass-panel" style={{ padding: '0.85rem 1.25rem', borderRadius: '12px', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div className="class-section-info glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', padding: '0.6rem 1rem', borderRadius: '12px' }}>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     Technological University (Hmawbi) — <strong style={{ color: '#fff' }}>{selectedYear} ({selectedSemester})</strong> | Dept: <strong style={{ color: '#818cf8' }}>{selectedMajor}</strong>
                 </div>
@@ -1281,6 +1363,78 @@ const TimeTable = () => {
                             <button className="btn btn-primary" onClick={handleRestoreConfirm} disabled={restoring} style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none' }}>
                                 {restoring ? 'Restoring...' : 'Confirm & Restore Version'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Import Preview & Verification Modal */}
+            {isPreviewModalOpen && previewData && (
+                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', backdropFilter: 'blur(8px)' }}>
+                    <div className="glass-card animate-pop-in" style={{ width: '100%', maxWidth: '960px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: '1.75rem', borderRadius: '18px', border: '1px solid rgba(168,85,247,0.3)', background: 'rgba(15, 23, 42, 0.98)', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <FileSpreadsheet size={24} style={{ color: '#c084fc' }} />
+                                <div>
+                                    <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>
+                                        {previewData.sessionType} Import Preview & Verification
+                                    </h2>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                        File: <strong style={{ color: '#e2e8f0' }}>{previewData.fileName}</strong> — <span style={{ color: '#4ade80', fontWeight: 600 }}>{previewData.count} valid sessions detected</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <button className="btn btn-secondary" onClick={() => { setIsPreviewModalOpen(false); setPreviewData(null); }} style={{ padding: '0.35rem 0.6rem' }}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div style={{ overflowY: 'auto', flex: 1, marginBottom: '1.25rem', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px' }}>
+                            <table className="attendance-table" style={{ width: '100%', margin: 0 }}>
+                                <thead>
+                                    <tr>
+                                        <th>Year</th>
+                                        <th>Subject Code</th>
+                                        <th>Title / Topic</th>
+                                        <th>Teacher</th>
+                                        <th>Batch</th>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Room</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {previewData.sessions.map((s, idx) => (
+                                        <tr key={idx}>
+                                            <td><span className="year-tag active" style={{ padding: '0.15rem 0.5rem', fontSize: '0.72rem' }}>{s.year}</span></td>
+                                            <td><strong style={{ color: '#c084fc', fontFamily: 'monospace', fontSize: '0.88rem' }}>{s.courseCode}</strong></td>
+                                            <td style={{ fontWeight: 600, color: '#f8fafc', fontSize: '0.85rem' }}>{s.title || s.courseName}</td>
+                                            <td style={{ color: '#cbd5e1', fontSize: '0.82rem' }}>{s.teacher}</td>
+                                            <td><span style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(168,85,247,0.15)', color: '#c084fc', fontWeight: 600 }}>{s.groupTag}</span></td>
+                                            <td style={{ color: '#4ade80', fontSize: '0.82rem', fontWeight: 600 }}>
+                                                {s.date ? new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Flexible'}
+                                            </td>
+                                            <td style={{ fontSize: '0.8rem', color: '#e0e7ff' }}>{s.startTime} - {s.endTime}</td>
+                                            <td style={{ fontSize: '0.8rem', color: '#818cf8' }}>{s.place}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                🛡️ 1 row = 1 session. Invalid/footer cells excluded automatically.
+                            </span>
+                            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                <button className="btn btn-secondary" onClick={() => { setIsPreviewModalOpen(false); setPreviewData(null); }} disabled={confirmingImport}>
+                                    Cancel
+                                </button>
+                                <button className="btn btn-primary" onClick={handleConfirmImport} disabled={confirmingImport} style={{ background: 'linear-gradient(135deg, #a855f7, #6366f1)', border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <CheckCircle size={16} />
+                                    {confirmingImport ? 'Saving...' : `Confirm & Commit (${previewData.count} Rows)`}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
