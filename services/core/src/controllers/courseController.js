@@ -61,7 +61,7 @@ const syncCourseCollectionWithTimetable = async () => {
                             let rawCode = item.code.trim();
                             const codeUpper = rawCode.toUpperCase();
                             // Skip non-subject activities (Tutorial, Practical, Library, Assembly)
-                            if (['TUTORIAL', 'PRACTICAL', 'LIBRARY', 'LIB', 'ASSEMBLY', 'SEMINAR', 'MEETING', 'LUNCH', 'BREAK'].some(k => codeUpper === k || codeUpper.startsWith(`${k} `) || codeUpper.startsWith(`${k}-`))) {
+                            if (['TUTORIAL', 'PRACTICAL', 'LIBRARY', 'LIB', 'ASSEMBLY', 'SEMINAR', 'MEETING', 'LUNCH', 'BREAK', 'TESTING'].some(k => codeUpper.includes(k))) {
                                 continue;
                             }
 
@@ -73,7 +73,8 @@ const syncCourseCollectionWithTimetable = async () => {
 
                             const codeStr = rawCode.toUpperCase();
                             let subjectName = item.subject ? item.subject.trim() : rawCode;
-                            if (['TUTORIAL', 'PRACTICAL', 'LIBRARY', 'LIB', 'ASSEMBLY'].some(k => subjectName.toUpperCase() === k)) {
+                            const subjectUpper = subjectName.toUpperCase();
+                            if (['TUTORIAL', 'PRACTICAL', 'LIBRARY', 'LIB', 'ASSEMBLY', 'INTRODUCTION', 'TESTING JOB'].some(k => subjectUpper.includes(k))) {
                                 continue;
                             }
                             const teacherInSubject = subjectName.match(/\s{2,}(Daw |U |Dr\.|Dr |Prof\.?|Sayar ).+$/i);
@@ -106,8 +107,10 @@ const syncCourseCollectionWithTimetable = async () => {
         // Clean up any legacy non-course entries (Tutorial, Practical, Lib, etc.)
         await Course.deleteMany({
             $or: [
-                { code: { $in: ['TUTORIAL', 'PRACTICAL', 'LIBRARY', 'LIB', 'ASSEMBLY', 'SEMINAR'] } },
-                { name: { $in: ['Tutorial', 'Practical', 'Library', 'Assembly', 'Tutorial Problem Solving'] } }
+                { name: { $regex: /(Tutorial|Practical|Introduction|Testing Job|Exam for all|Library|Assembly)/i } },
+                { code: { $regex: /(TUTORIAL|PRACTICAL|LIBRARY|LIB|ASSEMBLY)/i } },
+                { code: { $regex: '^[0-9]{1,2}[./-][0-9]{1,2}' } },
+                { code: { $regex: '^GROUP', $options: 'i' } }
             ]
         });
 

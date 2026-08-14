@@ -11,12 +11,30 @@ async function cleanJunkCourses() {
 
         const Course = require('../models/Course');
         const User = require('../models/User');
+        const Semester = require('../models/Semester');
 
-        // 1. Delete junk / fake courses with tutorial / practical / test names
+        // 1. Clean Semester legend arrays from non-subject activities
+        const semesters = await Semester.find({});
+        for (const s of semesters) {
+            if (Array.isArray(s.legend)) {
+                const originalLen = s.legend.length;
+                s.legend = s.legend.filter(item => {
+                    const c = (item.code || '').toUpperCase();
+                    const sub = (item.subject || '').toUpperCase();
+                    return !['TUTORIAL', 'PRACTICAL', 'LIBRARY', 'LIB', 'ASSEMBLY', 'INTRODUCTION', 'TESTING'].some(k => c.includes(k) || sub.includes(k));
+                });
+                if (s.legend.length !== originalLen) {
+                    await s.save();
+                    console.log(`Cleaned legend in Semester sheet: ${s.sheet_name || s.yearLabel}`);
+                }
+            }
+        }
+
+        // 2. Delete junk / fake courses with tutorial / practical / test names
         const deletedJunk = await Course.deleteMany({
             $or: [
-                { name: { $regex: /^(Tutorial|Practical|Introduction|Testing Job|Exam for all|Library|Lib|Assembly)/i } },
-                { code: { $in: ['TUTORIAL', 'PRACTICAL', 'LIBRARY', 'LIB', 'ASSEMBLY', 'SEMINAR'] } },
+                { name: { $regex: /(Tutorial|Practical|Introduction|Testing Job|Exam for all|Library|Lib|Assembly)/i } },
+                { code: { $regex: /(TUTORIAL|PRACTICAL|LIBRARY|LIB|ASSEMBLY)/i } },
                 { code: { $regex: '^[0-9]{1,2}[./-][0-9]{1,2}' } },
                 { code: { $regex: '^GROUP', $options: 'i' } }
             ]
