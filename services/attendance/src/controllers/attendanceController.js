@@ -1090,7 +1090,8 @@ const exportRollCallExcel = async (req, res) => {
             sheet.getCell('G3').alignment = { horizontal: 'left', vertical: 'middle' };
 
             // Row 4: Academic Year/Month & Monthly Total Hours (Height 24.75)
-            const totalMonthlyHours = Math.max(12, attendanceRecords.length) * hourWeight;
+            const conductedSessions = attendanceRecords.length;
+            const totalMonthlyHours = conductedSessions > 0 ? conductedSessions * hourWeight : 0;
             const monthLabel = month && String(month).trim() !== '' ? month : 'ဇန်နဝါရီ (Jan)';
             const row4 = sheet.addRow([`၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ${monthLabel} လ`, '', '', '', '', '', `ယခုလတက်ချိန် - ${totalMonthlyHours} နာရီ`]);
             row4.height = 24.75;
@@ -1099,8 +1100,19 @@ const exportRollCallExcel = async (req, res) => {
             sheet.getCell('A4').alignment = { horizontal: 'left', vertical: 'middle' };
             sheet.getCell('G4').alignment = { horizontal: 'left', vertical: 'middle' };
 
-            // Row 5: Table Header (Height 79.5) with Rotated 90-degree Vertical Text
-            const headerValues = ['စဉ်', 'ခုံအမှတ်', 'အမည်', ...Array(19).fill(''), 'တက်ချိန်ပေါင်း', 'ပျက်ချိန်ပေါင်း', 'ရာခိုင်နှုန်း'];
+            // Row 5: Table Header (Height 79.5) with Period Headers and Rotated 90-degree Calculation Titles
+            const periodHeaders = [];
+            for (let p = 0; p < 19; p++) {
+                if (p < conductedSessions) {
+                    const rec = attendanceRecords[p];
+                    const dayNum = rec?.date ? new Date(rec.date).getDate() : (p + 1);
+                    periodHeaders.push(toMyanmarDigits(dayNum));
+                } else {
+                    periodHeaders.push('');
+                }
+            }
+
+            const headerValues = ['စဉ်', 'ခုံအမှတ်', 'အမည်', ...periodHeaders, 'တက်ချိန်ပေါင်း', 'ပျက်ချိန်ပေါင်း', 'ရာခိုင်နှုန်း'];
             const tableHeader = sheet.addRow(headerValues);
             tableHeader.height = 79.5;
 
@@ -1129,7 +1141,7 @@ const exportRollCallExcel = async (req, res) => {
 
                 // Checkmarks for 19 period columns (D to V)
                 for (let p = 0; p < 19; p++) {
-                    if (isRealStudent) {
+                    if (isRealStudent && p < conductedSessions) {
                         const rec = attendanceRecords[p];
                         if (rec && Array.isArray(rec.records)) {
                             const studentRec = rec.records.find(r => String(r.studentId) === String(st._id) || String(r.studentId) === String(st.user?._id));
@@ -1159,8 +1171,8 @@ const exportRollCallExcel = async (req, res) => {
                     } else if (col >= 23 && isRealStudent) {
                         // Formulas for W, X, Y
                         if (col === 23) cell.value = { formula: `=COUNTIF(D${rowNum}:V${rowNum}, "✓") * ${hourWeight}` };
-                        if (col === 24) cell.value = { formula: `=(COUNTA(D$5:V$5) - COUNTIF(D${rowNum}:V${rowNum}, "✓")) * ${hourWeight}` };
-                        if (col === 25) cell.value = { formula: `=IF((W${rowNum}+X${rowNum})>0, ROUND((W${rowNum}/(W${rowNum}+X${rowNum}))*100, 1) & "%", "100%")` };
+                        if (col === 24) cell.value = { formula: `=IF(COUNTA(D$5:V$5)>0, (COUNTA(D$5:V$5) - COUNTIF(D${rowNum}:V${rowNum}, "✓")) * ${hourWeight}, 0)` };
+                        if (col === 25) cell.value = { formula: `=IF((W${rowNum}+X${rowNum})>0, ROUND((W${rowNum}/(W${rowNum}+X${rowNum}))*100, 1) & "%", "0%")` };
                         cell.alignment = { horizontal: 'center', vertical: 'middle' };
                     } else {
                         cell.alignment = { horizontal: 'center', vertical: 'middle' };
