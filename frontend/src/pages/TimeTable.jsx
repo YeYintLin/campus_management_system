@@ -69,10 +69,63 @@ const parseClientPracticalExcel = (file, category, defaultYear, defaultSemester)
                 const workbook = XLSX.read(data, { type: 'array', cellDates: true });
                 const sessions = [];
 
+                // Extract possible course code from filename (e.g. Tutorial_Timetable_McE-51039).xlsx)
+                let fileCode = '';
+                const fileNameMatch = (file?.name || '').match(/([A-Za-z]{2,5}-?\s*\d{3,6})/i);
+                if (fileNameMatch) {
+                    fileCode = fileNameMatch[1].replace(/\s+/g, '').toUpperCase();
+                }
+
                 workbook.SheetNames.forEach(sheetName => {
                     const sheet = workbook.Sheets[sheetName];
                     const jsonRows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
                     if (!jsonRows || jsonRows.length === 0) return;
+
+                    // 1. Banner Scanner across top 20 rows
+                    let bannerCode = fileCode;
+                    let bannerYear = '';
+                    let bannerSemester = '';
+                    let bannerTeacher = '';
+
+                    for (let i = 0; i < Math.min(jsonRows.length, 20); i++) {
+                        const row = jsonRows[i];
+                        if (!Array.isArray(row)) continue;
+                        const rowText = row.filter(Boolean).map(c => String(c).trim()).join(' ');
+                        const upperText = rowText.toUpperCase();
+
+                        // Match Subject Code in Banner (e.g. McE-52039, McE-51039, MC-32011)
+                        const codeMatch = rowText.match(/([A-Za-z]{2,5}-?\s*\d{3,6})/i);
+                        if (codeMatch && !bannerCode) {
+                            bannerCode = codeMatch[1].replace(/\s+/g, '').toUpperCase();
+                        }
+
+                        // Match Semester in Banner (e.g. Second Semester, First Semester, Semester IV)
+                        if (upperText.includes('SECOND SEMESTER') || upperText.includes('SEM 2') || upperText.includes('SEMESTER 2') || upperText.includes('SEMESTER II') || upperText.includes('SEM II') || upperText.includes('SEM IV') || upperText.includes('SEM VI') || upperText.includes('SEM VIII')) {
+                            bannerSemester = 'Semester 2';
+                        } else if (upperText.includes('FIRST SEMESTER') || upperText.includes('SEM 1') || upperText.includes('SEMESTER 1') || upperText.includes('SEMESTER I') || upperText.includes('SEM I') || upperText.includes('SEM III') || upperText.includes('SEM V')) {
+                            bannerSemester = 'Semester 1';
+                        }
+
+                        // Match Year in Banner (e.g. Year V, Year IV, Year III, Year II, Year I, 5th Year, etc.)
+                        if (/\b(YEAR\s*VI|6TH\s*YEAR|SIXTH\s*YEAR|YEAR\s*6)\b/i.test(upperText)) bannerYear = '6th Year';
+                        else if (/\b(YEAR\s*V|5TH\s*YEAR|FIFTH\s*YEAR|YEAR\s*5)\b/i.test(upperText)) bannerYear = '5th Year';
+                        else if (/\b(YEAR\s*IV|4TH\s*YEAR|FOURTH\s*YEAR|YEAR\s*4)\b/i.test(upperText)) bannerYear = '4th Year';
+                        else if (/\b(YEAR\s*III|3RD\s*YEAR|THIRD\s*YEAR|YEAR\s*3)\b/i.test(upperText)) bannerYear = '3rd Year';
+                        else if (/\b(YEAR\s*II|2ND\s*YEAR|SECOND\s*YEAR|YEAR\s*2)\b/i.test(upperText)) bannerYear = '2nd Year';
+                        else if (/\b(YEAR\s*I|1ST\s*YEAR|FIRST\s*YEAR|YEAR\s*1)\b/i.test(upperText)) bannerYear = '1st Year';
+
+                        // Match Teacher in Banner
+                        if (upperText.includes('TEACHER') || upperText.includes('INSTRUCTOR') || upperText.includes('DAW ') || upperText.includes('U ') || upperText.includes('DR.')) {
+                            const tMatch = rowText.match(/(?:Teacher|Instructor|Faculty)?\s*[:\-]?\s*((?:Daw|U|Dr\.|Prof\.)\s+[A-Za-z\s]+)/i);
+                            if (tMatch && !bannerTeacher) {
+                                bannerTeacher = tMatch[1].trim();
+                            }
+                        }
+                    }
+
+                    if (!bannerYear && bannerCode) {
+                        bannerYear = deriveYearFromCode(bannerCode, defaultYear || '3rd Year');
+                    }
 
                     let headerRowIdx = -1;
                     let colMap = { year: 0, code: 1, title: 2, teacher: 3, group: 4, date: 5, time: 6, place: 7 };
@@ -82,10 +135,10 @@ const parseClientPracticalExcel = (file, category, defaultYear, defaultSemester)
                         if (!Array.isArray(row)) continue;
                         const cells = row.map(c => String(c || '').toLowerCase().trim());
                         const cIdxCode = cells.findIndex(h => h.includes('code') || h === 'subject' || h === 'course');
-                        const cIdxTitle = cells.findIndex(h => h.includes('title') || h.includes('topic') || h.includes('exp') || h.includes('name'));
+                        const cIdxTitle = cells.findIndex(h => h.includes('title') || h.includes('topic') || h.includes('exp') || h.includes('name') || h.includes('chapter') || h.includes('lesson'));
                         const cIdxDate = cells.findIndex(h => h.includes('date') || h.includes('day'));
 
-                        if (cIdxCode !== -1 || (cIdxTitle !== -1 && cIdxDate !== -1)) {
+                        if (cIdxCode !== -1 || (cIdxTitle !== -1 && cIdxDate !== -1) || cIdxDate !== -1) {
                             headerRowIdx = i;
                             const cIdxYear = cells.findIndex(h => h.includes('year') || h.includes('yr'));
                             const cIdxTeacher = cells.findIndex(h => h.includes('teacher') || h.includes('instructor') || h.includes('faculty') || h.includes('staff'));
@@ -132,15 +185,21 @@ const parseClientPracticalExcel = (file, category, defaultYear, defaultSemester)
                         let rawTime = row[colMap.time];
                         let rawPlace = row[colMap.place];
 
-                        const cleanCode = String(rawCode || '').trim();
-                        if (!cleanCode || cleanCode.length < 2) continue;
-                        if (/^\d{1,2}[./-]\d{1,2}[./-](\d{2}|\d{4})$/.test(cleanCode) || /^GROUP/i.test(cleanCode) || /\d{1,2}:\d{2}/.test(cleanCode)) continue;
-                        if (['CODE', 'SUBJECT', 'COURSE', 'SR', 'NO', 'YEAR', 'DATE', 'TIME', 'TITLE', 'TOPIC', 'TEACHER', 'PLACE', 'ROOM'].includes(cleanCode.toUpperCase())) continue;
+                        let cleanCode = String(rawCode || '').trim();
+                        // If cell code is missing, inherit bannerCode
+                        if (!cleanCode || cleanCode.length < 2 || /^\d{1,2}[./-]\d{1,2}/.test(cleanCode) || /^GROUP/i.test(cleanCode) || /\d{1,2}:\d{2}/.test(cleanCode)) {
+                            cleanCode = bannerCode || (category === 'Tutorial' ? 'McE-52039' : 'MC-31011');
+                        }
+                        if (['CODE', 'SUBJECT', 'COURSE', 'SR', 'NO', 'YEAR', 'DATE', 'TIME', 'TITLE', 'TOPIC', 'TEACHER', 'PLACE', 'ROOM'].includes(cleanCode.toUpperCase())) {
+                            cleanCode = bannerCode || cleanCode;
+                        }
 
                         let cleanTitle = String(rawTitle || '').trim();
-                        if (!cleanTitle) cleanTitle = category === 'Tutorial' ? 'Tutorial Problem Solving' : 'Practical Lab Experiment';
+                        if (!cleanTitle || cleanTitle.toUpperCase() === cleanCode.toUpperCase() || /^\d{1,2}[./-]\d{1,2}/.test(cleanTitle) || /^GROUP/i.test(cleanTitle)) {
+                            cleanTitle = `${category} Problem Solving & Practical Work`;
+                        }
 
-                        let cleanTeacher = String(rawTeacher || '').trim();
+                        let cleanTeacher = String(rawTeacher || bannerTeacher || '').trim();
                         if (!cleanTeacher || cleanTeacher.toLowerCase().includes('faculty')) cleanTeacher = 'Daw Thin Yu Maw';
 
                         let cleanGroup = String(rawGroup || '').trim() || 'All';
@@ -152,7 +211,7 @@ const parseClientPracticalExcel = (file, category, defaultYear, defaultSemester)
                         const startTime = timeParts[0]?.trim() || '09:00 AM';
                         const endTime = timeParts[1]?.trim() || '09:50 AM';
 
-                        let yearLabel = defaultYear || '3rd Year';
+                        let yearLabel = bannerYear || defaultYear || '3rd Year';
                         if (rawYear && String(rawYear).trim().length > 0) {
                             const yStr = String(rawYear).trim().toUpperCase();
                             if (yStr.includes('1')) yearLabel = '1st Year';
@@ -161,13 +220,15 @@ const parseClientPracticalExcel = (file, category, defaultYear, defaultSemester)
                             else if (yStr.includes('4')) yearLabel = '4th Year';
                             else if (yStr.includes('5')) yearLabel = '5th Year';
                             else if (yStr.includes('6')) yearLabel = '6th Year';
-                        } else {
-                            yearLabel = deriveYearFromCode(cleanCode, defaultYear || '3rd Year');
+                        } else if (cleanCode) {
+                            yearLabel = deriveYearFromCode(cleanCode, bannerYear || defaultYear || '3rd Year');
                         }
+
+                        let semesterLabel = bannerSemester || defaultSemester || 'Semester 1';
 
                         sessions.push({
                             year: yearLabel,
-                            semester: defaultSemester || 'Semester 1',
+                            semester: semesterLabel,
                             sessionType: category,
                             courseCode: cleanCode,
                             courseName: cleanTitle,
@@ -209,15 +270,17 @@ const PracticalScheduleView = ({
     const [viewMode, setViewMode] = useState('grouped'); // 'grouped' | 'flat'
     const [sortAsc, setSortAsc] = useState(true);
     const [selectedInstructor, setSelectedInstructor] = useState('All');
+    const [selectedSubject, setSelectedSubject] = useState('All');
     const [selectedStatus, setSelectedStatus] = useState('All');
 
     // 1. Data Normalizer & Sanitizer Pipeline
-    const { cleanedSessions, approvalNote, availableInstructors, availableBatches } = React.useMemo(() => {
+    const { cleanedSessions, approvalNote, availableInstructors, availableBatches, availableSubjects } = React.useMemo(() => {
         let detectedApproval = null;
         const cleaned = [];
         const seenKeys = new Set();
         const instructorsSet = new Set();
         const batchesSet = new Set(['All']);
+        const subjectsSet = new Set(['All']);
 
         (sessions || []).forEach(s => {
             if (!s) return;
@@ -268,7 +331,7 @@ const PracticalScheduleView = ({
             let cleanTopic = rawTitle;
 
             const isTutorial = selectedCategory === 'Tutorial';
-            const defaultCode = isTutorial ? 'MC-31011 (Tut)' : 'MC-31011 (Lab)';
+            const defaultCode = isTutorial ? 'McE-52039' : 'MC-31011 (Lab)';
             const defaultTopic = isTutorial ? 'Tutorial Problem Solving & Discussion' : 'Practical Lab Experiment & Testing';
 
             if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(cleanCode) || /^GROUP/i.test(cleanCode) || /TO\s*\d{1,2}:\d{2}/i.test(cleanCode) || cleanCode.length < 2) {
@@ -287,8 +350,9 @@ const PracticalScheduleView = ({
                 teacherName = classSectionInfo?.familyTeacher || 'Dr. Aung Kyaw Soe';
             }
             instructorsSet.add(teacherName);
+            if (cleanCode) subjectsSet.add(cleanCode);
 
-            let placeName = s.place || classSectionInfo?.majorRoom || 'Mechatronics Lab 3/212-A';
+            let placeName = s.place || classSectionInfo?.majorRoom || (isTutorial ? 'Classroom 3/212-A' : 'Mechatronics Lab 3/212-A');
 
             // Deduplicate
             const dateKey = rowDate ? rowDate.split('T')[0] : 'undated';
@@ -316,9 +380,10 @@ const PracticalScheduleView = ({
             cleanedSessions: cleaned,
             approvalNote: detectedApproval || 'Approved by: Dr. Aung Kyaw Soe, Professor & Head of Department',
             availableInstructors: ['All', ...Array.from(instructorsSet)],
-            availableBatches: Array.from(batchesSet)
+            availableBatches: Array.from(batchesSet),
+            availableSubjects: Array.from(subjectsSet)
         };
-    }, [sessions, selectedYear, classSectionInfo]);
+    }, [sessions, selectedYear, classSectionInfo, selectedCategory]);
 
     // 2. Filter & Sort Pipeline
     const filteredSessions = React.useMemo(() => {
@@ -327,6 +392,7 @@ const PracticalScheduleView = ({
                 const g = (s.groupTag || '').toLowerCase();
                 if (g !== 'all' && !g.includes(selectedGroup.toLowerCase())) return false;
             }
+            if (selectedSubject !== 'All' && s.courseCode !== selectedSubject) return false;
             if (selectedInstructor !== 'All' && s.teacher !== selectedInstructor) return false;
             if (selectedStatus !== 'All' && s.status !== selectedStatus) return false;
 
@@ -345,7 +411,7 @@ const PracticalScheduleView = ({
             const timeB = b.date ? new Date(b.date).getTime() : 0;
             return sortAsc ? (timeA - timeB) : (timeB - timeA);
         });
-    }, [cleanedSessions, selectedGroup, selectedInstructor, selectedStatus, searchQuery, sortAsc]);
+    }, [cleanedSessions, selectedGroup, selectedSubject, selectedInstructor, selectedStatus, searchQuery, sortAsc]);
 
     // 3. Group by Date Map
     const groupedByDate = React.useMemo(() => {
@@ -366,8 +432,12 @@ const PracticalScheduleView = ({
         return (
             <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                 <Calendar size={48} style={{ opacity: 0.3, marginBottom: '1rem', color: '#a855f7' }} />
-                <h3 style={{ fontSize: '1.15rem', color: '#fff', marginBottom: '0.4rem' }}>No {selectedCategory} Sessions Found</h3>
-                <p style={{ fontSize: '0.88rem' }}>No practical lab experiments scheduled for {selectedYear} ({selectedSemester}).</p>
+                <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '0.4rem' }}>No {selectedCategory} Sessions Found</h3>
+                <p style={{ fontSize: '0.88rem' }}>
+                    {selectedCategory === 'Tutorial' 
+                        ? `No tutorial problem solving sessions scheduled for ${selectedYear} (${selectedSemester}).`
+                        : `No practical lab experiments scheduled for ${selectedYear} (${selectedSemester}).`}
+                </p>
                 {canManageTimetable && (
                     <button className="btn btn-primary" onClick={handleFileUploadClick} disabled={importing} style={{ marginTop: '1rem' }}>
                         <Upload size={16} />
@@ -382,20 +452,40 @@ const PracticalScheduleView = ({
         <div className="practical-schedule-wrapper">
             {/* Filter & Search Toolbar */}
             <div className="practical-toolbar">
-                <div className="practical-batch-pills">
-                    <span style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', marginRight: '0.25rem' }}>
-                        Batch:
-                    </span>
-                    {availableBatches.map(grp => (
-                        <button
-                            key={grp}
-                            className={`year-tag ${selectedGroup === grp ? 'active' : ''}`}
-                            onClick={() => setSelectedGroup(grp)}
-                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.78rem' }}
-                        >
-                            {grp === 'All' ? 'All Batches' : grp}
-                        </button>
-                    ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    {availableSubjects.length > 2 && (
+                        <div className="practical-batch-pills">
+                            <span style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', marginRight: '0.25rem' }}>
+                                Subject:
+                            </span>
+                            {availableSubjects.map(subj => (
+                                <button
+                                    key={subj}
+                                    className={`year-tag ${selectedSubject === subj ? 'active' : ''}`}
+                                    onClick={() => setSelectedSubject(subj)}
+                                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.78rem' }}
+                                >
+                                    {subj === 'All' ? 'All Subjects' : subj}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="practical-batch-pills">
+                        <span style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', marginRight: '0.25rem' }}>
+                            Batch:
+                        </span>
+                        {availableBatches.map(grp => (
+                            <button
+                                key={grp}
+                                className={`year-tag ${selectedGroup === grp ? 'active' : ''}`}
+                                onClick={() => setSelectedGroup(grp)}
+                                style={{ padding: '0.25rem 0.75rem', fontSize: '0.78rem' }}
+                            >
+                                {grp === 'All' ? 'All Batches' : grp}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>

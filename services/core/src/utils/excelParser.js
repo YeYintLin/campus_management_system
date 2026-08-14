@@ -397,6 +397,18 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
             let consecutiveBlankCount = 0;
             let detectedApprovalNote = null;
 
+            let bannerCode = '';
+            for (let i = 0; i < Math.min(jsonRows.length, 20); i++) {
+                const r = jsonRows[i];
+                if (!Array.isArray(r)) continue;
+                const rText = r.filter(Boolean).map(c => String(c).trim()).join(' ');
+                const codeMatch = rText.match(/([A-Za-z]{2,5}-?\s*\d{3,6})/i);
+                if (codeMatch && !bannerCode) {
+                    bannerCode = codeMatch[1].replace(/\s+/g, '').toUpperCase();
+                    break;
+                }
+            }
+
             for (let r = startRow; r < jsonRows.length; r++) {
                 const row = jsonRows[r];
                 if (!Array.isArray(row) || row.every(c => c === null || c === undefined || String(c).trim() === '')) {
@@ -425,29 +437,18 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 let rawTime = row[colMap.time];
                 let rawPlace = row[colMap.place];
 
-                const cleanCode = String(rawCode || '').trim();
+                let cleanCode = String(rawCode || '').trim();
 
-                // VALIDATION: Reject rows where Subject Code is empty or invalid
-                if (!cleanCode || cleanCode.length < 2) {
-                    console.log(`[Excel Import] Row ${r + 1} rejected: Missing or empty Subject Code.`);
-                    continue;
-                }
-
-                // Reject rows where Code is a date, group, time, or header keyword
-                if (/^\d{1,2}[./-]\d{1,2}[./-](\d{2}|\d{4})$/.test(cleanCode)) {
-                    console.log(`[Excel Import] Row ${r + 1} rejected: Subject Code '${cleanCode}' is a date string.`);
-                    continue;
-                }
-                if (/^GROUP\s*/i.test(cleanCode) || /^BATCH\s*/i.test(cleanCode)) {
-                    console.log(`[Excel Import] Row ${r + 1} rejected: Subject Code '${cleanCode}' is a group tag.`);
-                    continue;
-                }
-                if (/\d{1,2}:\d{2}/.test(cleanCode)) {
-                    console.log(`[Excel Import] Row ${r + 1} rejected: Subject Code '${cleanCode}' is a time string.`);
-                    continue;
+                // If code is empty or invalid, fallback to bannerCode
+                if (!cleanCode || cleanCode.length < 2 || /^\d{1,2}[./-]\d{1,2}/.test(cleanCode) || /^GROUP/i.test(cleanCode) || /\d{1,2}:\d{2}/.test(cleanCode)) {
+                    cleanCode = bannerCode || (targetCategory === 'Tutorial' ? 'McE-52039' : 'MC-31011');
                 }
                 if (['CODE', 'SUBJECT', 'COURSE', 'SR', 'NO', 'SR. NO', 'SR.NO', 'YEAR', 'DATE', 'TIME', 'TITLE', 'TOPIC', 'TEACHER', 'PLACE', 'ROOM', 'UNIVERSITY', 'DEPARTMENT'].includes(cleanCode.toUpperCase())) {
-                    continue; // header artifact
+                    cleanCode = bannerCode || cleanCode;
+                }
+
+                if (!cleanCode || cleanCode.length < 2) {
+                    continue;
                 }
 
                 // Clean and normalize fields
