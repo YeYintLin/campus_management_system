@@ -80,11 +80,15 @@ const PracticalScheduleView = ({
             let cleanCode = rawCode;
             let cleanTopic = rawTitle;
 
+            const isTutorial = selectedCategory === 'Tutorial';
+            const defaultCode = isTutorial ? 'MC-31011 (Tut)' : 'MC-31011 (Lab)';
+            const defaultTopic = isTutorial ? 'Tutorial Problem Solving & Discussion' : 'Practical Lab Experiment & Testing';
+
             if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(cleanCode) || /^GROUP/i.test(cleanCode) || /TO\s*\d{1,2}:\d{2}/i.test(cleanCode) || cleanCode.length < 2) {
-                cleanCode = 'MC-31011 (Lab)';
+                cleanCode = defaultCode;
             }
             if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(cleanTopic) || /^GROUP/i.test(cleanTopic) || /TO\s*\d{1,2}:\d{2}/i.test(cleanTopic) || cleanTopic.length < 2) {
-                cleanTopic = 'Practical Lab Experiment & Testing';
+                cleanTopic = defaultTopic;
             }
             if (rawFull.includes('WORK SHOP')) {
                 cleanCode = 'MC-31011 (WS)';
@@ -268,10 +272,10 @@ const PracticalScheduleView = ({
                                         <tr>
                                             <th>Year</th>
                                             <th>Course Code</th>
-                                            <th>Practical / Experiment Topic</th>
+                                            <th>{selectedCategory === 'Tutorial' ? 'Tutorial / Problem Topic' : 'Practical / Experiment Topic'}</th>
                                             <th>Batch</th>
                                             <th>Time</th>
-                                            <th>Lab Room / Location</th>
+                                            <th>{selectedCategory === 'Tutorial' ? 'Classroom / Location' : 'Lab Room / Location'}</th>
                                             <th>Instructor</th>
                                             <th>Status</th>
                                         </tr>
@@ -335,11 +339,11 @@ const PracticalScheduleView = ({
                             <tr>
                                 <th>Year</th>
                                 <th>Course Code</th>
-                                <th>Practical / Experiment Topic</th>
+                                <th>{selectedCategory === 'Tutorial' ? 'Tutorial / Problem Topic' : 'Practical / Experiment Topic'}</th>
                                 <th>Batch</th>
                                 <th>Date</th>
                                 <th>Time</th>
-                                <th>Lab Room / Location</th>
+                                <th>{selectedCategory === 'Tutorial' ? 'Classroom / Location' : 'Lab Room / Location'}</th>
                                 <th>Instructor</th>
                                 <th>Status</th>
                             </tr>

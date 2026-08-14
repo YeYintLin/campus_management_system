@@ -72,10 +72,15 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
         if (!jsonRows || jsonRows.length === 0) return;
 
         const fullText = JSON.stringify(jsonRows).toLowerCase();
-        const isExamFormat = fullText.includes('sr. no') || fullText.includes('exam timetable') || fullText.includes('mid-term') || fullText.includes('final exam');
-        const isAcademicFormat = fullText.includes('monday') || fullText.includes('tuesday') || fullText.includes('mon') || fullText.includes('tue') || fullText.includes('lunch break') || fullText.includes('timetable for') || fullText.includes('period') || fullText.includes('time table');
+        
+        const hasDayNames = jsonRows.some(row => Array.isArray(row) && row.some(cell => {
+            const s = String(cell || '').toLowerCase().trim();
+            return s === 'monday' || s === 'tuesday' || s === 'wednesday' || s === 'thursday' || s === 'friday' || s.startsWith('mon') || s.startsWith('tue') || s.startsWith('wed') || s.startsWith('thu') || s.startsWith('fri');
+        }));
 
-        if (targetCategory === 'Academic' || isAcademicFormat || targetCategory === 'Practical' || targetCategory === 'Tutorial') {
+        const isGridFormat = (targetCategory === 'Academic' || hasDayNames) && (fullText.includes('period') || fullText.includes('lunch') || fullText.includes('09:00') || fullText.includes('9:00') || hasDayNames);
+
+        if (isGridFormat) {
             let titleText = '';
             jsonRows.forEach(row => {
                 if (!Array.isArray(row)) return;
