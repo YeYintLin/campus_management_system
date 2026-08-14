@@ -1036,37 +1036,7 @@ const TimeTable = () => {
         if (fileInputRef.current) fileInputRef.current.click();
     };
 
-    const [availableSemesters, setAvailableSemesters] = useState(['Semester 1', 'Semester 2']);
-
-    useEffect(() => {
-        const loadSemesters = async () => {
-            try {
-                const [ttRes, sessRes] = await Promise.all([
-                    apiClient.get('/timetable/semesters', { params: { year: selectedYear } }).catch(() => ({ data: [] })),
-                    apiClient.get('/sessions', { params: { year: selectedYear } }).catch(() => ({ data: [] }))
-                ]);
-
-                const semsSet = new Set(['Semester 1', 'Semester 2']);
-                if (Array.isArray(ttRes.data)) {
-                    ttRes.data.forEach(s => {
-                        if (s.semesterNumber) semsSet.add(`Semester ${s.semesterNumber}`);
-                        if (s.semesterLabel) semsSet.add(s.semesterLabel);
-                    });
-                }
-                if (Array.isArray(sessRes.data)) {
-                    sessRes.data.forEach(s => {
-                        if (s.semester) semsSet.add(s.semester);
-                    });
-                }
-
-                const list = ['Semester 1', 'Semester 2', ...Array.from(semsSet).filter(x => x !== 'Semester 1' && x !== 'Semester 2')];
-                setAvailableSemesters(list);
-            } catch (e) {
-                setAvailableSemesters(['Semester 1', 'Semester 2']);
-            }
-        };
-        loadSemesters();
-    }, [selectedYear]);
+    const availableSemesters = ['Semester 1', 'Semester 2'];
 
     const loadHistory = async () => {
         setLoadingHistory(true);
