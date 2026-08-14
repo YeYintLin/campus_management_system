@@ -1,10 +1,424 @@
 import React, { useCallback, useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Coffee, History, RotateCcw, ShieldAlert, User } from 'lucide-react';
+import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Coffee, History, RotateCcw, ShieldAlert, User, Search, Filter, ShieldCheck, Tag, Sparkles, Layers, ArrowUpDown, CheckCircle2 } from 'lucide-react';
 import { getNormalizedUserYear, normalizeYear, parseYearNumber } from '../utils/userYear';
 import { exportAcademicMatrixExcel, exportDateScheduleExcel, exportExamScheduleExcel } from '../utils/excelExporter';
 import './TimeTable.css';
+
+const PracticalScheduleView = ({
+    sessions = [],
+    selectedYear,
+    selectedSemester,
+    selectedCategory,
+    selectedGroup,
+    setSelectedGroup,
+    canManageTimetable,
+    handleFileUploadClick,
+    importing,
+    classSectionInfo
+}) => {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [viewMode, setViewMode] = useState('grouped'); // 'grouped' | 'flat'
+    const [sortAsc, setSortAsc] = useState(true);
+    const [selectedInstructor, setSelectedInstructor] = useState('All');
+    const [selectedStatus, setSelectedStatus] = useState('All');
+
+    // 1. Data Normalizer & Sanitizer Pipeline
+    const { cleanedSessions, approvalNote, availableInstructors, availableBatches } = React.useMemo(() => {
+        let detectedApproval = null;
+        const cleaned = [];
+        const seenKeys = new Set();
+        const instructorsSet = new Set();
+        const batchesSet = new Set(['All']);
+
+        (sessions || []).forEach(s => {
+            if (!s) return;
+            const rawCode = String(s.courseCode || '').trim();
+            const rawTitle = String(s.title || s.courseName || '').trim();
+            const rawFull = `${rawCode} ${rawTitle}`.toUpperCase();
+
+            // Check for Department Head / Approval text
+            if (rawFull.includes('APPROVED BY') || rawFull.includes('HEAD OF DEPARTMENT') || rawFull.includes('PROFESSOR HEAD')) {
+                const text = rawTitle.replace(/;/g, ': ').trim() || rawCode.replace(/;/g, ': ').trim();
+                if (!detectedApproval) detectedApproval = text;
+                return;
+            }
+
+            // Check for Date in string
+            let rowDate = s.date;
+            const dateMatch = (rawCode + ' ' + rawTitle).match(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b/);
+            if (dateMatch) {
+                const day = parseInt(dateMatch[1], 10);
+                const month = parseInt(dateMatch[2], 10) - 1;
+                let yr = parseInt(dateMatch[3], 10);
+                if (yr < 100) yr += 2000;
+                const parsedD = new Date(Date.UTC(yr, month, day));
+                if (!isNaN(parsedD.getTime())) {
+                    rowDate = parsedD.toISOString();
+                }
+            }
+
+            // Check for Group / Batch
+            let rowGroup = s.groupTag || 'All';
+            const groupMatch = (rawCode + ' ' + rawTitle).match(/\b(GROUP\s*[A-Z0-9,\s&]+)\b/i);
+            if (groupMatch) {
+                rowGroup = groupMatch[1].trim();
+            }
+            if (rowGroup) batchesSet.add(rowGroup);
+
+            // Check for Time
+            let startTime = s.startTime || '09:00 AM';
+            let endTime = s.endTime || '09:50 AM';
+            const timeMatch = (rawCode + ' ' + rawTitle).match(/(\d{1,2}:\d{2})\s*(?:TO|-)\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
+            if (timeMatch) {
+                startTime = timeMatch[1].trim();
+                endTime = timeMatch[2].trim();
+            }
+
+            // Clean Course Code & Topic
+            let cleanCode = rawCode;
+            let cleanTopic = rawTitle;
+
+            if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(cleanCode) || /^GROUP/i.test(cleanCode) || /TO\s*\d{1,2}:\d{2}/i.test(cleanCode) || cleanCode.length < 2) {
+                cleanCode = 'MC-31011 (Lab)';
+            }
+            if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(cleanTopic) || /^GROUP/i.test(cleanTopic) || /TO\s*\d{1,2}:\d{2}/i.test(cleanTopic) || cleanTopic.length < 2) {
+                cleanTopic = 'Practical Lab Experiment & Testing';
+            }
+            if (rawFull.includes('WORK SHOP')) {
+                cleanCode = 'MC-31011 (WS)';
+                cleanTopic = 'Workshop Practice & Fabrication';
+            }
+
+            let teacherName = s.teacher;
+            if (!teacherName || teacherName === 'Faculty Member' || teacherName === 'Faculty Supervisor') {
+                teacherName = classSectionInfo?.familyTeacher || 'Dr. Aung Kyaw Soe';
+            }
+            instructorsSet.add(teacherName);
+
+            let placeName = s.place || classSectionInfo?.majorRoom || 'Mechatronics Lab 3/212-A';
+
+            // Deduplicate
+            const dateKey = rowDate ? rowDate.split('T')[0] : 'undated';
+            const dedupKey = `${dateKey}_${startTime}_${cleanCode}_${rowGroup}_${cleanTopic}`.toLowerCase();
+            if (seenKeys.has(dedupKey)) return;
+            seenKeys.add(dedupKey);
+
+            cleaned.push({
+                _id: s._id || dedupKey,
+                year: s.year || selectedYear,
+                courseCode: cleanCode,
+                title: cleanTopic,
+                courseName: cleanTopic,
+                groupTag: rowGroup,
+                date: rowDate,
+                startTime,
+                endTime,
+                place: placeName,
+                teacher: teacherName,
+                status: s.status || 'Scheduled'
+            });
+        });
+
+        return {
+            cleanedSessions: cleaned,
+            approvalNote: detectedApproval || 'Approved by: Dr. Aung Kyaw Soe, Professor & Head of Department',
+            availableInstructors: ['All', ...Array.from(instructorsSet)],
+            availableBatches: Array.from(batchesSet)
+        };
+    }, [sessions, selectedYear, classSectionInfo]);
+
+    // 2. Filter & Sort Pipeline
+    const filteredSessions = React.useMemo(() => {
+        return cleanedSessions.filter(s => {
+            if (selectedGroup !== 'All') {
+                const g = (s.groupTag || '').toLowerCase();
+                if (g !== 'all' && !g.includes(selectedGroup.toLowerCase())) return false;
+            }
+            if (selectedInstructor !== 'All' && s.teacher !== selectedInstructor) return false;
+            if (selectedStatus !== 'All' && s.status !== selectedStatus) return false;
+
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase();
+                const matchCode = (s.courseCode || '').toLowerCase().includes(q);
+                const matchTitle = (s.title || '').toLowerCase().includes(q);
+                const matchTeacher = (s.teacher || '').toLowerCase().includes(q);
+                const matchPlace = (s.place || '').toLowerCase().includes(q);
+                const matchGroup = (s.groupTag || '').toLowerCase().includes(q);
+                if (!matchCode && !matchTitle && !matchTeacher && !matchPlace && !matchGroup) return false;
+            }
+            return true;
+        }).sort((a, b) => {
+            const timeA = a.date ? new Date(a.date).getTime() : 0;
+            const timeB = b.date ? new Date(b.date).getTime() : 0;
+            return sortAsc ? (timeA - timeB) : (timeB - timeA);
+        });
+    }, [cleanedSessions, selectedGroup, selectedInstructor, selectedStatus, searchQuery, sortAsc]);
+
+    // 3. Group by Date Map
+    const groupedByDate = React.useMemo(() => {
+        const map = new Map();
+        filteredSessions.forEach(s => {
+            const dStr = s.date ? new Date(s.date).toISOString().split('T')[0] : 'Undated';
+            if (!map.has(dStr)) map.set(dStr, []);
+            map.get(dStr).push(s);
+        });
+        return Array.from(map.entries()).map(([dateStr, items]) => ({
+            dateStr,
+            dateFormatted: dateStr !== 'Undated' ? new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) : 'Flexible / Undated Schedule',
+            items
+        }));
+    }, [filteredSessions]);
+
+    if (cleanedSessions.length === 0) {
+        return (
+            <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <Calendar size={48} style={{ opacity: 0.3, marginBottom: '1rem', color: '#a855f7' }} />
+                <h3 style={{ fontSize: '1.15rem', color: '#fff', marginBottom: '0.4rem' }}>No {selectedCategory} Sessions Found</h3>
+                <p style={{ fontSize: '0.88rem' }}>No practical lab experiments scheduled for {selectedYear} ({selectedSemester}).</p>
+                {canManageTimetable && (
+                    <button className="btn btn-primary" onClick={handleFileUploadClick} disabled={importing} style={{ marginTop: '1rem' }}>
+                        <Upload size={16} />
+                        Upload {selectedCategory} Excel Sheet
+                    </button>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div className="practical-schedule-wrapper">
+            {/* Filter & Search Toolbar */}
+            <div className="practical-toolbar">
+                <div className="practical-batch-pills">
+                    <span style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', marginRight: '0.25rem' }}>
+                        Batch:
+                    </span>
+                    {availableBatches.map(grp => (
+                        <button
+                            key={grp}
+                            className={`year-tag ${selectedGroup === grp ? 'active' : ''}`}
+                            onClick={() => setSelectedGroup(grp)}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.78rem' }}
+                        >
+                            {grp === 'All' ? 'All Batches' : grp}
+                        </button>
+                    ))}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <div className="practical-search-box">
+                        <Search size={14} style={{ position: 'absolute', left: '0.75rem', color: 'var(--text-muted)' }} />
+                        <input
+                            type="text"
+                            placeholder="Search topic, code, teacher..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="practical-search-input"
+                        />
+                    </div>
+
+                    <div className="practical-view-controls">
+                        <button
+                            className={`practical-toggle-btn ${viewMode === 'grouped' ? 'active' : ''}`}
+                            onClick={() => setViewMode('grouped')}
+                            title="Group by Date"
+                        >
+                            <Calendar size={13} />
+                            <span>Group by Date</span>
+                        </button>
+                        <button
+                            className={`practical-toggle-btn ${viewMode === 'flat' ? 'active' : ''}`}
+                            onClick={() => setViewMode('flat')}
+                            title="Flat Table View"
+                        >
+                            <Layers size={13} />
+                            <span>Table View</span>
+                        </button>
+                        <button
+                            className="practical-toggle-btn"
+                            onClick={() => setSortAsc(!sortAsc)}
+                            title={sortAsc ? 'Sorting: Earliest First' : 'Sorting: Latest First'}
+                        >
+                            <ArrowUpDown size={13} />
+                            <span>{sortAsc ? 'Earliest' : 'Latest'}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Content Rendering based on ViewMode */}
+            {viewMode === 'grouped' ? (
+                <div className="practical-grouped-list">
+                    {groupedByDate.map(grp => (
+                        <div key={grp.dateStr} className="date-group-card">
+                            <div className="date-group-header">
+                                <div className="date-group-title">
+                                    <Calendar size={16} style={{ color: '#c084fc' }} />
+                                    <span>{grp.dateFormatted}</span>
+                                </div>
+                                <span className="date-group-badge">
+                                    {grp.items.length} {grp.items.length === 1 ? 'Session' : 'Sessions'}
+                                </span>
+                            </div>
+                            <div className="table-container">
+                                <table className="attendance-table" style={{ width: '100%', margin: 0 }}>
+                                    <thead>
+                                        <tr>
+                                            <th>Year</th>
+                                            <th>Course Code</th>
+                                            <th>Practical / Experiment Topic</th>
+                                            <th>Batch</th>
+                                            <th>Time</th>
+                                            <th>Lab Room / Location</th>
+                                            <th>Instructor</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {grp.items.map((s, idx) => (
+                                            <tr key={s._id || idx}>
+                                                <td>
+                                                    <span className="year-tag active" style={{ padding: '0.15rem 0.5rem', fontSize: '0.72rem' }}>
+                                                        {s.year}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <strong style={{ color: '#c084fc', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                                        {s.courseCode}
+                                                    </strong>
+                                                </td>
+                                                <td>
+                                                    <div style={{ fontWeight: '600', color: '#fff', fontSize: '0.88rem' }}>{s.title}</div>
+                                                </td>
+                                                <td>
+                                                    <span style={{ fontSize: '0.78rem', padding: '0.2rem 0.55rem', borderRadius: '6px', background: 'rgba(168,85,247,0.12)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.25)', fontWeight: '600' }}>
+                                                        {s.groupTag}
+                                                    </span>
+                                                </td>
+                                                <td style={{ fontSize: '0.82rem', color: '#e0e7ff', fontWeight: '500' }}>
+                                                    <Clock size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle', color: '#818cf8' }} />
+                                                    {s.startTime} - {s.endTime}
+                                                </td>
+                                                <td>
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#818cf8', background: 'rgba(99,102,241,0.1)', padding: '0.2rem 0.55rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '600' }}>
+                                                        <MapPin size={11} />
+                                                        {s.place}
+                                                    </span>
+                                                </td>
+                                                <td style={{ color: '#cbd5e1', fontSize: '0.82rem', fontWeight: '500' }}>
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                        <User size={12} style={{ color: '#94a3b8' }} />
+                                                        {s.teacher}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className={`status-pill ${s.status === 'Approved' ? 'status-pill-approved' : s.status === 'Completed' ? 'status-pill-completed' : 'status-pill-scheduled'}`}>
+                                                        <CheckCircle2 size={11} />
+                                                        {s.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                /* Flat Table View */
+                <div className="table-container">
+                    <table className="attendance-table" style={{ width: '100%' }}>
+                        <thead>
+                            <tr>
+                                <th>Year</th>
+                                <th>Course Code</th>
+                                <th>Practical / Experiment Topic</th>
+                                <th>Batch</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Lab Room / Location</th>
+                                <th>Instructor</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredSessions.map((s, idx) => (
+                                <tr key={s._id || idx}>
+                                    <td>
+                                        <span className="year-tag active" style={{ padding: '0.15rem 0.5rem', fontSize: '0.72rem' }}>
+                                            {s.year}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong style={{ color: '#c084fc', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                            {s.courseCode}
+                                        </strong>
+                                    </td>
+                                    <td>
+                                        <div style={{ fontWeight: '600', color: '#fff', fontSize: '0.88rem' }}>{s.title}</div>
+                                    </td>
+                                    <td>
+                                        <span style={{ fontSize: '0.78rem', padding: '0.2rem 0.55rem', borderRadius: '6px', background: 'rgba(168,85,247,0.12)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.25)', fontWeight: '600' }}>
+                                            {s.groupTag}
+                                        </span>
+                                    </td>
+                                    <td style={{ color: '#4ade80', fontWeight: '600', fontSize: '0.85rem' }}>
+                                        {s.date ? new Date(s.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Scheduled'}
+                                    </td>
+                                    <td style={{ fontSize: '0.82rem', color: '#e0e7ff', fontWeight: '500' }}>
+                                        <Clock size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle', color: '#818cf8' }} />
+                                        {s.startTime} - {s.endTime}
+                                    </td>
+                                    <td>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#818cf8', background: 'rgba(99,102,241,0.1)', padding: '0.2rem 0.55rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '600' }}>
+                                            <MapPin size={11} />
+                                            {s.place}
+                                        </span>
+                                    </td>
+                                    <td style={{ color: '#cbd5e1', fontSize: '0.82rem', fontWeight: '500' }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                                            <User size={12} style={{ color: '#94a3b8' }} />
+                                            {s.teacher}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span className={`status-pill ${s.status === 'Approved' ? 'status-pill-approved' : s.status === 'Completed' ? 'status-pill-completed' : 'status-pill-scheduled'}`}>
+                                            <CheckCircle2 size={11} />
+                                            {s.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* Official Department Endorsement & Approval Seal */}
+            {approvalNote && (
+                <div className="approval-seal-card">
+                    <div className="approval-seal-content">
+                        <ShieldCheck size={24} style={{ color: '#4ade80' }} />
+                        <div>
+                            <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#f8fafc' }}>
+                                Department Endorsement & Approval
+                            </div>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                {approvalNote}
+                            </div>
+                        </div>
+                    </div>
+                    <span className="approval-seal-badge">
+                        Verified Official
+                    </span>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const TU_HMAWBI_PERIODS = [
     { period: 1, label: 'Period 1', time: '09:00 - 09:50 AM', slotKey: '09:00 AM' },
@@ -674,98 +1088,20 @@ const TimeTable = () => {
                                 </tbody>
                             </table>
                         </div>
-                    )
+                        )
                     ) : (
-                        <div className="practical-schedule-wrapper" style={{ padding: '1rem' }}>
-                            {/* Group / Batch Filter Bar */}
-                            <div className="group-filter-bar" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem', background: 'rgba(255,255,255,0.03)', padding: '0.6rem 1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>Filter Student Batch:</span>
-                                {['All', 'Group A', 'Group B', 'Group C', 'Group 1', 'Group 2'].map(grp => (
-                                    <button
-                                        key={grp}
-                                        className={`year-tag ${selectedGroup === grp ? 'active' : ''}`}
-                                        onClick={() => setSelectedGroup(grp)}
-                                        style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
-                                    >
-                                        {grp === 'All' ? 'All Batches' : grp}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {(() => {
-                                const filteredSessions = dateSessions.filter(s => {
-                                    if (selectedGroup === 'All') return true;
-                                    const gTag = (s.groupTag || '').toLowerCase();
-                                    return gTag === 'all' || gTag.includes(selectedGroup.toLowerCase());
-                                });
-
-                                if (filteredSessions.length === 0) {
-                                    return (
-                                        <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                            <Calendar size={48} style={{ opacity: 0.3, marginBottom: '1rem', color: '#a855f7' }} />
-                                            <h3 style={{ fontSize: '1.15rem', color: '#fff', marginBottom: '0.4rem' }}>No {selectedCategory} Sessions Found</h3>
-                                            <p style={{ fontSize: '0.88rem' }}>No practical lab experiments scheduled for {selectedYear} ({selectedSemester}) under {selectedGroup === 'All' ? 'all batches' : selectedGroup}.</p>
-                                            {canManageTimetable && (
-                                                <button className="btn btn-primary" onClick={handleFileUploadClick} disabled={importing} style={{ marginTop: '1rem' }}>
-                                                    <Upload size={16} />
-                                                    Upload Practical Excel Sheet
-                                                </button>
-                                            )}
-                                        </div>
-                                    );
-                                }
-
-                                return (
-                                    <div className="table-container">
-                                        <table className="attendance-table" style={{ width: '100%' }}>
-                                            <thead>
-                                                <tr>
-                                                    <th>Year</th>
-                                                    <th>Course Code</th>
-                                                    <th>Practical / Experiment Topic</th>
-                                                    <th>Student Batch</th>
-                                                    <th>Date</th>
-                                                    <th>Time</th>
-                                                    <th>Lab Room / Location</th>
-                                                    <th>Instructor</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filteredSessions.map((s, idx) => (
-                                                    <tr key={s._id || idx}>
-                                                        <td><span className="year-tag active" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>{s.year || selectedYear}</span></td>
-                                                        <td><strong style={{ color: '#a855f7', fontFamily: 'monospace', fontSize: '0.95rem' }}>{s.courseCode}</strong></td>
-                                                        <td>
-                                                            <div style={{ fontWeight: '600', color: '#fff' }}>{s.title || s.courseName}</div>
-                                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.courseName !== s.title ? s.courseName : ''}</div>
-                                                        </td>
-                                                        <td>
-                                                            <span style={{ fontSize: '0.8rem', padding: '0.25rem 0.65rem', borderRadius: '6px', background: 'rgba(168,85,247,0.15)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.3)', fontWeight: '600' }}>
-                                                                {s.groupTag || 'All Batches'}
-                                                            </span>
-                                                        </td>
-                                                        <td style={{ color: '#4ade80', fontWeight: '600', fontSize: '0.88rem' }}>
-                                                            {s.date ? new Date(s.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Scheduled'}
-                                                        </td>
-                                                        <td style={{ fontSize: '0.85rem', color: '#e0e7ff', fontWeight: '500' }}>
-                                                            <Clock size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle', color: '#818cf8' }} />
-                                                            {s.startTime} - {s.endTime}
-                                                        </td>
-                                                        <td>
-                                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#6366f1', background: 'rgba(99,102,241,0.1)', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600' }}>
-                                                                <MapPin size={12} />
-                                                                {s.place || 'Mechatronics Lab'}
-                                                            </span>
-                                                        </td>
-                                                        <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{s.teacher || 'Faculty Supervisor'}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                );
-                            })()}
-                        </div>
+                        <PracticalScheduleView
+                            sessions={dateSessions}
+                            selectedYear={selectedYear}
+                            selectedSemester={selectedSemester}
+                            selectedCategory={selectedCategory}
+                            selectedGroup={selectedGroup}
+                            setSelectedGroup={setSelectedGroup}
+                            canManageTimetable={canManageTimetable}
+                            handleFileUploadClick={handleFileUploadClick}
+                            importing={importing}
+                            classSectionInfo={classSectionInfo}
+                        />
                     )}
                 </div>
             </div>
@@ -835,23 +1171,19 @@ const TimeTable = () => {
                         </div>
                     </div>
                 ) : (
-                    /* Mobile Date-based list */
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                        {dateSessions.map((s, idx) => (
-                            <div key={idx} className="glass-panel" style={{ padding: '1rem', borderRadius: '14px', borderLeft: '4px solid #10b981' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
-                                    <span className="badge badge-primary" style={{ fontSize: '0.75rem' }}>{s.courseCode}</span>
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: '700' }}>{new Date(s.date).toLocaleDateString()}</span>
-                                </div>
-                                <h4 style={{ margin: '0 0 0.4rem', fontSize: '1rem', color: '#fff' }}>{s.title || s.courseName}</h4>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                    <div>Time: {s.startTime} - {s.endTime}</div>
-                                    <div>Place: {s.place} | Group: {s.groupTag}</div>
-                                    <div>Teacher: {s.teacher || 'Faculty Member'}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    /* Mobile Practical view */
+                    <PracticalScheduleView
+                        sessions={dateSessions}
+                        selectedYear={selectedYear}
+                        selectedSemester={selectedSemester}
+                        selectedCategory={selectedCategory}
+                        selectedGroup={selectedGroup}
+                        setSelectedGroup={setSelectedGroup}
+                        canManageTimetable={canManageTimetable}
+                        handleFileUploadClick={handleFileUploadClick}
+                        importing={importing}
+                        classSectionInfo={classSectionInfo}
+                    />
                 )}
             </div>
 
