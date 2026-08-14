@@ -1,13 +1,31 @@
 const mongoose = require('mongoose');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+const fs = require('fs');
+const dns = require('dns');
+try { dns.setServers(['8.8.8.8', '1.1.1.1']); } catch (e) {}
+
+const dotenv = require('dotenv');
+const envPaths = [
+    path.join(__dirname, '.env'),
+    path.join(__dirname, '../../.env'),
+    path.join(__dirname, '../.env'),
+    '/var/www/cms/services/core/.env',
+    '/var/www/cms/.env'
+];
+for (const p of envPaths) {
+    if (fs.existsSync(p)) {
+        dotenv.config({ path: p });
+    }
+}
+
 const ScheduledSession = require('./src/models/ScheduledSession');
 
 async function cleanup() {
     try {
-        const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/cms_core';
-        console.log('Connecting to MongoDB at:', mongoUri);
-        await mongoose.connect(mongoUri);
+        const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI || process.env.DATABASE_URL || 'mongodb+srv://yeyint2702:1234567890@cluster0.yczoc.mongodb.net/core_db?retryWrites=true&w=majority';
+        console.log('Connecting to MongoDB...');
+        await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 15000 });
+        console.log('Connected to MongoDB successfully.');
 
         console.log('Scanning for corrupted ScheduledSession records...');
 
