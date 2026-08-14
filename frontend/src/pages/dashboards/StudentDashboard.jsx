@@ -32,14 +32,16 @@ const StudentDashboard = () => {
     const [grades, setGrades] = useState([]);
     const [attendance, setAttendance] = useState([]);
     const [notifications, setNotifications] = useState([]);
+    const [studentCourses, setStudentCourses] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const [statsRes, examsRes, gradesRes, attendanceRes, notifRes] = await Promise.allSettled([
+                const [statsRes, coursesRes, examsRes, gradesRes, attendanceRes, notifRes] = await Promise.allSettled([
                     apiClient.get('/dashboard/stats'),
+                    apiClient.get('/courses'),
                     apiClient.get('/sessions', { params: { sessionType: 'Exam' } }),
                     apiClient.get('/grades', { params: { student: studentId } }),
                     apiClient.get('/attendance', { params: { student: studentId } }),
@@ -47,6 +49,20 @@ const StudentDashboard = () => {
                 ]);
 
                 if (statsRes.status === 'fulfilled') setStats(statsRes.value.data);
+
+                if (coursesRes.status === 'fulfilled') {
+                    const allC = Array.isArray(coursesRes.value.data) ? coursesRes.value.data : [];
+                    const studentYearStr = String(user?.year || '1st Year');
+                    const userYNum = parseInt(studentYearStr.replace(/\D/g, ''), 10) || 1;
+                    const junkRegex = /^(introduction|tutorial\s*i+|testing\s*job|practical\s*lab|prepared|approved|sr\.?|batch|group)/i;
+                    const myYearCourses = allC.filter(c => {
+                        const yNum = c.year || parseInt(String(c.yearLabel || '').replace(/\D/g, ''), 10);
+                        const cName = (c.name || '').trim();
+                        if (junkRegex.test(cName)) return false;
+                        return yNum === userYNum;
+                    });
+                    setStudentCourses(myYearCourses);
+                }
 
                 let examSessionsData = [];
                 if (examsRes.status === 'fulfilled') {
@@ -166,7 +182,7 @@ const StudentDashboard = () => {
                         <BookOpen size={22} />
                     </div>
                     <div className="stat-info">
-                        <h3>{stats?.activeCourses ?? grades.length ?? 0}</h3>
+                        <h3>{(stats?.activeCourses && stats.activeCourses > 0) ? stats.activeCourses : (studentCourses.length || grades.length || 0)}</h3>
                         <p>Active Courses</p>
                     </div>
                 </div>

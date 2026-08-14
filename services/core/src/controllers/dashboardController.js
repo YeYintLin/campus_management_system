@@ -426,13 +426,48 @@ const getDashboardStats = async (req, res) => {
 
         } else {
             // ── Student stats ──
+            let studentYearNum = null;
+            if (req.user.year) {
+                const m = String(req.user.year).match(/\d+/);
+                if (m) studentYearNum = parseInt(m[0], 10);
+            }
+            if (!studentYearNum) {
+                const studentDoc = await Student.findOne({ user: userId });
+                if (studentDoc?.semester) studentYearNum = Math.ceil(studentDoc.semester / 2);
+            }
+            if (!studentYearNum) studentYearNum = 1;
+
+            const courseQuery = {
+                $or: [
+                    { students: userId },
+                    { year: studentYearNum },
+                    { yearLabel: new RegExp(`^${studentYearNum}(st|nd|rd|th)?\\s*year$`, 'i') }
+                ]
+            };
+
             const [courses, grades, notifications] = await Promise.all([
-                Course.find({ students: userId }),
+                Course.find(courseQuery),
                 Grade.find({ student: userId }).populate('course', 'name code'),
                 Notification.find({
                     $or: [{ user: userId }, { user: null }]
                 }).sort({ createdAt: -1 }).limit(5),
             ]);
+
+            // Filter out non-academic or junk course records
+            const junkTitleRegex = /^(introduction|tutorial\s*i+|testing\s*job|practical\s*lab|prepared|approved|sr\.?|batch|group)/i;
+            const nonAcademicCodeRegex = /^(PREPARED|APPROVED|SR\.?|BATCH|GROUP|PRIVATE\s*STUDY)/i;
+
+            const seenCodes = new Set();
+            const validCourses = [];
+            for (const c of (courses || [])) {
+                const name = (c.name || '').trim();
+                const code = (c.code || '').trim();
+                const normCode = code.replace(/[\s-]+/g, '').toUpperCase();
+                if (!normCode || seenCodes.has(normCode)) continue;
+                if (junkTitleRegex.test(name) || nonAcademicCodeRegex.test(code) || nonAcademicCodeRegex.test(name)) continue;
+                seenCodes.add(normCode);
+                validCourses.push(c);
+            }
 
             // Calculate GPA
             const validGrades = Array.isArray(grades) ? grades : [];
@@ -445,7 +480,6 @@ const getDashboardStats = async (req, res) => {
                     .map(g => (g.course?._id ? g.course._id.toString() : g.course ? g.course.toString() : null))
                     .filter(Boolean)
             );
-            const validCourses = Array.isArray(courses) ? courses : [];
             const assignmentsDue = validCourses.filter(c => c && c._id && !gradedCourseIds.has(c._id.toString())).length;
 
             stats.activeCourses = validCourses.length;
