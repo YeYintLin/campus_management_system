@@ -1175,10 +1175,15 @@ const exportRollCallExcel = async (req, res) => {
                     } else if (col === 3) {
                         cell.alignment = { horizontal: 'left', vertical: 'middle' };
                     } else if (col >= 23 && isRealStudent) {
+                        const endColLetter = conductedSessions > 0 ? String.fromCharCode(68 + conductedSessions - 1) : 'V';
                         // Formulas for W, X, Y
-                        if (col === 23) cell.value = { formula: `=COUNTIF(D${rowNum}:V${rowNum}, "✓") * ${hourWeight}` };
-                        if (col === 24) cell.value = { formula: `=IF(COUNTA(D$5:V$5)>0, (COUNTA(D$5:V$5) - COUNTIF(D${rowNum}:V${rowNum}, "✓")) * ${hourWeight}, 0)` };
-                        if (col === 25) cell.value = { formula: `=IF((W${rowNum}+X${rowNum})>0, ROUND((W${rowNum}/(W${rowNum}+X${rowNum}))*100, 1) & "%", "0%")` };
+                        if (col === 23) {
+                            cell.value = { formula: `=COUNTIF(D${rowNum}:${endColLetter}${rowNum}, "✓") * ${hourWeight}` };
+                        } else if (col === 24) {
+                            cell.value = { formula: `=(${conductedSessions} - COUNTIF(D${rowNum}:${endColLetter}${rowNum}, "✓")) * ${hourWeight}` };
+                        } else if (col === 25) {
+                            cell.value = { formula: `=IF((W${rowNum}+X${rowNum})>0, ROUND((W${rowNum}/(W${rowNum}+X${rowNum}))*100, 1) & "%", "0%")` };
+                        }
                         cell.alignment = { horizontal: 'center', vertical: 'middle' };
                     } else {
                         cell.alignment = { horizontal: 'center', vertical: 'middle' };
