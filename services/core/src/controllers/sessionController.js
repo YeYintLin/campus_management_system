@@ -24,31 +24,33 @@ const batchImportSessions = async (req, res) => {
             data: req.file.buffer
         });
 
-        // 1. Parse ExcelJS structured Semester blocks
-        try {
-            const parsedSemesters = await parseTimetableBuffer(req.file.buffer);
-            if (parsedSemesters && parsedSemesters.length > 0) {
-                await Semester.deleteMany({ sheetName: { $in: parsedSemesters.map(s => s.sheet_name) } });
-                await Semester.insertMany(
-                    parsedSemesters.map((s, i) => ({
-                        sourceFile: fileDoc._id,
-                        sheetName: s.sheet_name,
-                        department: s.department,
-                        academicYear: s.academic_year,
-                        yearLabel: s.year_label,
-                        semesterLabel: s.semester_label,
-                        semesterOrder: i,
-                        majorRoom: s.major_room,
-                        combinedRoom: s.combined_room,
-                        familyTeacher: s.family_teacher,
-                        periods: s.periods,
-                        days: s.days,
-                        legend: s.legend
-                    }))
-                );
+        // 1. Parse ExcelJS structured Semester blocks ONLY for Academic imports
+        if (sessionType === 'Academic') {
+            try {
+                const parsedSemesters = await parseTimetableBuffer(req.file.buffer);
+                if (parsedSemesters && parsedSemesters.length > 0) {
+                    await Semester.deleteMany({ sheetName: { $in: parsedSemesters.map(s => s.sheet_name) } });
+                    await Semester.insertMany(
+                        parsedSemesters.map((s, i) => ({
+                            sourceFile: fileDoc._id,
+                            sheetName: s.sheet_name,
+                            department: s.department,
+                            academicYear: s.academic_year,
+                            yearLabel: s.year_label,
+                            semesterLabel: s.semester_label,
+                            semesterOrder: i,
+                            majorRoom: s.major_room,
+                            combinedRoom: s.combined_room,
+                            familyTeacher: s.family_teacher,
+                            periods: s.periods,
+                            days: s.days,
+                            legend: s.legend
+                        }))
+                    );
+                }
+            } catch (semErr) {
+                console.error('Semester insert notice:', semErr.message);
             }
-        } catch (semErr) {
-            console.error('Semester insert notice:', semErr.message);
         }
 
         // 2. Parse Excel file via server-side parser
