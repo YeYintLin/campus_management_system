@@ -268,42 +268,40 @@ const getDashboardStats = async (req, res) => {
 
         if (roleNorm === 'admin' || roleNorm === 'superadmin' || roleNorm === 'academicadmin') {
             // ── Admin stats ──
-            const [allStudents, allStudentUsers, courseCount, notifications] = await Promise.all([
-                Student.find().populate('user', 'name status year role email'),
-                User.find({ role: { $regex: /^student$/i } }).select('name status year role email'),
+            const [allStudents, courseCount, notifications] = await Promise.all([
+                Student.find().populate('user', 'name status year role email department rollNo'),
                 Course.countDocuments(),
                 Notification.find().sort({ createdAt: -1 }).limit(5),
             ]);
 
-            // Map users & students into a consolidated student map by user ID
+            // Map enrolled students with accurate cohort year resolution
             const studentMap = new Map();
 
-            for (const u of allStudentUsers) {
-                studentMap.set(u._id.toString(), {
-                    userId: u._id.toString(),
-                    name: u.name,
-                    email: u.email,
-                    status: u.status || 'Active',
-                    year: u.year || 1,
-                });
-            }
-
             for (const s of allStudents) {
-                const uid = s.user?._id?.toString() || s.user?.toString();
-                const existing = uid ? studentMap.get(uid) : null;
-                const statusVal = s.user?.status || s.status || existing?.status || 'Active';
-                if (uid) {
-                    studentMap.set(uid, {
-                        ...existing,
-                        status: statusVal,
-                        year: s.semester ? Math.ceil(s.semester / 2) : existing?.year || 1,
-                    });
-                } else {
-                    studentMap.set(s._id.toString(), {
-                        status: statusVal,
-                        year: s.semester ? Math.ceil(s.semester / 2) : 1,
-                    });
+                const u = s.user;
+                const uid = u?._id?.toString() || s._id.toString();
+                const statusVal = u?.status || s.status || 'Active';
+
+                // Accurate year resolution
+                let yearNum = 5;
+                if (typeof s.semester === 'number' && s.semester > 0) {
+                    yearNum = Math.ceil(s.semester / 2);
+                } else if (u?.year) {
+                    const m = String(u.year).match(/\d+/);
+                    if (m) yearNum = parseInt(m[0], 10);
+                } else if (u?.email) {
+                    const em = u.email.toLowerCase();
+                    if (em.includes('v.') || em.includes('vmc') || em.includes('v-')) yearNum = 5;
+                    else if (em.includes('vi.') || em.includes('vimc') || em.includes('vi-')) yearNum = 6;
                 }
+
+                studentMap.set(uid, {
+                    userId: uid,
+                    name: u?.name || 'Student',
+                    email: u?.email,
+                    status: statusVal,
+                    year: yearNum,
+                });
             }
 
             const consolidatedStudents = Array.from(studentMap.values());
