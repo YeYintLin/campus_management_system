@@ -398,14 +398,20 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
             let detectedApprovalNote = null;
 
             let bannerCode = '';
+            const sheetMatch = sheetName.match(/([A-Za-z]{0,5}-?\s*\d{4,6})/i);
+            if (sheetMatch) {
+                const digits = sheetMatch[0].replace(/[^0-9]/g, '');
+                if (digits.length >= 4) bannerCode = `McE-${digits}`;
+                else bannerCode = sheetMatch[0].replace(/\s+/g, '').toUpperCase();
+            }
+
             for (let i = 0; i < Math.min(jsonRows.length, 20); i++) {
                 const r = jsonRows[i];
                 if (!Array.isArray(r)) continue;
                 const rText = r.filter(Boolean).map(c => String(c).trim()).join(' ');
                 const codeMatch = rText.match(/([A-Za-z]{2,5}-?\s*\d{3,6})/i);
-                if (codeMatch && !bannerCode) {
+                if (codeMatch) {
                     bannerCode = codeMatch[1].replace(/\s+/g, '').toUpperCase();
-                    break;
                 }
             }
 

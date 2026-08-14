@@ -81,11 +81,19 @@ const parseClientPracticalExcel = (file, category, defaultYear, defaultSemester)
                     const jsonRows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
                     if (!jsonRows || jsonRows.length === 0) return;
 
-                    // 1. Banner Scanner across top 20 rows
-                    let bannerCode = fileCode;
+                    // 1. Banner Scanner across top 20 rows of this sheet
+                    let bannerCode = '';
                     let bannerYear = '';
                     let bannerSemester = '';
                     let bannerTeacher = '';
+
+                    // Check sheet name for codes like "52039", "51039", "McE-42026"
+                    const sheetMatch = sheetName.match(/([A-Za-z]{0,5}-?\s*\d{4,6})/i);
+                    if (sheetMatch) {
+                        const digits = sheetMatch[0].replace(/[^0-9]/g, '');
+                        if (digits.length >= 4) bannerCode = `McE-${digits}`;
+                        else bannerCode = sheetMatch[0].replace(/\s+/g, '').toUpperCase();
+                    }
 
                     for (let i = 0; i < Math.min(jsonRows.length, 20); i++) {
                         const row = jsonRows[i];
@@ -95,7 +103,7 @@ const parseClientPracticalExcel = (file, category, defaultYear, defaultSemester)
 
                         // Match Subject Code in Banner (e.g. McE-52039, McE-51039, MC-32011)
                         const codeMatch = rowText.match(/([A-Za-z]{2,5}-?\s*\d{3,6})/i);
-                        if (codeMatch && !bannerCode) {
+                        if (codeMatch) {
                             bannerCode = codeMatch[1].replace(/\s+/g, '').toUpperCase();
                         }
 
@@ -121,6 +129,10 @@ const parseClientPracticalExcel = (file, category, defaultYear, defaultSemester)
                                 bannerTeacher = tMatch[1].trim();
                             }
                         }
+                    }
+
+                    if (!bannerCode) {
+                        bannerCode = fileCode;
                     }
 
                     if (!bannerYear && bannerCode) {
