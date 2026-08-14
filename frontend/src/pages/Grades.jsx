@@ -6,6 +6,7 @@ import apiClient from '../api/apiClient';
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType, AlignmentType, TableBorders, TextRun, VerticalAlign } from 'docx';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
+import { getNormalizedUserYear } from '../utils/userYear';
 import './Grades.css';
 
 const yearLookup = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
@@ -1037,35 +1038,27 @@ const Grades = () => {
     // Student Detail View or Individual Student Login View
     const currentGrades = getGrades(selectedStudent?.id || user?._id);
     const displayUser = selectedStudent || {
-        id: user?._id,
+        id: user?.enrollmentNumber || user?.rollNumber || (user?.email ? user.email.split('@')[0] : ''),
         name: user?.name,
-        year: semesterToYearLabel(user?.semester),
+        year: getNormalizedUserYear(user) || semesterToYearLabel(user?.semester),
     };
 
     return (
         <div className="grades-page animate-fade-in">
             <header className="page-header">
                 <div className="header-left">
-                    {selectedStudent && (
+                    {selectedStudent && !isStudent && (
                         <button className="back-btn-minimal" onClick={() => setSelectedStudent(null)}>
                             <ChevronLeft size={20} />
-                            Back to Matrix
+                            Back
                         </button>
                     )}
                     <div>
                         <h1>{displayUser?.name}'s Performance</h1>
-                        <p className="subtitle">Official transcript for {displayUser?.id} | {displayUser?.year}</p>
+                        <p className="subtitle">
+                            Academic Record {displayUser?.id ? `• ${displayUser.id}` : ''} {displayUser?.year ? `• ${displayUser.year}` : ''}
+                        </p>
                     </div>
-                </div>
-                <div className="header-actions">
-                    <button className="btn btn-secondary">
-                        <Download size={18} />
-                        Transcript
-                    </button>
-                    <button className="btn btn-primary">
-                        <Printer size={18} />
-                        Print
-                    </button>
                 </div>
             </header>
 
