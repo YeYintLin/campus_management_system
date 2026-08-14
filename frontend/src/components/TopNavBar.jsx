@@ -130,7 +130,15 @@ const TopNavBar = () => {
     return (
         <header className="content-topbar glass-panel">
             <div className="topbar-left-group">
-                <div className="topbar-avatar-badge mobile-only" title={user?.name || 'User'}>
+                <div
+                    className="topbar-avatar-badge mobile-only"
+                    title={`View ${user?.name || 'User'}'s Profile`}
+                    onClick={() => {
+                        if (user?.role === 'Student') navigate(`/students/${user._id}`);
+                        else if (user?.role === 'Teacher') navigate(`/teachers/${user._id}`);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                >
                     {(user?.name?.trim()?.charAt(0) || 'U').toUpperCase()}
                 </div>
                 <div className="topbar-left">

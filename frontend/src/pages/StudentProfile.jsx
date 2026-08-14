@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../api/apiClient';
+import { AuthContext } from '../context/AuthContext';
+import { useContext } from 'react';
+import { getNormalizedUserYear } from '../utils/userYear';
 import { ArrowLeft, Award, BookOpen, CalendarDays, GraduationCap, Mail, Phone, ShieldCheck, UserRound, TrendingUp, CheckCircle } from 'lucide-react';
 import './StudentProfile.css';
 
@@ -52,6 +55,8 @@ const formatRollNumberDisplay = (rollInput, yearLabel, department) => {
 
 const StudentProfile = () => {
     const { studentId } = useParams();
+    const { user } = useContext(AuthContext);
+    const effectiveStudentId = studentId || user?._id;
     const location = useLocation();
     const navigate = useNavigate();
     const [student, setStudent] = useState(location.state?.student || null);
@@ -60,7 +65,8 @@ const StudentProfile = () => {
     const [stats, setStats] = useState({ gpa: 'N/A', attendance: 'N/A' });
 
     useEffect(() => {
-        if (student?._id === studentId) return undefined;
+        if (!effectiveStudentId) return undefined;
+        if (student?._id === effectiveStudentId || student?.user?._id === effectiveStudentId) return undefined;
 
         const abortController = new AbortController();
 
@@ -69,13 +75,13 @@ const StudentProfile = () => {
             setError('');
 
             try {
-                const { data } = await apiClient.get(`/students/${studentId}`, { signal: abortController.signal });
+                const { data } = await apiClient.get(`/students/${effectiveStudentId}`, { signal: abortController.signal });
                 setStudent(data);
                 
                 // Also fetch grades and attendance for stats
                 const [gradesRes, attendanceRes] = await Promise.all([
-                    apiClient.get('/grades', { params: { student: studentId }, signal: abortController.signal }).catch(() => ({ data: [] })),
-                    apiClient.get('/attendance', { params: { student: studentId }, signal: abortController.signal }).catch(() => ({ data: [] }))
+                    apiClient.get('/grades', { params: { student: effectiveStudentId }, signal: abortController.signal }).catch(() => ({ data: [] })),
+                    apiClient.get('/attendance', { params: { student: effectiveStudentId }, signal: abortController.signal }).catch(() => ({ data: [] }))
                 ]);
                 
                 const grades = gradesRes.data;
@@ -109,15 +115,24 @@ const StudentProfile = () => {
 
         fetchStudent();
         return () => abortController.abort();
-    }, [student?._id, studentId]);
+    }, [student?._id, student?.user?._id, effectiveStudentId]);
+
+    const isStudentSelf = user?.role === 'Student' && (user?._id === effectiveStudentId || !studentId);
 
     if (loading) {
         return (
             <div className="student-profile-page animate-fade-in">
-                <Link to="/students" className="btn btn-secondary profile-back-link">
-                    <ArrowLeft size={16} />
-                    Back to Students
-                </Link>
+                {isStudentSelf ? (
+                    <button className="btn btn-secondary profile-back-link" onClick={() => navigate(-1)}>
+                        <ArrowLeft size={16} />
+                        Back
+                    </button>
+                ) : (
+                    <Link to="/students" className="btn btn-secondary profile-back-link">
+                        <ArrowLeft size={16} />
+                        Back to Students
+                    </Link>
+                )}
                 <div className="glass-panel empty-state">
                     <p>Loading student profile...</p>
                 </div>
@@ -128,10 +143,17 @@ const StudentProfile = () => {
     if (error || !student) {
         return (
             <div className="student-profile-page animate-fade-in">
-                <Link to="/students" className="btn btn-secondary profile-back-link">
-                    <ArrowLeft size={16} />
-                    Back to Students
-                </Link>
+                {isStudentSelf ? (
+                    <button className="btn btn-secondary profile-back-link" onClick={() => navigate(-1)}>
+                        <ArrowLeft size={16} />
+                        Back
+                    </button>
+                ) : (
+                    <Link to="/students" className="btn btn-secondary profile-back-link">
+                        <ArrowLeft size={16} />
+                        Back to Students
+                    </Link>
+                )}
                 <div className="glass-panel empty-state">
                     <p>{error || 'Student profile not found.'}</p>
                 </div>
@@ -141,16 +163,23 @@ const StudentProfile = () => {
 
     const displayName = student.user?.name || student.enrollmentNumber || 'Student';
     const userId = student.user?._id || student._id;
-    const yearLabel = semesterToYearLabel(student.semester);
+    const yearLabel = getNormalizedUserYear(student.user || student) || semesterToYearLabel(student.semester);
     const semesterInYear = Number(student.semester) % 2 === 0 ? 2 : 1;
     const status = student.status || 'Active';
 
     return (
         <div className="student-profile-page animate-fade-in">
-            <Link to="/students" className="btn btn-secondary profile-back-link">
-                <ArrowLeft size={16} />
-                Back to Students
-            </Link>
+            {isStudentSelf ? (
+                <button className="btn btn-secondary profile-back-link" onClick={() => navigate(-1)}>
+                    <ArrowLeft size={16} />
+                    Back
+                </button>
+            ) : (
+                <Link to="/students" className="btn btn-secondary profile-back-link">
+                    <ArrowLeft size={16} />
+                    Back to Students
+                </Link>
+            )}
 
             <section className="glass-card student-profile-hero">
                 <img src={getAvatarUrl(displayName, student._id)} alt={displayName} className="profile-avatar" />

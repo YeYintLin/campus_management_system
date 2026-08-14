@@ -85,9 +85,17 @@ const MobileBottomNav = () => {
                 <div className="mobile-menu-overlay" onClick={() => setIsMenuOpen(false)}>
                     <div className="mobile-menu-sheet glass-panel animate-slide-up" onClick={(e) => e.stopPropagation()}>
                         <div className="sheet-header">
-                            <div className="user-mini-badge">
+                            <div
+                                className="user-mini-badge clickable-profile-badge"
+                                onClick={() => {
+                                    setIsMenuOpen(false);
+                                    if (user?.role === 'Student') navigate(`/students/${user._id}`);
+                                    else if (user?.role === 'Teacher') navigate(`/teachers/${user._id}`);
+                                }}
+                                title="View Profile"
+                            >
                                 <div className="avatar-dot">{(user.name?.charAt(0) || 'U').toUpperCase()}</div>
-                                <div>
+                                <div className="user-badge-info">
                                     <h4>{user.name}</h4>
                                     <p>{user.role}</p>
                                 </div>

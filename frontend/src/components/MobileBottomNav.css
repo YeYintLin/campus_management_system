@@ -97,6 +97,21 @@
         gap: 0.6rem;
     }
 
+    .clickable-profile-badge {
+        cursor: pointer;
+        padding: 0.3rem 0.6rem 0.3rem 0.3rem;
+        border-radius: 12px;
+        transition: background 0.2s ease, transform 0.15s ease;
+    }
+
+    .clickable-profile-badge:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .clickable-profile-badge:active {
+        transform: scale(0.97);
+    }
+
     .avatar-dot {
         width: 36px;
         height: 36px;

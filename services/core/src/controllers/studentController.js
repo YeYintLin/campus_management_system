@@ -77,15 +77,31 @@ const getStudents = async (req, res) => {
 // @access  Private
 const getStudentById = async (req, res) => {
     try {
-        const student = await Student.findById(req.params.id).populate(
-            'user',
-            STUDENT_USER_FIELDS
-        );
-        if (student) {
-            res.json(student);
-        } else {
-            res.status(404).json({ message: 'Student not found' });
+        let student = null;
+        if (req.params.id) {
+            student = await Student.findById(req.params.id).populate('user', STUDENT_USER_FIELDS);
+            if (!student) {
+                student = await Student.findOne({ user: req.params.id }).populate('user', STUDENT_USER_FIELDS);
+            }
         }
+        if (student) {
+            return res.json(student);
+        }
+
+        // Fallback: If passed user ID, look up user
+        const userObj = await User.findById(req.params.id).select(STUDENT_USER_FIELDS);
+        if (userObj && userObj.role === 'Student') {
+            return res.json({
+                _id: userObj._id,
+                user: userObj,
+                enrollmentNumber: userObj.rollNo || (userObj.email ? userObj.email.split('@')[0] : ''),
+                department: userObj.department || 'Mechatronics Engineering',
+                semester: userObj.semester || 1,
+                status: userObj.status || 'Active',
+            });
+        }
+
+        res.status(404).json({ message: 'Student not found' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
