@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, CheckCircle, Clock, Calendar, AlertCircle, Trash2, Check, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell, Calendar, Check, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import './NotificationsPage.css';
@@ -57,119 +57,115 @@ const NotificationsPage = () => {
 
     return (
         <div className="notifications-page animate-fade-in">
-            <header className="page-header" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <button className="btn btn-secondary" onClick={() => navigate(-1)} style={{ padding: '0.5rem', borderRadius: '10px' }}>
+            {/* Header */}
+            <header className="notifications-header">
+                <button
+                    type="button"
+                    className="btn btn-secondary notif-back-btn"
+                    onClick={() => navigate(-1)}
+                    aria-label="Go back"
+                >
                     <ArrowLeft size={20} />
                 </button>
-                <div style={{ flex: 1 }}>
-                    <h1 style={{ fontSize: '1.6rem', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>Notifications</h1>
-                    <p className="subtitle" style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                <div className="notifications-header-text">
+                    <h1>Notifications</h1>
+                    <p className="subtitle">
                         {unreadCount > 0 ? `${unreadCount} unread update${unreadCount > 1 ? 's' : ''}` : 'You are all caught up'}
                     </p>
                 </div>
                 {unreadCount > 0 && (
-                    <button className="btn btn-secondary" onClick={markAllAsRead} style={{ fontSize: '0.85rem' }}>
+                    <button type="button" className="btn btn-secondary mark-all-read-btn" onClick={markAllAsRead}>
                         <Check size={16} />
-                        Mark All Read
+                        <span>Mark All Read</span>
                     </button>
                 )}
             </header>
 
             {/* Filter Pills */}
-            <div className="year-filter-bar glass-panel" style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
-                <button className={`year-tag ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
+            <div className="notifications-filter-bar">
+                <button
+                    type="button"
+                    className={`notif-filter-btn ${filter === 'all' ? 'active' : ''}`}
+                    onClick={() => setFilter('all')}
+                >
                     All ({notifications.length})
                 </button>
-                <button className={`year-tag ${filter === 'unread' ? 'active' : ''}`} onClick={() => setFilter('unread')}>
+                <button
+                    type="button"
+                    className={`notif-filter-btn ${filter === 'unread' ? 'active' : ''}`}
+                    onClick={() => setFilter('unread')}
+                >
                     Unread ({unreadCount})
                 </button>
-                <button className={`year-tag ${filter === 'exam' ? 'active' : ''}`} onClick={() => setFilter('exam')}>
+                <button
+                    type="button"
+                    className={`notif-filter-btn ${filter === 'exam' ? 'active' : ''}`}
+                    onClick={() => setFilter('exam')}
+                >
                     Exams & Labs
                 </button>
-                <button className={`year-tag ${filter === 'system' ? 'active' : ''}`} onClick={() => setFilter('system')}>
+                <button
+                    type="button"
+                    className={`notif-filter-btn ${filter === 'system' ? 'active' : ''}`}
+                    onClick={() => setFilter('system')}
+                >
                     System Alerts
                 </button>
             </div>
 
             {/* Notifications List */}
-            <div className="glass-panel" style={{ padding: '1rem', borderRadius: '16px' }}>
-                {loading ? (
-                    <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        <p>Loading notifications...</p>
-                    </div>
-                ) : filteredNotifications.length === 0 ? (
-                    <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        <Bell size={48} style={{ opacity: 0.3, marginBottom: '1rem', color: 'var(--primary-color)' }} />
-                        <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No Notifications Found</h3>
-                        <p style={{ fontSize: '0.85rem' }}>There are no updates in this category.</p>
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        {filteredNotifications.map(notif => (
-                            <div
-                                key={notif._id}
-                                className={`notif-card glass-panel ${notif.read ? 'read' : 'unread'}`}
-                                onClick={() => {
-                                    if (!notif.read) markAsRead(notif._id);
-                                    if (notif.link) navigate(notif.link);
-                                }}
-                                style={{
-                                    padding: '1rem 1.25rem',
-                                    borderRadius: '12px',
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: '1rem',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                <div style={{
-                                    width: '36px',
-                                    height: '36px',
-                                    borderRadius: '10px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    background: notif.type === 'exam' ? 'rgba(245,158,11,0.15)' : 'rgba(8,145,178,0.15)',
-                                    color: notif.type === 'exam' ? '#f59e0b' : 'var(--primary-color)',
-                                    flexShrink: 0
-                                }}>
-                                    {notif.type === 'exam' ? <Calendar size={18} /> : <Bell size={18} />}
-                                </div>
-
-                                <div style={{ flex: 1 }}>
-                                    <p style={{ margin: 0, fontSize: '0.92rem', color: 'var(--text-primary)', lineHeight: '1.4' }}>
-                                        {notif.message}
-                                    </p>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.35rem' }}>
-                                        {notif.createdAt ? new Date(notif.createdAt).toLocaleString() : 'Recent'}
-                                    </span>
-                                </div>
-
-                                {!notif.read && (
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            markAsRead(notif._id);
-                                        }}
-                                        style={{
-                                            background: 'rgba(99,102,241,0.2)',
-                                            color: '#818cf8',
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            padding: '0.35rem',
-                                            cursor: 'pointer'
-                                        }}
-                                        title="Mark as read"
-                                    >
-                                        <Check size={14} />
-                                    </button>
-                                )}
+            {loading ? (
+                <div className="notif-loading-state glass-panel">
+                    <p>Loading notifications...</p>
+                </div>
+            ) : filteredNotifications.length === 0 ? (
+                <div className="notif-empty-state glass-panel">
+                    <Bell size={44} style={{ opacity: 0.3, marginBottom: '0.85rem', color: 'var(--primary-color)' }} />
+                    <h3 style={{ fontSize: '1.1rem', color: 'var(--text-color, #fff)', margin: '0 0 0.4rem' }}>No Notifications Found</h3>
+                    <p style={{ fontSize: '0.85rem', margin: 0 }}>There are no updates in this category.</p>
+                </div>
+            ) : (
+                <div className="notifications-list">
+                    {filteredNotifications.map(notif => (
+                        <div
+                            key={notif._id}
+                            className={`notif-card ${notif.read ? 'read' : 'unread'}`}
+                            onClick={() => {
+                                if (!notif.read) markAsRead(notif._id);
+                                if (notif.link) navigate(notif.link);
+                            }}
+                        >
+                            <div className={`notif-icon-box ${notif.type === 'exam' ? 'exam' : 'system'}`}>
+                                {notif.type === 'exam' ? <Calendar size={18} /> : <Bell size={18} />}
                             </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+
+                            <div className="notif-content-body">
+                                <p className="notif-message-text">
+                                    {notif.message}
+                                </p>
+                                <span className="notif-time-stamp">
+                                    {notif.createdAt ? new Date(notif.createdAt).toLocaleString() : 'Recent'}
+                                </span>
+                            </div>
+
+                            {!notif.read && (
+                                <button
+                                    type="button"
+                                    className="notif-check-btn"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        markAsRead(notif._id);
+                                    }}
+                                    title="Mark as read"
+                                    aria-label="Mark as read"
+                                >
+                                    <Check size={14} />
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
