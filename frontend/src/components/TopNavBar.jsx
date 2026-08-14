@@ -1,6 +1,7 @@
 import { useCallback, useContext, useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Moon, Sun, Search, X } from 'lucide-react';
+import { sortNotificationsByPriority } from '../utils/notificationSorter';
 import Notifications from './Notifications';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
@@ -62,7 +63,9 @@ const TopNavBar = () => {
                 const { data } = await apiClient.get('/notifications');
                 if (ignore) return;
 
-                const formatted = data.map(n => {
+                const sorted = sortNotificationsByPriority(data || []);
+
+                const formatted = sorted.map(n => {
                     const diffMs = new Date() - new Date(n.createdAt);
                     const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
                     const diffDays = Math.floor(diffHrs / 24);

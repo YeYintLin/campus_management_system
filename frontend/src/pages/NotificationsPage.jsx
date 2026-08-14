@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Bell, Calendar, Check, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
+import { sortNotificationsByPriority } from '../utils/notificationSorter';
 import './NotificationsPage.css';
 
 const NotificationsPage = () => {
@@ -15,7 +16,7 @@ const NotificationsPage = () => {
             setLoading(true);
             const { data } = await apiClient.get('/notifications');
             const list = Array.isArray(data) ? data : [];
-            setNotifications(list);
+            setNotifications(sortNotificationsByPriority(list));
         } catch (err) {
             console.error('Failed to fetch notifications:', err);
         } finally {

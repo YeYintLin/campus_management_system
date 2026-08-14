@@ -31,13 +31,39 @@ const getNotifications = async (req, res) => {
                 _id: `reminder-${s._id}`,
                 type: s.sessionType.toLowerCase(),
                 message: `${icon} Upcoming ${s.sessionType} (${daysLeft} day${daysLeft > 1 ? 's' : ''} away): [${s.courseCode}] ${s.title || s.courseName || ''} on ${dateStr} (${s.startTime || '08:30 AM'}) at ${s.place || 'Lab'}.`,
-                link: s.sessionType === 'Exam' ? '/exams' : '/timetable',
+                link: s.sessionType === 'Exam' ? '/exams' : '/time-table',
                 read: false,
+                date: s.date,
                 createdAt: s.createdAt || now
             };
         });
 
-        const combined = [...reminderNotifications, ...dbNotifications];
+        // Priority Rank: 1. Exam -> 2. Practical -> 3. Tutorial -> 4. Other stuff
+        const getPriorityRank = (type) => {
+            const t = String(type || '').toLowerCase();
+            if (t === 'exam' || t.includes('exam')) return 1;
+            if (t === 'practical' || t.includes('practical') || t.includes('lab')) return 2;
+            if (t === 'tutorial' || t.includes('tutorial')) return 3;
+            if (t === 'assignment' || t.includes('assignment') || t === 'grade' || t.includes('grade')) return 4;
+            return 5;
+        };
+
+        const combined = [...reminderNotifications, ...dbNotifications].sort((a, b) => {
+            // 1. Unread first
+            if (Boolean(a.read) !== Boolean(b.read)) {
+                return a.read ? 1 : -1;
+            }
+            // 2. Priority: Exam (1) > Practical (2) > Tutorial (3) > Other (4/5)
+            const rankA = getPriorityRank(a.type);
+            const rankB = getPriorityRank(b.type);
+            if (rankA !== rankB) {
+                return rankA - rankB;
+            }
+            // 3. Newest / most recent
+            const timeA = new Date(a.date || a.createdAt || 0).getTime();
+            const timeB = new Date(b.date || b.createdAt || 0).getTime();
+            return timeB - timeA;
+        });
 
         res.json(combined);
     } catch (error) {
