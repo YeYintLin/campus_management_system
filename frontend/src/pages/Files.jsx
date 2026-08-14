@@ -341,13 +341,21 @@ For questions regarding this resource, please contact your course instructor.
 
     const handleCreateFolder = async (e) => {
         e.preventDefault();
+        const trimmedName = newFolderName.trim();
+        if (!trimmedName) return;
+
+        if (selectedFolder && trimmedName.toLowerCase() === selectedFolder.toLowerCase()) {
+            alert('A subfolder cannot have the same name as its parent folder.');
+            return;
+        }
+
         const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
         const randomColor = colors[Math.floor(Math.random() * colors.length)];
         const newFolder = {
-            name: newFolderName,
-            description: newFolderDesc,
+            name: trimmedName,
+            description: newFolderDesc || 'Custom collection',
             iconColor: randomColor,
-            parentFolder: selectedFolder,
+            parentFolder: selectedFolder || null,
             year: 'All'
         };
         try {
@@ -361,10 +369,20 @@ For questions regarding this resource, please contact your course instructor.
         setNewFolderDesc('');
     };
 
-    const handleDeleteFolder = async (e, folderName) => {
+    const handleDeleteFolder = async (e, folderItem) => {
         e.stopPropagation();
-        if (window.confirm(`Delete folder "${folderName}"?`)) {
-            setFolders(prev => prev.filter(f => f.name !== folderName));
+        const targetName = typeof folderItem === 'object' ? folderItem.name : folderItem;
+        const targetId = typeof folderItem === 'object' ? folderItem._id : folders.find(f => f.name === folderItem)?._id;
+
+        if (window.confirm(`Delete folder "${targetName}"?`)) {
+            if (targetId) {
+                try {
+                    await apiClient.delete(`/files/folders/${targetId}`);
+                } catch (err) {
+                    console.warn('Backend delete folder error:', err.message);
+                }
+            }
+            setFolders(prev => prev.filter(f => f.name !== targetName && (!targetId || f._id !== targetId)));
         }
     };
 
@@ -406,7 +424,10 @@ For questions regarding this resource, please contact your course instructor.
     };
 
     const handleFolderClick = (folderName) => {
+        if (!folderName) return;
+        if (folderPath.includes(folderName)) return; // Prevent recursive loops
         setFolderPath(prev => [...prev, folderName]);
+        setSearchTerm('');
     };
 
     const handleBackClick = () => {
@@ -415,7 +436,9 @@ For questions regarding this resource, please contact your course instructor.
     };
 
     const filteredFolders = folders.filter(f => {
-        const matchesParent = selectedFolder ? f.parentFolder === selectedFolder : !f.parentFolder;
+        const matchesParent = selectedFolder 
+            ? (f.parentFolder === selectedFolder && f.name.toLowerCase() !== selectedFolder.toLowerCase())
+            : !f.parentFolder;
         return matchesParent && f.name.toLowerCase().includes(searchTerm.toLowerCase());
     });
 
@@ -540,8 +563,8 @@ For questions regarding this resource, please contact your course instructor.
                                         </div>
                                     </div>
                                     <div className="folder-actions-end">
-                                        {isAdmin && (
-                                            <button className="folder-delete-btn" onClick={(e) => handleDeleteFolder(e, folder.name)} title="Delete Folder">
+                                        {canManageFiles && !folder.isSubjectFolder && (
+                                            <button className="folder-delete-btn" onClick={(e) => handleDeleteFolder(e, folder)} title="Delete Folder">
                                                 <Trash2 size={16} />
                                             </button>
                                         )}
