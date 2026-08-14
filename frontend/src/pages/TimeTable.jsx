@@ -362,10 +362,6 @@ const PracticalScheduleView = ({
             if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(cleanTopic) || /^GROUP/i.test(cleanTopic) || /TO\s*\d{1,2}:\d{2}/i.test(cleanTopic) || cleanTopic.length < 2) {
                 cleanTopic = defaultTopic;
             }
-            if (rawFull.includes('WORK SHOP')) {
-                cleanCode = 'MC-31011 (WS)';
-                cleanTopic = 'Workshop Practice & Fabrication';
-            }
 
             let teacherName = s.teacher;
             if (!teacherName || teacherName === 'Faculty Member' || teacherName === 'Faculty Supervisor') {
