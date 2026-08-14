@@ -57,41 +57,81 @@ const StudentProfile = () => {
     const { studentId } = useParams();
     const { user } = useContext(AuthContext);
     const effectiveStudentId = studentId || user?._id;
+    const isStudentSelf = user?.role === 'Student' && (user?._id === effectiveStudentId || !studentId);
     const location = useLocation();
     const navigate = useNavigate();
-    const [student, setStudent] = useState(location.state?.student || null);
-    const [loading, setLoading] = useState(!location.state?.student);
+
+    const getInitialStudent = () => {
+        if (location.state?.student) return location.state.student;
+        if (isStudentSelf && user) {
+            return {
+                _id: user._id,
+                user: user,
+                enrollmentNumber: user.enrollmentNumber || user.rollNo || (user.email ? user.email.split('@')[0] : ''),
+                department: user.department || 'Mechatronics Engineering',
+                semester: user.semester || 9,
+                status: user.status || 'Active',
+            };
+        }
+        return null;
+    };
+
+    const [student, setStudent] = useState(getInitialStudent);
+    const [loading, setLoading] = useState(!student);
     const [error, setError] = useState('');
     const [stats, setStats] = useState({ gpa: 'N/A', attendance: 'N/A' });
 
     useEffect(() => {
         if (!effectiveStudentId) return undefined;
-        if (student?._id === effectiveStudentId || student?.user?._id === effectiveStudentId) return undefined;
 
         const abortController = new AbortController();
 
         const fetchStudent = async () => {
-            setLoading(true);
+            if (!student) setLoading(true);
             setError('');
 
             try {
                 const { data } = await apiClient.get(`/students/${effectiveStudentId}`, { signal: abortController.signal });
-                setStudent(data);
-                
-                // Also fetch grades and attendance for stats
+                if (data) {
+                    setStudent(data);
+                }
+            } catch (err) {
+                if (err?.code !== 'ERR_CANCELED') {
+                    if (isStudentSelf || (user && user._id === effectiveStudentId)) {
+                        setStudent({
+                            _id: user._id,
+                            user: user,
+                            enrollmentNumber: user.enrollmentNumber || user.rollNo || (user.email ? user.email.split('@')[0] : ''),
+                            department: user.department || 'Mechatronics Engineering',
+                            semester: user.semester || 9,
+                            status: user.status || 'Active',
+                        });
+                        setError('');
+                    } else {
+                        setError(err.response?.data?.message || err.message || 'Unable to load student profile');
+                    }
+                }
+            } finally {
+                if (!abortController.signal.aborted) {
+                    setLoading(false);
+                }
+            }
+
+            // Also fetch grades and attendance for stats
+            try {
                 const [gradesRes, attendanceRes] = await Promise.all([
                     apiClient.get('/grades', { params: { student: effectiveStudentId }, signal: abortController.signal }).catch(() => ({ data: [] })),
                     apiClient.get('/attendance', { params: { student: effectiveStudentId }, signal: abortController.signal }).catch(() => ({ data: [] }))
                 ]);
                 
-                const grades = gradesRes.data;
-                const attendance = attendanceRes.data;
+                const grades = gradesRes.data || [];
+                const attendance = attendanceRes.data || [];
                 
                 let gpa = 'N/A';
                 if (grades.length > 0) {
-                    const totalMarks = grades.reduce((sum, g) => sum + (g.marks || 0), 0);
+                    const totalMarks = grades.reduce((sum, g) => sum + (g.score || g.marks || 0), 0);
                     const avg = totalMarks / grades.length;
-                    gpa = (avg / 25).toFixed(2); // Rough GPA calc (out of 4.0 based on 100 max)
+                    gpa = (avg / 25).toFixed(2);
                 }
                 
                 let attendanceRate = 'N/A';
@@ -101,23 +141,14 @@ const StudentProfile = () => {
                 }
                 
                 setStats({ gpa, attendance: attendanceRate });
-                
-            } catch (err) {
-                if (err?.code !== 'ERR_CANCELED') {
-                    setError(err.response?.data?.message || err.message || 'Unable to load student profile');
-                }
-            } finally {
-                if (!abortController.signal.aborted) {
-                    setLoading(false);
-                }
+            } catch {
+                // Ignore stats fetch failure
             }
         };
 
         fetchStudent();
         return () => abortController.abort();
-    }, [student?._id, student?.user?._id, effectiveStudentId]);
-
-    const isStudentSelf = user?.role === 'Student' && (user?._id === effectiveStudentId || !studentId);
+    }, [effectiveStudentId]);
 
     if (loading) {
         return (
