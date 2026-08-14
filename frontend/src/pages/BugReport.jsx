@@ -363,7 +363,7 @@ const BugReport = () => {
                         </div>
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmitBugReport} className="glass-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
+                    <form onSubmit={handleSubmitBugReport} className="bug-form-container glass-panel">
                         
                         {/* Auto-filled Sender Info Banner */}
                         <div className="sender-info-box">
@@ -377,25 +377,24 @@ const BugReport = () => {
                                     {user?.role} {isStudent && studentYear ? `• ${studentYear}` : ''}
                                 </span>
                             </div>
-                            <div className="sender-item" style={{ gridColumn: 'span 2' }}>
+                            <div className="sender-item full-width">
                                 <span className="sender-label">Contact Gmail / Email (Where admin can reply)</span>
-                                <div style={{ position: 'relative', marginTop: '0.2rem' }}>
-                                    <Mail size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                <div className="email-input-wrapper">
+                                    <Mail size={16} className="email-input-icon" />
                                     <input
                                         type="email"
                                         required
-                                        className="form-input"
+                                        className="form-input email-input-field"
                                         placeholder="e.g. yourname@gmail.com"
                                         value={contactEmail}
                                         onChange={e => setContactEmail(e.target.value)}
-                                        style={{ paddingLeft: '2.2rem', fontSize: '0.9rem' }}
                                     />
                                 </div>
                             </div>
                         </div>
 
                         {/* Category & Priority Row */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                        <div className="form-row-2col">
                             <div className="form-group">
                                 <label className="form-label">Issue Category</label>
                                 <select
@@ -428,22 +427,22 @@ const BugReport = () => {
                         </div>
 
                         {/* Title & Page Location Row */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                        <div className="form-row-2col">
+                            <div className="form-group">
                                 <label className="form-label">Issue Title / Short Summary</label>
                                 <input
                                     type="text"
                                     required
                                     className="form-input"
-                                    placeholder="e.g. Cannot submit PDF assignment for 5th Year Control Systems"
+                                    placeholder="e.g. Cannot submit PDF assignment"
                                     value={title}
                                     onChange={e => setTitle(e.target.value)}
                                     maxLength={150}
                                 />
                             </div>
 
-                            <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                                <label className="form-label">Page / Section Where Issue Occurred</label>
+                            <div className="form-group">
+                                <label className="form-label">Page Where Issue Occurred</label>
                                 <input
                                     type="text"
                                     className="form-input"
@@ -472,7 +471,7 @@ const BugReport = () => {
 
                         {/* Screenshot / File Attachment Box */}
                         <div className="form-group">
-                            <label className="form-label">Attach Screenshots / Screen Recordings (Optional, Max 5)</label>
+                            <label className="form-label">Attach Screenshots / Files (Optional, Max 5)</label>
                             <input
                                 type="file"
                                 ref={fileInputRef}
@@ -484,14 +483,13 @@ const BugReport = () => {
                             <div
                                 className="file-dropzone"
                                 onClick={() => fileInputRef.current?.click()}
-                                style={{ padding: '1.25rem', cursor: 'pointer' }}
                             >
                                 <Upload size={24} style={{ color: '#818cf8', margin: '0 auto 0.35rem' }} />
-                                <p style={{ margin: 0, fontWeight: '600', color: '#fff', fontSize: '0.9rem' }}>
+                                <p style={{ margin: 0, fontWeight: '600', color: 'var(--text-color, #fff)', fontSize: '0.9rem' }}>
                                     {uploadingFile ? 'Uploading attachment...' : 'Click to attach screenshot or video (PNG, JPG, PDF, MP4)'}
                                 </p>
                                 <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                                    Up to 15MB per file • Screenshots help us fix the issue much faster!
+                                    Up to 15MB per file • Screenshots help us fix the issue faster!
                                 </p>
                             </div>
 
@@ -500,9 +498,9 @@ const BugReport = () => {
                                 <div className="attached-files-list">
                                     {attachments.map((att, idx) => (
                                         <div key={idx} className="attached-file-pill">
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                                            <div className="attached-file-info">
                                                 <Paperclip size={15} className="text-primary" />
-                                                <span style={{ color: '#fff', fontWeight: '600', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                <span style={{ color: 'var(--text-color, #fff)', fontWeight: '600' }}>
                                                     {att.fileName}
                                                 </span>
                                                 <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>({att.fileSize})</span>
@@ -522,12 +520,11 @@ const BugReport = () => {
                         </div>
 
                         {/* Submit Button */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                        <div className="submit-action-row">
                             <button
                                 type="submit"
-                                className="btn btn-primary"
+                                className="btn btn-primary submit-report-btn"
                                 disabled={submitting || uploadingFile}
-                                style={{ padding: '0.75rem 2rem', fontSize: '0.95rem' }}
                             >
                                 {submitting ? (
                                     <>
