@@ -337,20 +337,20 @@ const BugReport = () => {
                ══════════════════════════════════════════════════════════════ */}
             {activeTab === 'submit' && (
                 submittedReport ? (
-                    <div className="glass-panel animate-scale-up" style={{ padding: '3rem 2rem', textAlign: 'center', maxWidth: '650px', margin: '0 auto' }}>
+                    <div className="glass-panel animate-scale-up" style={{ padding: '3rem 2rem', textAlign: 'center', width: '100%' }}>
                         <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
                             <CheckCircle2 size={36} />
                         </div>
-                        <h2 style={{ color: '#fff', margin: '0 0 0.5rem' }}>Bug Report Submitted Successfully!</h2>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.5, margin: '0 0 1.5rem' }}>
+                        <h2 style={{ color: 'var(--text-color, #fff)', margin: '0 0 0.5rem' }}>Bug Report Submitted Successfully!</h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.5, margin: '0 0 1.5rem', maxWidth: '650px', marginLeft: 'auto', marginRight: 'auto' }}>
                             An alert email has been dispatched to the development team (<code>yeyint2702@gmail.com</code>) with your contact email (<code>{submittedReport.reporterEmail}</code>) set as the direct reply address.
                         </p>
 
-                        <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', padding: '1rem', textAlign: 'left', marginBottom: '1.5rem' }}>
-                            <p style={{ margin: '0 0 0.4rem', fontWeight: '700', color: '#fff' }}>Ticket Summary:</p>
-                            <p style={{ margin: '0 0 0.25rem', fontSize: '0.88rem', color: '#cbd5e1' }}><strong>Title:</strong> {submittedReport.title}</p>
-                            <p style={{ margin: '0 0 0.25rem', fontSize: '0.88rem', color: '#cbd5e1' }}><strong>Category:</strong> {submittedReport.category} • <strong>Priority:</strong> {submittedReport.priority}</p>
-                            <p style={{ margin: '0', fontSize: '0.88rem', color: '#cbd5e1' }}><strong>Status:</strong> <span className={`badge ${getStatusBadgeClass(submittedReport.status)}`}>{submittedReport.status}</span></p>
+                        <div style={{ background: 'var(--bg-glass-card, rgba(255, 255, 255, 0.03))', border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))', borderRadius: '12px', padding: '1.25rem', textAlign: 'left', marginBottom: '1.5rem', maxWidth: '650px', marginLeft: 'auto', marginRight: 'auto' }}>
+                            <p style={{ margin: '0 0 0.4rem', fontWeight: '700', color: 'var(--text-color, #fff)' }}>Ticket Summary:</p>
+                            <p style={{ margin: '0 0 0.25rem', fontSize: '0.88rem', color: 'var(--text-color, #cbd5e1)' }}><strong>Title:</strong> {submittedReport.title}</p>
+                            <p style={{ margin: '0 0 0.25rem', fontSize: '0.88rem', color: 'var(--text-color, #cbd5e1)' }}><strong>Category:</strong> {submittedReport.category} • <strong>Priority:</strong> {submittedReport.priority}</p>
+                            <p style={{ margin: '0', fontSize: '0.88rem', color: 'var(--text-color, #cbd5e1)' }}><strong>Status:</strong> <span className={`badge ${getStatusBadgeClass(submittedReport.status)}`}>{submittedReport.status}</span></p>
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
@@ -363,7 +363,7 @@ const BugReport = () => {
                         </div>
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmitBugReport} className="glass-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '800px' }}>
+                    <form onSubmit={handleSubmitBugReport} className="glass-panel" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
                         
                         {/* Auto-filled Sender Info Banner */}
                         <div className="sender-info-box">
@@ -427,18 +427,31 @@ const BugReport = () => {
                             </div>
                         </div>
 
-                        {/* Title */}
-                        <div className="form-group">
-                            <label className="form-label">Issue Title / Short Summary</label>
-                            <input
-                                type="text"
-                                required
-                                className="form-input"
-                                placeholder="e.g. Cannot submit PDF assignment for 5th Year Control Systems"
-                                value={title}
-                                onChange={e => setTitle(e.target.value)}
-                                maxLength={150}
-                            />
+                        {/* Title & Page Location Row */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                <label className="form-label">Issue Title / Short Summary</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="form-input"
+                                    placeholder="e.g. Cannot submit PDF assignment for 5th Year Control Systems"
+                                    value={title}
+                                    onChange={e => setTitle(e.target.value)}
+                                    maxLength={150}
+                                />
+                            </div>
+
+                            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                <label className="form-label">Page / Section Where Issue Occurred</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="e.g. /assignments or /attendance"
+                                    value={pageUrl}
+                                    onChange={e => setPageUrl(e.target.value)}
+                                />
+                            </div>
                         </div>
 
                         {/* Description */}
@@ -454,18 +467,6 @@ const BugReport = () => {
                                 value={description}
                                 onChange={e => setDescription(e.target.value)}
                                 style={{ lineHeight: 1.5 }}
-                            />
-                        </div>
-
-                        {/* Page Location / URL */}
-                        <div className="form-group">
-                            <label className="form-label">Page / Section Where Issue Occurred</label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                placeholder="e.g. /assignments or /attendance"
-                                value={pageUrl}
-                                onChange={e => setPageUrl(e.target.value)}
                             />
                         </div>
 
