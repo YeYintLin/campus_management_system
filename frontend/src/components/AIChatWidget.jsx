@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { BotMessageSquare, X, Send, Sparkles, RefreshCw } from 'lucide-react';
 import apiClient from '../api/apiClient';
 import './AIChatWidget.css';
 
 const AIChatWidget = () => {
+    const location = useLocation();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
         { id: 1, text: "Hello! I'm your campus AI assistant. How can I help you today?", sender: 'ai' }
@@ -12,6 +14,8 @@ const AIChatWidget = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [hasUnread, setHasUnread] = useState(false);
     const messagesEndRef = useRef(null);
+
+    const isHiddenRoute = location.pathname.startsWith('/chat') || location.pathname.startsWith('/ai-assistant');
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -23,6 +27,10 @@ const AIChatWidget = () => {
             scrollToBottom();
         }
     }, [isOpen, messages, isTyping]);
+
+    if (isHiddenRoute) {
+        return null;
+    }
 
     const handleSend = async (e) => {
         e.preventDefault();

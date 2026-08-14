@@ -215,7 +215,7 @@ const Chat = () => {
                 <div className="chat-sidebar-header">
                     <div className="header-title-row">
                         <h3>Messages</h3>
-                        <button className="btn btn-primary btn-sm" onClick={handleOpenUserModal}>
+                        <button className="new-chat-btn" onClick={handleOpenUserModal}>
                             <UserPlus size={16} />
                             <span>New</span>
                         </button>
@@ -236,8 +236,9 @@ const Chat = () => {
                         <div className="empty-chat-list">
                             <MessageSquare size={36} opacity={0.3} />
                             <p>No active conversations</p>
-                            <button className="btn btn-secondary btn-sm" onClick={handleOpenUserModal}>
-                                Start a chat
+                            <button className="new-chat-btn" onClick={handleOpenUserModal}>
+                                <UserPlus size={15} />
+                                <span>Start a chat</span>
                             </button>
                         </div>
                     ) : (
