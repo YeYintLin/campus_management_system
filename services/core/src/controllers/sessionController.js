@@ -11,10 +11,6 @@ const { parseTimetableBuffer } = require('../utils/parseTimetable');
 // @access  Private (Admin, Teacher)
 const batchImportSessions = async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ message: 'Please upload an Excel file (.xlsx or .xls).' });
-        }
-
         const { year = '6th Year', semester = 'Semester 1', major = 'MC', sessionType = 'Practical' } = req.body;
 
         let parsedSessions = [];
@@ -34,6 +30,10 @@ const batchImportSessions = async (req, res) => {
             parsedMatrix = resParsed.parsedMatrix;
             parsedSessions = resParsed.parsedSessions;
             headerError = resParsed.headerError;
+        }
+
+        if (!req.file && (!parsedSessions || parsedSessions.length === 0)) {
+            return res.status(400).json({ message: 'Please upload an Excel file or provide sessions data.' });
         }
 
         // 3. Fallback extraction for Practical / Tutorial / Exam if multi-sheet timetable workbook is provided

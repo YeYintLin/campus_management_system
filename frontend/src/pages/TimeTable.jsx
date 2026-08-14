@@ -1161,28 +1161,38 @@ const TimeTable = () => {
     };
 
     const handleConfirmImport = async () => {
-        if (!previewData?.file) return;
+        if (!previewData) return;
 
         setConfirmingImport(true);
         setImportError('');
         setImportSuccess('');
 
-        const formData = new FormData();
-        if (previewData.file) formData.append('file', previewData.file);
-        formData.append('year', selectedYear);
-        formData.append('semester', selectedSemester);
-        formData.append('major', selectedMajor);
-        formData.append('category', previewData.sessionType || selectedCategory);
-        formData.append('sessionType', previewData.sessionType || selectedCategory);
-        if (previewData.sessions && previewData.sessions.length > 0) {
-            formData.append('sessions', JSON.stringify(previewData.sessions));
-        }
-
         try {
-            const { data } = await apiClient.post('/sessions/batch-import', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            setImportSuccess(data.message || `Successfully imported ${previewData.count} sessions!`);
+            if (previewData.sessions && previewData.sessions.length > 0) {
+                const { data } = await apiClient.post('/sessions/batch-import', {
+                    sessions: previewData.sessions,
+                    year: selectedYear,
+                    semester: selectedSemester,
+                    major: selectedMajor,
+                    category: previewData.sessionType || selectedCategory,
+                    sessionType: previewData.sessionType || selectedCategory
+                });
+                setImportSuccess(data.message || `Successfully imported ${previewData.sessions.length} sessions!`);
+            } else {
+                const formData = new FormData();
+                if (previewData.file) formData.append('file', previewData.file);
+                formData.append('year', selectedYear);
+                formData.append('semester', selectedSemester);
+                formData.append('major', selectedMajor);
+                formData.append('category', previewData.sessionType || selectedCategory);
+                formData.append('sessionType', previewData.sessionType || selectedCategory);
+
+                const { data } = await apiClient.post('/sessions/batch-import', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                setImportSuccess(data.message || `Successfully imported ${previewData.count} sessions!`);
+            }
+
             setIsPreviewModalOpen(false);
             setPreviewData(null);
             fetchTimetableData();
