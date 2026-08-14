@@ -221,12 +221,14 @@ const batchImportSessions = async (req, res) => {
                 const normType = ['Practical', 'Tutorial', 'Exam'].includes(session.sessionType) 
                     ? session.sessionType 
                     : (['Practical', 'Tutorial', 'Exam'].includes(sessionType) ? sessionType : 'Practical');
+                const sYear = normalizeYear(session.year || year);
+                const sSem = normalizeSemester(session.semester || semester);
 
                 return {
                     updateOne: {
                         filter: {
-                            year: session.year || year,
-                            semester: session.semester || semester,
+                            year: sYear,
+                            semester: sSem,
                             major: session.major || major,
                             sessionType: normType,
                             courseCode: session.courseCode,
@@ -235,8 +237,8 @@ const batchImportSessions = async (req, res) => {
                         },
                         update: {
                             $set: {
-                                year: session.year || year,
-                                semester: session.semester || semester,
+                                year: sYear,
+                                semester: sSem,
                                 major: session.major || major,
                                 sessionType: normType,
                                 examType: session.examType || 'N/A',
@@ -251,8 +253,7 @@ const batchImportSessions = async (req, res) => {
                                 startTimeMinutes: session.startTimeMinutes || 540,
                                 endTimeMinutes: session.endTimeMinutes || 710,
                                 place: session.place || '3/212-A',
-                                status: 'Draft',
-                                classSection: createdSections.get(`${session.year || year}_${session.semester || semester}_${session.major || major}`)?._id
+                                status: 'Draft'
                             }
                         },
                         upsert: true
@@ -291,6 +292,24 @@ const batchImportSessions = async (req, res) => {
     }
 };
 
+const normalizeSemester = (sem = '') => {
+    const s = String(sem).toUpperCase().trim();
+    if (s.includes('II') || s.includes('2') || s.includes('SECOND') || s.includes('SEM 2')) return 'Semester 2';
+    return 'Semester 1';
+};
+
+const normalizeYear = (yr = '') => {
+    const y = String(yr).toUpperCase().trim();
+    if (y.includes('6') || y.includes('VI') || y.includes('SIXTH') || y.includes('6TH')) return '6th Year';
+    if (y.includes('5') || y.includes('V') || y.includes('FIFTH') || y.includes('5TH')) return '5th Year';
+    if (y.includes('4') || y.includes('IV') || y.includes('FOURTH') || y.includes('4TH')) return '4th Year';
+    if (y.includes('3') || y.includes('III') || y.includes('THIRD') || y.includes('3RD')) return '3rd Year';
+    if (y.includes('2') || y.includes('II') || y.includes('SECOND') || y.includes('2ND')) return '2nd Year';
+    if (y.includes('1') || y.includes('I') || y.includes('FIRST') || y.includes('1ST')) return '1st Year';
+    if (y.includes('ME') || y.includes('MASTER')) return 'ME Program';
+    return yr || '1st Year';
+};
+
 // @desc    Get scheduled sessions (Practical, Tutorial, Exam)
 // @route   GET /api/sessions
 // @access  Private
@@ -299,8 +318,15 @@ const getSessions = async (req, res) => {
         const { year, semester, major, sessionType, status } = req.query;
         let filter = {};
 
-        if (year) filter.year = year;
-        if (semester) filter.semester = semester;
+        if (year) {
+            const normY = normalizeYear(year);
+            filter.year = { $in: [year, normY] };
+        }
+        if (semester) {
+            const normS = normalizeSemester(semester);
+            const romanSem = normS === 'Semester 2' ? 'Semester II' : 'Semester I';
+            filter.semester = { $in: [semester, normS, romanSem] };
+        }
         if (major) filter.major = major;
         if (sessionType) filter.sessionType = sessionType;
         if (status) filter.status = status;

@@ -5,12 +5,12 @@ const scheduledSessionSchema = new mongoose.Schema(
         year: {
             type: String,
             required: [true, 'Academic year is required'],
-            enum: ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'],
+            trim: true,
         },
         semester: {
             type: String,
             required: [true, 'Semester is required'],
-            enum: ['Semester 1', 'Semester 2'],
+            trim: true,
         },
         major: {
             type: String,
@@ -21,7 +21,7 @@ const scheduledSessionSchema = new mongoose.Schema(
         sessionType: {
             type: String,
             required: [true, 'Session type is required'],
-            enum: ['Practical', 'Tutorial', 'Exam', 'Academic', 'Lecture'],
+            trim: true,
         },
         examType: {
             type: String,
