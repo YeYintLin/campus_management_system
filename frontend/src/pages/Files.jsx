@@ -165,20 +165,30 @@ const Files = () => {
                         };
                     });
 
-                setFolders(prev => {
-                    const combined = [...initialFolders, ...dbFolders];
-                    const existingCodes = new Set(combined.map(f => (f.code || f.name.split(' - ')[0] || '').replace(/[\s-]+/g, '').toUpperCase()));
+                setFolders(() => {
+                    const allList = [...initialFolders, ...dbFolders];
+                    const seen = new Set();
+                    const deduplicated = [];
 
-                    const uniqueSubjectFolders = [];
+                    allList.forEach(f => {
+                        const key = `${(f.name || '').trim().toLowerCase()}::${(f.parentFolder || '').trim().toLowerCase()}`;
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            deduplicated.push(f);
+                        }
+                    });
+
+                    const existingCodes = new Set(deduplicated.map(f => (f.code || f.name.split(' - ')[0] || '').replace(/[\s-]+/g, '').toUpperCase()));
+
                     subjectFolders.forEach(sf => {
                         const normCode = sf.code.replace(/[\s-]+/g, '').toUpperCase();
                         if (normCode && !existingCodes.has(normCode)) {
                             existingCodes.add(normCode);
-                            uniqueSubjectFolders.push(sf);
+                            deduplicated.push(sf);
                         }
                     });
 
-                    return [...combined, ...uniqueSubjectFolders];
+                    return deduplicated;
                 });
 
                 if (dbFiles.length > 0) {
@@ -344,8 +354,18 @@ For questions regarding this resource, please contact your course instructor.
         const trimmedName = newFolderName.trim();
         if (!trimmedName) return;
 
-        if (selectedFolder && trimmedName.toLowerCase() === selectedFolder.toLowerCase()) {
+        const currentParent = (selectedFolder || '').trim();
+        if (currentParent && trimmedName.toLowerCase() === currentParent.toLowerCase()) {
             alert('A subfolder cannot have the same name as its parent folder.');
+            return;
+        }
+
+        const alreadyExists = folders.some(f => 
+            (f.name || '').trim().toLowerCase() === trimmedName.toLowerCase() &&
+            (f.parentFolder || '').trim().toLowerCase() === currentParent.toLowerCase()
+        );
+        if (alreadyExists) {
+            alert(`A folder named "${trimmedName}" already exists here.`);
             return;
         }
 
@@ -425,8 +445,10 @@ For questions regarding this resource, please contact your course instructor.
 
     const handleFolderClick = (folderName) => {
         if (!folderName) return;
-        if (folderPath.includes(folderName)) return; // Prevent recursive loops
-        setFolderPath(prev => [...prev, folderName]);
+        const targetName = String(folderName).trim();
+        // If clicking a folder already in the active hierarchy path, do not append
+        if (folderPath.some(p => p.trim().toLowerCase() === targetName.toLowerCase())) return;
+        setFolderPath(prev => [...prev, targetName]);
         setSearchTerm('');
     };
 
@@ -436,14 +458,28 @@ For questions regarding this resource, please contact your course instructor.
     };
 
     const filteredFolders = folders.filter(f => {
-        const matchesParent = selectedFolder 
-            ? (f.parentFolder === selectedFolder && f.name.toLowerCase() !== selectedFolder.toLowerCase())
-            : !f.parentFolder;
-        return matchesParent && f.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const fName = (f.name || '').trim();
+        const fParent = (f.parentFolder || '').trim();
+        const current = (selectedFolder || '').trim();
+
+        if (current) {
+            // Inside a folder: only show items whose parentFolder equals selectedFolder (case-insensitive)
+            // AND folder name is not equal to selectedFolder (prevent self-listing)
+            const matchesParent = fParent.toLowerCase() === current.toLowerCase() && fName.toLowerCase() !== current.toLowerCase();
+            return matchesParent && fName.toLowerCase().includes(searchTerm.toLowerCase());
+        } else {
+            // At root: only show folders without a parentFolder
+            return !fParent && fName.toLowerCase().includes(searchTerm.toLowerCase());
+        }
     });
 
     const filteredFiles = files.filter(f => {
-        const matchesCategory = selectedFolder ? f.category === selectedFolder : !folders.some(fold => fold.name === f.category);
+        const fCategory = (f.category || '').trim().toLowerCase();
+        const current = (selectedFolder || '').trim().toLowerCase();
+
+        const matchesCategory = current 
+            ? fCategory === current
+            : !folders.some(fold => (fold.name || '').trim().toLowerCase() === fCategory);
         return matchesCategory && f.name.toLowerCase().includes(searchTerm.toLowerCase()) && (selectedYear === 'All' || f.year === selectedYear);
     });
 
