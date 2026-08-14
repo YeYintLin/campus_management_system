@@ -1275,12 +1275,12 @@ const TimeTable = () => {
 
             {/* Version History Drawer Modal */}
             {isHistoryDrawerOpen && (
-                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', justifyContent: 'flex-end', backdropFilter: 'blur(4px)' }}>
-                    <div className="glass-card animate-slide-left" style={{ width: '100%', maxWidth: '540px', height: '100%', borderRadius: 0, padding: '1.5rem', display: 'flex', flexDirection: 'column', background: 'rgba(15, 23, 42, 0.95)', overflowY: 'auto' }}>
+                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', justifyContent: 'flex-end', backdropFilter: 'blur(4px)' }}>
+                    <div className="history-drawer-panel animate-slide-left">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--surface-border)', paddingBottom: '1rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                 <History size={22} className="text-primary" />
-                                <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Upload History & Rollback</h2>
+                                <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Upload History & Rollback</h2>
                             </div>
                             <button className="btn btn-secondary" onClick={() => setIsHistoryDrawerOpen(false)} style={{ padding: '0.4rem 0.6rem' }}>
                                 <X size={18} />
@@ -1294,24 +1294,24 @@ const TimeTable = () => {
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                                 {importHistory.map((item, idx) => (
-                                    <div key={item._id} className="glass-panel" style={{ padding: '1rem', borderRadius: '12px', border: item.isActive ? '2px solid #6366f1' : '1px solid var(--surface-border)', background: item.isActive ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.02)' }}>
+                                    <div key={item._id} className={`history-item-card ${item.isActive ? 'active' : ''}`}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
                                                 <FileSpreadsheet size={18} style={{ color: '#10b981', flexShrink: 0 }} />
-                                                <strong style={{ fontSize: '0.92rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                <strong className="history-item-title">
                                                     {item.originalName}
                                                 </strong>
                                             </div>
                                             {item.isActive ? (
                                                 <span className="badge badge-primary" style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem' }}>Active Version</span>
                                             ) : (
-                                                <span className="badge" style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)' }}>v{importHistory.length - idx}</span>
+                                                <span className="badge" style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', background: 'var(--surface-border)', color: 'var(--text-muted)' }}>v{importHistory.length - idx}</span>
                                             )}
                                         </div>
                                         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.85rem', display: 'flex', gap: '0.85rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                             <span>Uploaded: {new Date(item.createdAt).toLocaleString()}</span>
                                             {item.uploadedBy?.name && (
-                                                <span style={{ color: '#818cf8', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                <span style={{ color: '#6366f1', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                                     <User size={13} />
                                                     Uploaded by: {item.uploadedBy.name} {item.uploadedBy.role ? `(${item.uploadedBy.role})` : ''}
                                                 </span>
@@ -1324,7 +1324,7 @@ const TimeTable = () => {
                                                 Download .xlsx
                                             </button>
                                             {isAdmin && !item.isActive && (
-                                                <button className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none' }} onClick={() => setRestoreTargetFile(item)}>
+                                                <button className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', color: '#fff' }} onClick={() => setRestoreTargetFile(item)}>
                                                     <RotateCcw size={14} />
                                                     Restore Version
                                                 </button>
@@ -1340,27 +1340,27 @@ const TimeTable = () => {
 
             {/* Restore Confirmation Modal */}
             {restoreTargetFile && (
-                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(6px)' }}>
-                    <div className="glass-card animate-pop-in" style={{ width: '100%', maxWidth: '480px', padding: '1.75rem', borderRadius: '16px', border: '1px solid rgba(245,158,11,0.4)', background: 'rgba(15, 23, 42, 0.98)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', color: '#fbbf24' }}>
+                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(6px)' }}>
+                    <div className="glass-card themed-modal-content animate-pop-in" style={{ width: '100%', maxWidth: '480px', padding: '1.75rem', borderRadius: '16px', border: '1px solid rgba(245,158,11,0.4)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', color: '#f59e0b' }}>
                             <ShieldAlert size={28} />
-                            <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Confirm Timetable Version Restore</h3>
+                            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Confirm Timetable Version Restore</h3>
                         </div>
                         <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1rem' }}>
                             You are about to restore the timetable to version:
                         </p>
-                        <div className="glass-panel" style={{ padding: '0.85rem 1rem', borderRadius: '10px', marginBottom: '1.25rem', borderLeft: '4px solid #f59e0b' }}>
-                            <strong style={{ color: '#fff', fontSize: '0.95rem', display: 'block', marginBottom: '0.2rem' }}>{restoreTargetFile.originalName}</strong>
+                        <div className="glass-panel" style={{ padding: '0.85rem 1rem', borderRadius: '10px', marginBottom: '1.25rem', borderLeft: '4px solid #f59e0b', background: 'var(--control-bg)' }}>
+                            <strong style={{ color: 'var(--text-primary)', fontSize: '0.95rem', display: 'block', marginBottom: '0.2rem' }}>{restoreTargetFile.originalName}</strong>
                             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Uploaded on {new Date(restoreTargetFile.createdAt).toLocaleString()}</span>
                         </div>
-                        <div style={{ fontSize: '0.82rem', color: '#4ade80', background: 'rgba(34,197,94,0.1)', padding: '0.75rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid rgba(34,197,94,0.2)' }}>
+                        <div style={{ fontSize: '0.82rem', color: '#16a34a', background: 'rgba(34,197,94,0.1)', padding: '0.75rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid rgba(34,197,94,0.2)' }}>
                             🛡️ <strong>Safety Guarantee:</strong> A pre-restore snapshot of your current live timetable will be automatically saved before restoring. This restore operation is append-only and fully undoable.
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
                             <button className="btn btn-secondary" onClick={() => setRestoreTargetFile(null)} disabled={restoring}>
                                 Cancel
                             </button>
-                            <button className="btn btn-primary" onClick={handleRestoreConfirm} disabled={restoring} style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none' }}>
+                            <button className="btn btn-primary" onClick={handleRestoreConfirm} disabled={restoring} style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', color: '#fff' }}>
                                 {restoring ? 'Restoring...' : 'Confirm & Restore Version'}
                             </button>
                         </div>
@@ -1370,17 +1370,17 @@ const TimeTable = () => {
 
             {/* Import Preview & Verification Modal */}
             {isPreviewModalOpen && previewData && (
-                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', backdropFilter: 'blur(8px)' }}>
-                    <div className="glass-card animate-pop-in" style={{ width: '100%', maxWidth: '960px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: '1.75rem', borderRadius: '18px', border: '1px solid rgba(168,85,247,0.3)', background: 'rgba(15, 23, 42, 0.98)', overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '1rem' }}>
+                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', backdropFilter: 'blur(8px)' }}>
+                    <div className="glass-card themed-modal-content animate-pop-in" style={{ width: '100%', maxWidth: '960px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: '1.75rem', borderRadius: '18px', border: '1px solid rgba(168,85,247,0.3)', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--surface-border)', paddingBottom: '1rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <FileSpreadsheet size={24} style={{ color: '#c084fc' }} />
+                                <FileSpreadsheet size={24} style={{ color: '#a855f7' }} />
                                 <div>
-                                    <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>
+                                    <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>
                                         {previewData.sessionType} Import Preview & Verification
                                     </h2>
                                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                        File: <strong style={{ color: '#e2e8f0' }}>{previewData.fileName}</strong> — <span style={{ color: '#4ade80', fontWeight: 600 }}>{previewData.count} valid sessions detected</span>
+                                        File: <strong style={{ color: 'var(--text-primary)' }}>{previewData.fileName}</strong> — <span style={{ color: '#16a34a', fontWeight: 600 }}>{previewData.count} valid sessions detected</span>
                                     </span>
                                 </div>
                             </div>
@@ -1389,7 +1389,7 @@ const TimeTable = () => {
                             </button>
                         </div>
 
-                        <div style={{ overflowY: 'auto', flex: 1, marginBottom: '1.25rem', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px' }}>
+                        <div style={{ overflowY: 'auto', flex: 1, marginBottom: '1.25rem', border: '1px solid var(--surface-border)', borderRadius: '10px' }}>
                             <table className="attendance-table" style={{ width: '100%', margin: 0 }}>
                                 <thead>
                                     <tr>
@@ -1407,15 +1407,15 @@ const TimeTable = () => {
                                     {previewData.sessions.map((s, idx) => (
                                         <tr key={idx}>
                                             <td><span className="year-tag active" style={{ padding: '0.15rem 0.5rem', fontSize: '0.72rem' }}>{s.year}</span></td>
-                                            <td><strong style={{ color: '#c084fc', fontFamily: 'monospace', fontSize: '0.88rem' }}>{s.courseCode}</strong></td>
-                                            <td style={{ fontWeight: 600, color: '#f8fafc', fontSize: '0.85rem' }}>{s.title || s.courseName}</td>
-                                            <td style={{ color: '#cbd5e1', fontSize: '0.82rem' }}>{s.teacher}</td>
-                                            <td><span style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(168,85,247,0.15)', color: '#c084fc', fontWeight: 600 }}>{s.groupTag}</span></td>
-                                            <td style={{ color: '#4ade80', fontSize: '0.82rem', fontWeight: 600 }}>
+                                            <td><strong style={{ color: '#a855f7', fontFamily: 'monospace', fontSize: '0.88rem' }}>{s.courseCode}</strong></td>
+                                            <td style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{s.title || s.courseName}</td>
+                                            <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{s.teacher}</td>
+                                            <td><span style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(168,85,247,0.15)', color: '#a855f7', fontWeight: 600 }}>{s.groupTag}</span></td>
+                                            <td style={{ color: '#16a34a', fontSize: '0.82rem', fontWeight: 600 }}>
                                                 {s.date ? new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Flexible'}
                                             </td>
-                                            <td style={{ fontSize: '0.8rem', color: '#e0e7ff' }}>{s.startTime} - {s.endTime}</td>
-                                            <td style={{ fontSize: '0.8rem', color: '#818cf8' }}>{s.place}</td>
+                                            <td style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>{s.startTime} - {s.endTime}</td>
+                                            <td style={{ fontSize: '0.8rem', color: '#6366f1' }}>{s.place}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -1430,7 +1430,7 @@ const TimeTable = () => {
                                 <button className="btn btn-secondary" onClick={() => { setIsPreviewModalOpen(false); setPreviewData(null); }} disabled={confirmingImport}>
                                     Cancel
                                 </button>
-                                <button className="btn btn-primary" onClick={handleConfirmImport} disabled={confirmingImport} style={{ background: 'linear-gradient(135deg, #a855f7, #6366f1)', border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <button className="btn btn-primary" onClick={handleConfirmImport} disabled={confirmingImport} style={{ background: 'linear-gradient(135deg, #a855f7, #6366f1)', border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#fff' }}>
                                     <CheckCircle size={16} />
                                     {confirmingImport ? 'Saving...' : `Confirm & Commit (${previewData.count} Rows)`}
                                 </button>
