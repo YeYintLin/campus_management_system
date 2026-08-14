@@ -302,7 +302,32 @@ const getDashboardStats = async (req, res) => {
 
         } else if (roleNorm === 'teacher') {
             // ── Teacher stats ──
-            const myCourses = await Course.find({ teacher: userId });
+            const allAssignedCourses = await Course.find({
+                $or: [
+                    { teacher: userId },
+                    { instructors: userId }
+                ]
+            });
+
+            // Filter out junk/phantom course records created by earlier raw topic imports
+            const junkTitleRegex = /^(introduction|tutorial\s*i+|testing\s*job|practical\s*lab|prepared|approved|sr\.?|batch|group)/i;
+            const nonAcademicCodeRegex = /^(PREPARED|APPROVED|SR\.?|BATCH|GROUP|PRIVATE\s*STUDY)/i;
+
+            const seenCodes = new Set();
+            const myCourses = [];
+
+            for (const c of allAssignedCourses) {
+                const name = (c.name || '').trim();
+                const code = (c.code || '').trim();
+                const normCode = code.replace(/[\s-]+/g, '').toUpperCase();
+
+                if (!normCode || seenCodes.has(normCode)) continue;
+                if (junkTitleRegex.test(name)) continue;
+                if (nonAcademicCodeRegex.test(code) || nonAcademicCodeRegex.test(name)) continue;
+
+                seenCodes.add(normCode);
+                myCourses.push(c);
+            }
 
             // Deduplicate enrolled students
             const myStudentIds = new Set();
