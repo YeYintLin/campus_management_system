@@ -102,6 +102,7 @@ const syncCourseCollectionWithTimetable = async () => {
                     }
                 }
             }
+        }
         // Clean up any legacy non-course entries (Tutorial, Practical, Lib, etc.)
         await Course.deleteMany({
             $or: [
