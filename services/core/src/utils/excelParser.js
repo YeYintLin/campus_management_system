@@ -246,12 +246,20 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
 
             jsonRows.forEach(row => {
                 if (!Array.isArray(row) || row.length === 0) return;
-                const dayName = String(row[0] || '').trim();
-                const matchedDay = matchDayName(dayName);
+                let matchedDay = null;
+                let dayColIdx = -1;
+                for (let i = 0; i < Math.min(row.length, 5); i++) {
+                    const d = matchDayName(row[i]);
+                    if (d) {
+                        matchedDay = d;
+                        dayColIdx = i;
+                        break;
+                    }
+                }
                 if (!matchedDay) return;
 
                 let periodIdx = 0;
-                for (let c = 1; c < row.length; c++) {
+                for (let c = dayColIdx + 1; c < row.length; c++) {
                     const cellVal = String(row[c] || '').trim();
                     if (!cellVal || cellVal.toLowerCase().includes('lunch break')) continue;
 

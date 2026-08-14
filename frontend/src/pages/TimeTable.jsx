@@ -420,8 +420,10 @@ const TimeTable = () => {
             loadHistory();
             setTimeout(() => setImportSuccess(''), 6000);
         } catch (err) {
-            console.error('Import failed:', err);
-            setImportError(err.response?.data?.message || err.response?.data?.error || 'Failed to import Excel file.');
+            console.error('Import failed error object:', err);
+            console.error('Import failed response data:', err.response?.data);
+            const detailedMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to import Excel file.';
+            setImportError(detailedMsg);
         } finally {
             setImporting(false);
             e.target.value = '';
