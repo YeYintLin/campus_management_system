@@ -1727,13 +1727,21 @@ const Attendance = () => {
                             </div>
                         )}
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Subject / Course Code</label>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Subject / Course</label>
                                 <select
                                     value={exportConfig.courseId}
-                                    onChange={(e) => setExportConfig({ ...exportConfig, courseId: e.target.value })}
-                                    style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--surface-border)' }}
+                                    onChange={(e) => {
+                                        const cId = e.target.value;
+                                        const selectedC = courses.find(c => (c.code || c._id) === cId);
+                                        setExportConfig(prev => ({
+                                            ...prev,
+                                            courseId: cId,
+                                            year: selectedC?.yearLabel || (selectedC?.year ? `${selectedC.year}th Year` : prev.year)
+                                        }));
+                                    }}
+                                    style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', background: 'rgba(15, 23, 42, 0.6)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', fontSize: '0.95rem', cursor: 'pointer' }}
                                 >
                                     {courses.map(c => (
                                         <option key={c._id} value={c.code || c._id} style={{ background: '#1e293b' }}>
@@ -1743,76 +1751,47 @@ const Attendance = () => {
                                 </select>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Academic Year</label>
-                                    <select
-                                        value={exportConfig.year}
-                                        onChange={(e) => setExportConfig({ ...exportConfig, year: e.target.value })}
-                                        style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--surface-border)' }}
-                                    >
-                                        <option value="1st Year" style={{ background: '#1e293b' }}>1st Year</option>
-                                        <option value="2nd Year" style={{ background: '#1e293b' }}>2nd Year</option>
-                                        <option value="3rd Year" style={{ background: '#1e293b' }}>3rd Year</option>
-                                        <option value="4th Year" style={{ background: '#1e293b' }}>4th Year</option>
-                                        <option value="5th Year" style={{ background: '#1e293b' }}>5th Year</option>
-                                        <option value="6th Year" style={{ background: '#1e293b' }}>6th Year</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Semester</label>
-                                    <select
-                                        value={exportConfig.semester}
-                                        onChange={(e) => setExportConfig({ ...exportConfig, semester: e.target.value })}
-                                        style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--surface-border)' }}
-                                    >
-                                        <option value="1" style={{ background: '#1e293b' }}>Semester I</option>
-                                        <option value="2" style={{ background: '#1e293b' }}>Semester II</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Template Format</label>
-                                    <select
-                                        value={exportConfig.templateType}
-                                        onChange={(e) => setExportConfig({ ...exportConfig, templateType: e.target.value })}
-                                        style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--surface-border)' }}
-                                    >
-                                        <option value="daily" style={{ background: '#1e293b' }}>Daily Roll Call (Sheet V)</option>
-                                        <option value="tutorial" style={{ background: '#1e293b' }}>Tutorial Sign-off (Sheet1)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Month</label>
-                                    <select
-                                        value={exportConfig.month}
-                                        onChange={(e) => setExportConfig({ ...exportConfig, month: e.target.value })}
-                                        style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--surface-border)' }}
-                                    >
-                                        <option value="ဇန်နဝါရီ (Jan)" style={{ background: '#1e293b' }}>ဇန်နဝါရီ (January)</option>
-                                        <option value="ဖေဖော်ဝါရီ (Feb)" style={{ background: '#1e293b' }}>ဖေဖော်ဝါရီ (February)</option>
-                                        <option value="မတ် (Mar)" style={{ background: '#1e293b' }}>မတ် (March)</option>
-                                        <option value="ဧပြီ (Apr)" style={{ background: '#1e293b' }}>ဧပြီ (April)</option>
-                                        <option value="မေ (May)" style={{ background: '#1e293b' }}>မေ (May)</option>
-                                        <option value="ဇွန် (Jun)" style={{ background: '#1e293b' }}>ဇွန် (June)</option>
-                                        <option value="ဇူလိုင် (Jul)" style={{ background: '#1e293b' }}>ဇူလိုင် (July)</option>
-                                        <option value="သြဂုတ် (Aug)" style={{ background: '#1e293b' }}>သြဂုတ် (August)</option>
-                                        <option value="စက်တင်ဘာ (Sep)" style={{ background: '#1e293b' }}>စက်တင်ဘာ (September)</option>
-                                        <option value="အောက်တိုဘာ (Oct)" style={{ background: '#1e293b' }}>အောက်တိုဘာ (October)</option>
-                                        <option value="နိုဝင်ဘာ (Nov)" style={{ background: '#1e293b' }}>နိုဝင်ဘာ (November)</option>
-                                        <option value="ဒီဇင်ဘာ (Dec)" style={{ background: '#1e293b' }}>ဒီဇင်ဘာ (December)</option>
-                                    </select>
-                                </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#4ade80', marginBottom: '0.5rem' }}>
+                                    📅 Select Month for Roll Call
+                                </label>
+                                <select
+                                    value={exportConfig.month}
+                                    onChange={(e) => setExportConfig({ ...exportConfig, month: e.target.value })}
+                                    style={{ 
+                                        width: '100%', 
+                                        padding: '0.85rem 1rem', 
+                                        borderRadius: '10px', 
+                                        background: 'rgba(15, 23, 42, 0.8)', 
+                                        color: '#fff', 
+                                        border: '1.5px solid rgba(34, 197, 94, 0.5)', 
+                                        fontSize: '1rem',
+                                        fontWeight: 500,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <option value="ဇန်နဝါရီ (Jan)" style={{ background: '#1e293b' }}>ဇန်နဝါရီ (January)</option>
+                                    <option value="ဖေဖော်ဝါရီ (Feb)" style={{ background: '#1e293b' }}>ဖေဖော်ဝါရီ (February)</option>
+                                    <option value="မတ် (Mar)" style={{ background: '#1e293b' }}>မတ် (March)</option>
+                                    <option value="ဧပြီ (Apr)" style={{ background: '#1e293b' }}>ဧပြီ (April)</option>
+                                    <option value="မေ (May)" style={{ background: '#1e293b' }}>မေ (May)</option>
+                                    <option value="ဇွန် (Jun)" style={{ background: '#1e293b' }}>ဇွန် (June)</option>
+                                    <option value="ဇူလိုင် (Jul)" style={{ background: '#1e293b' }}>ဇူလိုင် (July)</option>
+                                    <option value="သြဂုတ် (Aug)" style={{ background: '#1e293b' }}>သြဂုတ် (August)</option>
+                                    <option value="စက်တင်ဘာ (Sep)" style={{ background: '#1e293b' }}>စက်တင်ဘာ (September)</option>
+                                    <option value="အောက်တိုဘာ (Oct)" style={{ background: '#1e293b' }}>အောက်တိုဘာ (October)</option>
+                                    <option value="နိုဝင်ဘာ (Nov)" style={{ background: '#1e293b' }}>နိုဝင်ဘာ (November)</option>
+                                    <option value="ဒီဇင်ဘာ (Dec)" style={{ background: '#1e293b' }}>ဒီဇင်ဘာ (December)</option>
+                                </select>
                             </div>
 
                             <button
                                 className="btn btn-primary"
                                 onClick={handleDownloadRollCallExcel}
                                 disabled={exporting}
-                                style={{ marginTop: '0.5rem', width: '100%', padding: '0.8rem' }}
+                                style={{ marginTop: '0.5rem', width: '100%', padding: '0.85rem', fontSize: '0.95rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                             >
+                                <Award size={18} />
                                 {exporting ? 'Generating Spreadsheet...' : 'Download Roll Call (.xlsx)'}
                             </button>
                         </div>
