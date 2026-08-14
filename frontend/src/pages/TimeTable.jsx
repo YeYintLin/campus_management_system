@@ -46,8 +46,18 @@ const safeParseDate = (rawDate) => {
 };
 
 const deriveYearFromCode = (code = '', fallback = '3rd Year') => {
-    const digits = String(code).match(/\d{3,5}/);
+    const clean = String(code).toUpperCase().replace(/\s+/g, '');
+    if (clean.includes('3027') || clean.includes('4049')) return '2nd Year';
+    const digits = clean.match(/\d{4,5}/);
     if (digits) {
+        if (digits[0].length === 4) {
+            const semDigit = digits[0].charAt(0);
+            if (semDigit === '1' || semDigit === '2') return '1st Year';
+            if (semDigit === '3' || semDigit === '4') return '2nd Year';
+            if (semDigit === '5' || semDigit === '6') return '3rd Year';
+            if (semDigit === '7' || semDigit === '8') return '4th Year';
+            if (semDigit === '9' || semDigit === '0') return '5th Year';
+        }
         const firstDigit = digits[0].charAt(0);
         if (firstDigit === '1') return '1st Year';
         if (firstDigit === '2') return '2nd Year';
@@ -840,9 +850,10 @@ const TimeTable = () => {
         if (!isTeacher) return;
         const fetchTeacherScope = async () => {
             try {
-                const [coursesRes, timetableRes] = await Promise.all([
+                const [coursesRes, timetableRes, sessionsRes] = await Promise.all([
                     apiClient.get('/courses').catch(() => ({ data: [] })),
-                    apiClient.get('/timetable').catch(() => ({ data: [] }))
+                    apiClient.get('/timetable').catch(() => ({ data: [] })),
+                    apiClient.get('/sessions').catch(() => ({ data: [] }))
                 ]);
 
                 const set = new Set();
@@ -877,11 +888,20 @@ const TimeTable = () => {
                     });
                 }
 
+                // 3. Scan practical & tutorial sessions for teacher slots
+                (sessionsRes.data || []).forEach(s => {
+                    if (isCourseTaughtByTeacher({ teacher: s.teacher }, user)) {
+                        if (s.year) set.add(normalizeYear(s.year));
+                    }
+                });
+
                 const order = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', 'ME Program'];
                 const matched = order.filter(y => set.has(y));
                 if (matched.length > 0) {
                     setTeacherYears(matched);
-                    setSelectedYear(matched[0]);
+                    if (!matched.includes(selectedYear)) {
+                        setSelectedYear(matched[0]);
+                    }
                 }
             } catch (err) {
                 console.error('Error fetching teacher scope:', err);
