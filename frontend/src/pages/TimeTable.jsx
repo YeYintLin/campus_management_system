@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useEffect, useContext, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
 import * as XLSX from 'xlsx';
@@ -1040,21 +1041,26 @@ const TimeTable = () => {
     useEffect(() => {
         const loadSemesters = async () => {
             try {
-                const { data } = await apiClient.get('/timetable/semesters', { params: { year: selectedYear } });
-                if (Array.isArray(data) && data.length > 0) {
-                    const fetchedSems = Array.from(new Set(data.map(s => {
-                        if (s.semesterNumber) return `Semester ${s.semesterNumber}`;
-                        return s.semesterLabel || 'Semester 1';
-                    }).filter(Boolean)));
-                    if (fetchedSems.length > 0) {
-                        setAvailableSemesters(fetchedSems);
-                        if (!fetchedSems.includes(selectedSemester)) {
-                            setSelectedSemester(fetchedSems[0]);
-                        }
-                    }
-                } else {
-                    setAvailableSemesters(['Semester 1', 'Semester 2']);
+                const [ttRes, sessRes] = await Promise.all([
+                    apiClient.get('/timetable/semesters', { params: { year: selectedYear } }).catch(() => ({ data: [] })),
+                    apiClient.get('/sessions', { params: { year: selectedYear } }).catch(() => ({ data: [] }))
+                ]);
+
+                const semsSet = new Set(['Semester 1', 'Semester 2']);
+                if (Array.isArray(ttRes.data)) {
+                    ttRes.data.forEach(s => {
+                        if (s.semesterNumber) semsSet.add(`Semester ${s.semesterNumber}`);
+                        if (s.semesterLabel) semsSet.add(s.semesterLabel);
+                    });
                 }
+                if (Array.isArray(sessRes.data)) {
+                    sessRes.data.forEach(s => {
+                        if (s.semester) semsSet.add(s.semester);
+                    });
+                }
+
+                const list = ['Semester 1', 'Semester 2', ...Array.from(semsSet).filter(x => x !== 'Semester 1' && x !== 'Semester 2')];
+                setAvailableSemesters(list);
             } catch (e) {
                 setAvailableSemesters(['Semester 1', 'Semester 2']);
             }
@@ -1692,7 +1698,7 @@ const TimeTable = () => {
             )}
 
             {/* Import Preview & Verification Modal */}
-            {isPreviewModalOpen && previewData && (
+            {isPreviewModalOpen && previewData && typeof document !== 'undefined' && createPortal(
                 <div className="timetable-modal-overlay">
                     <div className="timetable-modal-card animate-pop-in">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--surface-border)', paddingBottom: '1rem' }}>
@@ -1713,32 +1719,32 @@ const TimeTable = () => {
                         </div>
 
                         <div style={{ overflowY: 'auto', flex: 1, maxHeight: '55vh', marginBottom: '1.25rem', border: '1px solid var(--surface-border)', borderRadius: '10px' }}>
-                            <table className="attendance-table" style={{ width: '100%', margin: 0 }}>
+                            <table className="session-schedule-table" style={{ width: '100%', margin: 0 }}>
                                 <thead>
                                     <tr>
-                                        <th>Year</th>
-                                        <th>Subject Code</th>
-                                        <th>Title / Topic</th>
-                                        <th>Teacher</th>
-                                        <th>Batch</th>
-                                        <th>Date</th>
-                                        <th>Time</th>
-                                        <th>Room</th>
+                                        <th className="session-col-year">Year</th>
+                                        <th className="session-col-code">Subject Code</th>
+                                        <th className="session-col-topic">Title / Topic</th>
+                                        <th className="session-col-teacher">Teacher</th>
+                                        <th className="session-col-batch">Batch</th>
+                                        <th className="session-col-date">Date</th>
+                                        <th className="session-col-time">Time</th>
+                                        <th className="session-col-room">Room</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {previewData.sessions.map((s, idx) => (
                                         <tr key={idx}>
-                                            <td><span className="year-tag active" style={{ padding: '0.15rem 0.5rem', fontSize: '0.72rem' }}>{s.year}</span></td>
-                                            <td><strong style={{ color: '#a855f7', fontFamily: 'monospace', fontSize: '0.88rem' }}>{s.courseCode}</strong></td>
-                                            <td style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{s.title || s.courseName}</td>
-                                            <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{s.teacher}</td>
-                                            <td><span style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(168,85,247,0.15)', color: '#a855f7', fontWeight: 600 }}>{s.groupTag}</span></td>
-                                            <td style={{ color: '#16a34a', fontSize: '0.82rem', fontWeight: 600 }}>
+                                            <td className="session-col-year"><span className="year-tag active" style={{ padding: '0.15rem 0.5rem', fontSize: '0.72rem' }}>{s.year}</span></td>
+                                            <td className="session-col-code"><strong style={{ color: '#a855f7', fontFamily: 'monospace', fontSize: '0.88rem' }}>{s.courseCode}</strong></td>
+                                            <td className="session-col-topic" style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{s.title || s.courseName}</td>
+                                            <td className="session-col-teacher" style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{s.teacher}</td>
+                                            <td className="session-col-batch"><span style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(168,85,247,0.15)', color: '#a855f7', fontWeight: 600 }}>{s.groupTag}</span></td>
+                                            <td className="session-col-date" style={{ color: '#16a34a', fontSize: '0.82rem', fontWeight: 600 }}>
                                                 {s.date ? new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Flexible'}
                                             </td>
-                                            <td style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>{s.startTime} - {s.endTime}</td>
-                                            <td style={{ fontSize: '0.8rem', color: '#6366f1' }}>{s.place}</td>
+                                            <td className="session-col-time" style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>{s.startTime} - {s.endTime}</td>
+                                            <td className="session-col-room" style={{ fontSize: '0.8rem', color: '#6366f1' }}>{s.place}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -1760,7 +1766,8 @@ const TimeTable = () => {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
