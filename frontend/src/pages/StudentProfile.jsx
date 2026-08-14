@@ -79,7 +79,7 @@ const StudentProfile = () => {
     const [student, setStudent] = useState(getInitialStudent);
     const [loading, setLoading] = useState(!student);
     const [error, setError] = useState('');
-    const [stats, setStats] = useState({ gpa: 'N/A', attendance: 'N/A' });
+    const [attendanceRate, setAttendanceRate] = useState('N/A');
 
     useEffect(() => {
         if (!effectiveStudentId) return undefined;
@@ -117,30 +117,17 @@ const StudentProfile = () => {
                 }
             }
 
-            // Also fetch grades and attendance for stats
+            // Fetch attendance for attendance rate
             try {
-                const [gradesRes, attendanceRes] = await Promise.all([
-                    apiClient.get('/grades', { params: { student: effectiveStudentId }, signal: abortController.signal }).catch(() => ({ data: [] })),
-                    apiClient.get('/attendance', { params: { student: effectiveStudentId }, signal: abortController.signal }).catch(() => ({ data: [] }))
-                ]);
-                
-                const grades = gradesRes.data || [];
+                const attendanceRes = await apiClient.get('/attendance', { params: { student: effectiveStudentId }, signal: abortController.signal }).catch(() => ({ data: [] }));
                 const attendance = attendanceRes.data || [];
                 
-                let gpa = 'N/A';
-                if (grades.length > 0) {
-                    const totalMarks = grades.reduce((sum, g) => sum + (g.score || g.marks || 0), 0);
-                    const avg = totalMarks / grades.length;
-                    gpa = (avg / 25).toFixed(2);
-                }
-                
-                let attendanceRate = 'N/A';
                 if (attendance.length > 0) {
                     const present = attendance.filter(a => a.status === 'Present').length;
-                    attendanceRate = `${Math.round((present / attendance.length) * 100)}%`;
+                    setAttendanceRate(`${Math.round((present / attendance.length) * 100)}%`);
+                } else {
+                    setAttendanceRate('100%');
                 }
-                
-                setStats({ gpa, attendance: attendanceRate });
             } catch {
                 // Ignore stats fetch failure
             }
@@ -260,18 +247,10 @@ const StudentProfile = () => {
                     <span>System Role</span>
                     <strong>{student.user?.role || 'Student'}</strong>
                 </div>
-            </section>
-
-            <section className="profile-details-grid" style={{ marginTop: '1.5rem' }}>
-                <div className="glass-card profile-detail-card" style={{ background: 'var(--success-bg)', borderColor: 'var(--success-border)' }}>
-                    <TrendingUp size={22} color="var(--success-color)" />
-                    <span>Current GPA</span>
-                    <strong style={{ fontSize: '1.5rem', color: 'var(--success-color)' }}>{stats.gpa}</strong>
-                </div>
-                <div className="glass-card profile-detail-card" style={{ background: 'var(--primary-bg)', borderColor: 'var(--primary-border)' }}>
+                <div className="glass-card profile-detail-card">
                     <CheckCircle size={22} color="var(--primary-color)" />
                     <span>Attendance Rate</span>
-                    <strong style={{ fontSize: '1.5rem', color: 'var(--primary-color)' }}>{stats.attendance}</strong>
+                    <strong style={{ color: 'var(--primary-color)' }}>{attendanceRate}</strong>
                 </div>
             </section>
 
