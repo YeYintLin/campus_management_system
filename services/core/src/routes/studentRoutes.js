@@ -5,10 +5,15 @@ const {
     createStudent,
     updateStudent,
     deleteStudent,
+    previewBulkUpdateSemester,
+    bulkUpdateSemester,
 } = require('../controllers/studentController');
 const { protect, admin, teacher } = require('../middleware/authMiddleware');
 
 const router = express.Router();
+
+router.post('/bulk-update-semester/preview', protect, admin, previewBulkUpdateSemester);
+router.post('/bulk-update-semester', protect, admin, bulkUpdateSemester);
 
 router
     .route('/')
@@ -22,3 +27,4 @@ router
     .delete(protect, admin, deleteStudent);
 
 module.exports = router;
+

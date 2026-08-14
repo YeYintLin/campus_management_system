@@ -169,10 +169,212 @@ const deleteStudent = async (req, res) => {
     }
 };
 
+// @desc    Preview bulk semester advance for students
+// @route   POST /api/students/bulk-update-semester/preview
+// @access  Private (Admin)
+const previewBulkUpdateSemester = async (req, res) => {
+    try {
+        const { year, fromSemester, targetSemester, department } = req.body;
+        const yearNum = parseInt(year, 10);
+        const targetSemNum = parseInt(targetSemester, 10);
+
+        if (!yearNum || isNaN(yearNum) || !targetSemNum || isNaN(targetSemNum)) {
+            return res.status(400).json({ message: 'Year and Target Semester must be valid numbers' });
+        }
+
+        // Fetch all students with populated users
+        const allStudents = await Student.find().populate('user', 'name email role status department year rollNo');
+        const allUsers = await User.find({ role: 'Student' });
+
+        const eligibleStudents = [];
+        const flaggedStudents = [];
+
+        // Build a set of user IDs that have Student profiles
+        const studentUserIds = new Set();
+
+        for (const s of allStudents) {
+            const u = s.user;
+            if (!u) {
+                flaggedStudents.push({
+                    studentId: s._id,
+                    name: 'Orphaned Student Profile',
+                    enrollmentNumber: s.enrollmentNumber || 'N/A',
+                    reason: 'Missing linked user account'
+                });
+                continue;
+            }
+
+            studentUserIds.add(u._id.toString());
+
+            // Check department if specified
+            if (department && department !== 'All') {
+                const sDept = (s.department || u.department || '').toLowerCase();
+                if (!sDept.includes(department.toLowerCase())) continue;
+            }
+
+            // Derive student's current year number from profile semester or user year string
+            let sYearNum = null;
+            if (typeof s.semester === 'number' && s.semester > 0) {
+                sYearNum = Math.ceil(s.semester / 2);
+            } else if (u.year) {
+                const m = String(u.year).match(/\d+/);
+                if (m) sYearNum = parseInt(m[0], 10);
+            }
+
+            // If fromSemester is specified, match exactly
+            if (fromSemester) {
+                const fromSemNum = parseInt(fromSemester, 10);
+                if (s.semester !== fromSemNum) continue;
+            } else {
+                // Otherwise match year
+                if (sYearNum !== yearNum) continue;
+            }
+
+            // Check for valid data
+            if (!s.enrollmentNumber && !u.rollNo) {
+                flaggedStudents.push({
+                    studentId: s._id,
+                    userId: u._id,
+                    name: u.name || 'Unknown',
+                    email: u.email || '',
+                    reason: 'Missing Roll Number / Enrollment Number'
+                });
+            }
+
+            eligibleStudents.push({
+                studentId: s._id,
+                userId: u._id,
+                name: u.name,
+                email: u.email,
+                rollNo: u.rollNo || s.enrollmentNumber || 'N/A',
+                department: s.department || u.department || 'Mechatronics Engineering',
+                currentSemester: s.semester || 1,
+                targetSemester: targetSemNum,
+                currentYear: u.year || `${sYearNum || yearNum}th Year`
+            });
+        }
+
+        // Check for student users with NO student profile
+        for (const u of allUsers) {
+            if (!studentUserIds.has(u._id.toString())) {
+                const m = String(u.year || '').match(/\d+/);
+                const uYear = m ? parseInt(m[0], 10) : null;
+                if (uYear === yearNum) {
+                    flaggedStudents.push({
+                        userId: u._id,
+                        name: u.name,
+                        email: u.email,
+                        rollNo: u.rollNo || 'N/A',
+                        reason: 'User account has no Student profile document'
+                    });
+                }
+            }
+        }
+
+        res.json({
+            year: yearNum,
+            targetSemester: targetSemNum,
+            eligibleCount: eligibleStudents.length,
+            eligibleStudents,
+            flaggedCount: flaggedStudents.length,
+            flaggedStudents
+        });
+    } catch (error) {
+        console.error('previewBulkUpdateSemester error:', error.message);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Execute bulk semester advance for students
+// @route   POST /api/students/bulk-update-semester
+// @access  Private (Admin)
+const bulkUpdateSemester = async (req, res) => {
+    try {
+        const { year, fromSemester, targetSemester, department, studentIds } = req.body;
+        const yearNum = parseInt(year, 10);
+        const targetSemNum = parseInt(targetSemester, 10);
+
+        if (!targetSemNum || isNaN(targetSemNum) || targetSemNum < 1 || targetSemNum > 12) {
+            return res.status(400).json({ message: 'Target Semester must be a valid number between 1 and 12' });
+        }
+
+        const newYearNum = Math.ceil(targetSemNum / 2);
+        const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year', 7: 'ME Program' };
+        const newYearLabel = labels[newYearNum] || `${newYearNum}th Year`;
+
+        let targetStudentDocs = [];
+
+        if (Array.isArray(studentIds) && studentIds.length > 0) {
+            targetStudentDocs = await Student.find({ _id: { $in: studentIds } });
+        } else {
+            // Find all matching students
+            const allStudents = await Student.find().populate('user');
+            for (const s of allStudents) {
+                const u = s.user;
+                if (!u) continue;
+
+                if (department && department !== 'All') {
+                    const sDept = (s.department || u.department || '').toLowerCase();
+                    if (!sDept.includes(department.toLowerCase())) continue;
+                }
+
+                let sYearNum = null;
+                if (typeof s.semester === 'number' && s.semester > 0) {
+                    sYearNum = Math.ceil(s.semester / 2);
+                } else if (u.year) {
+                    const m = String(u.year).match(/\d+/);
+                    if (m) sYearNum = parseInt(m[0], 10);
+                }
+
+                if (fromSemester) {
+                    if (s.semester === parseInt(fromSemester, 10)) {
+                        targetStudentDocs.push(s);
+                    }
+                } else if (sYearNum === yearNum) {
+                    targetStudentDocs.push(s);
+                }
+            }
+        }
+
+        let updatedCount = 0;
+        const updatedList = [];
+
+        for (const s of targetStudentDocs) {
+            s.semester = targetSemNum;
+            await s.save();
+
+            if (s.user) {
+                const userId = s.user._id || s.user;
+                await User.findByIdAndUpdate(userId, { year: newYearLabel });
+            }
+
+            updatedCount++;
+            updatedList.push({
+                studentId: s._id,
+                newSemester: targetSemNum,
+                newYear: newYearLabel
+            });
+        }
+
+        res.json({
+            success: true,
+            message: `Successfully advanced ${updatedCount} student(s) to Semester ${targetSemNum} (${newYearLabel})`,
+            updatedCount,
+            targetSemester: targetSemNum,
+            yearLabel: newYearLabel
+        });
+    } catch (error) {
+        console.error('bulkUpdateSemester error:', error.message);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getStudents,
     getStudentById,
     createStudent,
     updateStudent,
     deleteStudent,
+    previewBulkUpdateSemester,
+    bulkUpdateSemester,
 };

@@ -19,6 +19,15 @@ const courseSchema = new mongoose.Schema(
             max: 10,
             default: 1,
         },
+        semester: {
+            type: Number,
+            min: 1,
+            max: 4,
+            default: null,
+        },
+        yearLabel: {
+            type: String,
+        },
         description: {
             type: String,
         },

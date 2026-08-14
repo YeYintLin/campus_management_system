@@ -10,6 +10,18 @@ const deriveYearFromCourseCode = (code = '', fallbackYear = 4) => {
     return typeof fallbackYear === 'number' ? fallbackYear : 4;
 };
 
+const deriveSemesterFromCourseCode = (code = '', fallbackSem = null) => {
+    const clean = String(code).trim().toUpperCase();
+    const digits = clean.replace(/[^0-9]/g, '');
+    // In 5-digit code format YSXXX (e.g. 51039 -> Year 5, Sem 1; 52039 -> Year 5, Sem 2; 32032 -> Year 3, Sem 2)
+    if (digits.length >= 5) {
+        const semDigit = parseInt(digits[1], 10);
+        if (semDigit === 1 || semDigit === 2) return semDigit;
+    }
+    if (typeof fallbackSem === 'number' && (fallbackSem === 1 || fallbackSem === 2)) return fallbackSem;
+    return fallbackSem || null;
+};
+
 const syncCourseCollectionWithTimetable = async () => {
     try {
         const Semester = require('../models/Semester');
@@ -30,12 +42,18 @@ const syncCourseCollectionWithTimetable = async () => {
             }) || null;
         };
 
-        // Build a map of code -> { name, yearNum, yearLabel, teacherId } from uploaded timetable legends
+        // Build a map of code -> { name, yearNum, yearLabel, semester, teacherId } from uploaded timetable legends
         const legendMap = new Map();
         if (semesters && semesters.length > 0) {
             for (const sem of semesters) {
                 const yearNum = sem.yearNumber || 4;
                 const yearLabel = sem.yearLabel || `${yearNum}th Year`;
+                let semNumber = sem.semesterNumber;
+                if (!semNumber && sem.semesterLabel) {
+                    semNumber = sem.semesterLabel.includes('2') ? 2 : 1;
+                } else if (!semNumber && sem.sheetName) {
+                    semNumber = sem.sheetName.includes('2') ? 2 : 1;
+                }
 
                 if (Array.isArray(sem.legend)) {
                     for (const item of sem.legend) {
@@ -61,12 +79,14 @@ const syncCourseCollectionWithTimetable = async () => {
                             }
 
                             const teacherObj = findTeacherByName(teacherName || item.teacher);
+                            const itemSem = deriveSemesterFromCourseCode(rawCode, semNumber);
 
                             legendMap.set(codeStr, {
                                 code: rawCode,
                                 name: subjectName || rawCode,
                                 year: yearNum,
                                 yearLabel: yearLabel,
+                                semester: itemSem,
                                 teacherId: teacherObj ? teacherObj._id : null
                             });
                         }
@@ -75,9 +95,7 @@ const syncCourseCollectionWithTimetable = async () => {
             }
         }
 
-
-
-        // Apply legendMap to Course collection: update year, name, AND teacher strictly
+        // Apply legendMap to Course collection: update year, semester, name, AND teacher strictly
         for (const [cleanCode, info] of legendMap.entries()) {
             const codeNoSpaces = info.code.replace(/\s+/g, '');
             let existing = await Course.findOne({ code: new RegExp(`^${info.code.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') });
@@ -92,11 +110,13 @@ const syncCourseCollectionWithTimetable = async () => {
             const derivedY = info.year || deriveYearFromCourseCode(info.code, 4);
             const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year', 6: '6th Year', 7: 'ME Program' };
             const derivedLabel = info.yearLabel || labels[derivedY] || `${derivedY}th Year`;
+            const derivedSem = info.semester || deriveSemesterFromCourseCode(info.code, 1);
 
             if (existing) {
                 existing.name = info.name || existing.name;
                 existing.year = derivedY;
                 existing.yearLabel = derivedLabel;
+                existing.semester = derivedSem || existing.semester;
                 if (info.teacherId) existing.teacher = info.teacherId;
                 await existing.save();
             } else {
@@ -106,6 +126,7 @@ const syncCourseCollectionWithTimetable = async () => {
                         name: info.name,
                         year: derivedY,
                         yearLabel: derivedLabel,
+                        semester: derivedSem,
                         description: `Official timetable subject offering for ${derivedLabel}`,
                         teacher: info.teacherId,
                         students: []
@@ -117,6 +138,7 @@ const syncCourseCollectionWithTimetable = async () => {
                             dup.name = info.name;
                             dup.year = derivedY;
                             dup.yearLabel = derivedLabel;
+                            dup.semester = derivedSem || dup.semester;
                             if (info.teacherId) dup.teacher = info.teacherId;
                             await dup.save();
                         }
@@ -138,6 +160,12 @@ const getCourses = async (req, res) => {
         await syncCourseCollectionWithTimetable();
 
         let query = {};
+        if (req.query.year) {
+            query.year = parseInt(req.query.year, 10);
+        }
+        if (req.query.semester) {
+            query.semester = parseInt(req.query.semester, 10);
+        }
         const role = (req.user.role || '').toLowerCase().trim();
 
         // Filter to assigned courses only if explicitly requested (e.g. ?assignedOnly=true)
@@ -197,18 +225,24 @@ const getCourseById = async (req, res) => {
 // @access  Private (Admin)
 const createCourse = async (req, res) => {
     try {
-        const { name, code, description, teacher, students } = req.body;
+        const { name, code, description, teacher, students, year, semester, yearLabel } = req.body;
 
         const courseExists = await Course.findOne({ code });
         if (courseExists) {
             return res.status(400).json({ message: 'Course with this code already exists' });
         }
 
+        const derivedY = year || deriveYearFromCourseCode(code, 4);
+        const derivedSem = semester || deriveSemesterFromCourseCode(code, null);
+
         const course = await Course.create({
             name,
             code,
             description,
             teacher,
+            year: derivedY,
+            semester: derivedSem,
+            yearLabel: yearLabel || `${derivedY}th Year`,
             students: students || [],
         });
 
@@ -223,7 +257,7 @@ const createCourse = async (req, res) => {
 // @access  Private (Admin, Teacher if their course)
 const updateCourse = async (req, res) => {
     try {
-        const { name, description, teacher, students } = req.body;
+        const { name, description, teacher, students, year, semester, yearLabel } = req.body;
         const course = await Course.findById(req.params.id);
 
         if (!course) {
@@ -237,6 +271,9 @@ const updateCourse = async (req, res) => {
 
         course.name = name || course.name;
         course.description = description || course.description;
+        if (year !== undefined) course.year = year;
+        if (semester !== undefined) course.semester = semester;
+        if (yearLabel !== undefined) course.yearLabel = yearLabel;
         course.teacher = req.user.role === 'Admin' ? (teacher || course.teacher) : course.teacher;
         course.students = students || course.students;
 

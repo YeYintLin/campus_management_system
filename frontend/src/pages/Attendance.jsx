@@ -14,6 +14,15 @@ const yearNumberToLabel = (num) => {
     return labels[num] || '1st Year';
 };
 
+const deriveSemFromCode = (code = '') => {
+    const digits = String(code).replace(/[^0-9]/g, '');
+    if (digits.length >= 5) {
+        const semD = parseInt(digits[1], 10);
+        if (semD === 1 || semD === 2) return semD;
+    }
+    return null;
+};
+
 const isCourseTaughtByTeacher = (course, user) => {
     if (!user) return false;
     const userTeacherId = user._id ? String(user._id) : '';
@@ -741,9 +750,28 @@ const Attendance = () => {
             const courseYearLabel = deriveYearFromCourse(course);
             const targetYearNorm = normalizeYear(courseYearLabel);
             const targetDept = course.department || deriveDepartmentFromCode(course.code || course.name || '');
+            const courseSem = course.semester || deriveSemFromCode(course.code || course.name || '');
+            const courseYearNum = parseYearNumber(courseYearLabel);
 
-            // Year + Department filter function
+            // Fetch student profiles to have accurate semester mapping
+            let studentSemesterMap = {};
+            try {
+                const studentsRes = await apiClient.get('/students').catch(() => ({ data: [] }));
+                const studentsData = Array.isArray(studentsRes.data) ? studentsRes.data : [];
+                studentsData.forEach(st => {
+                    const uId = st.user?._id || st.user;
+                    if (uId && typeof st.semester === 'number') {
+                        studentSemesterMap[uId.toString()] = st.semester;
+                    }
+                });
+            } catch (stErr) {
+                console.error('Error loading student profiles for semester mapping:', stErr);
+            }
+
+            // Year + Department + Semester filter function
             const studentBelongsToCourse = (student) => {
+                const sId = (student._id || student).toString();
+
                 // Year check
                 const sYear = resolveStudentYear(student);
                 const yearOk = targetYearNorm === 'All' || !sYear || sYear === targetYearNorm;
@@ -755,6 +783,16 @@ const Attendance = () => {
                 // If student has NO year AND NO dept info (test/gmail accounts), exclude them
                 if (!sYear && !sDept) return false;
 
+                // Semester check: if course has semester defined and student profile has semester
+                const studentAbsSem = studentSemesterMap[sId] ?? (typeof student.semester === 'number' ? student.semester : null);
+                if (courseSem && typeof studentAbsSem === 'number' && studentAbsSem > 0) {
+                    const studentSemInYear = studentAbsSem % 2 === 0 ? 2 : 1;
+                    const studentYearNum = Math.ceil(studentAbsSem / 2);
+                    if (studentYearNum === courseYearNum && studentSemInYear !== courseSem) {
+                        return false;
+                    }
+                }
+
                 return yearOk && deptOk;
             };
 
@@ -762,7 +800,7 @@ const Attendance = () => {
             let roster = [...(course.students || [])];
 
             if (roster.length > 0) {
-                // Course has an explicit students list — filter out wrong year/dept students
+                // Course has an explicit students list — filter out wrong year/dept/semester students
                 roster = roster.filter(s => studentBelongsToCourse(s));
             }
 

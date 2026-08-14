@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { X, Settings, Save } from 'lucide-react';
+import { X, Settings, Save, RefreshCw, AlertTriangle, CheckCircle, ChevronRight, ArrowLeft } from 'lucide-react';
 import { getNormalizedUserYear } from '../utils/userYear';
 import './Students.css';
 
@@ -168,22 +168,96 @@ const Students = () => {
         fetchAcademicConfig();
     }, []);
 
-    useEffect(() => {
-        const fetchStudents = async () => {
-            setLoading(true);
-            setError('');
-            try {
-                const { data } = await apiClient.get('/students');
-                setStudents(data);
-            } catch (err) {
-                setError(err.response?.data?.message || err.message || 'Failed to load students');
-            } finally {
-                setLoading(false);
-            }
-        };
+    const fetchStudents = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const { data } = await apiClient.get('/students');
+            setStudents(data);
+        } catch (err) {
+            setError(err.response?.data?.message || err.message || 'Failed to load students');
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchStudents();
     }, []);
+
+    // Bulk Semester Advance States
+    const [showBulkModal, setShowBulkModal] = useState(false);
+    const [bulkStep, setBulkStep] = useState('config'); // 'config' | 'preview' | 'success'
+    const [bulkForm, setBulkForm] = useState({
+        year: 5,
+        fromSemester: '',
+        targetYear: 5,
+        targetSemesterInYear: 2,
+        department: 'All',
+    });
+    const [bulkPreview, setBulkPreview] = useState(null);
+    const [bulkLoading, setBulkLoading] = useState(false);
+    const [bulkError, setBulkError] = useState('');
+    const [bulkResult, setBulkResult] = useState(null);
+
+    const openBulkModal = () => {
+        setBulkForm({
+            year: 5,
+            fromSemester: '',
+            targetYear: 5,
+            targetSemesterInYear: 2,
+            department: selectedDepartment !== 'All' ? selectedDepartment : 'All',
+        });
+        setBulkStep('config');
+        setBulkPreview(null);
+        setBulkError('');
+        setBulkResult(null);
+        setShowBulkModal(true);
+    };
+
+    const handlePreviewBulk = async (e) => {
+        if (e) e.preventDefault();
+        setBulkLoading(true);
+        setBulkError('');
+        try {
+            const targetSem = (Number(bulkForm.targetYear) - 1) * 2 + Number(bulkForm.targetSemesterInYear);
+            const payload = {
+                year: parseInt(bulkForm.year, 10),
+                fromSemester: bulkForm.fromSemester ? parseInt(bulkForm.fromSemester, 10) : undefined,
+                targetSemester: targetSem,
+                department: bulkForm.department !== 'All' ? bulkForm.department : undefined,
+            };
+            const { data } = await apiClient.post('/students/bulk-update-semester/preview', payload);
+            setBulkPreview(data);
+            setBulkStep('preview');
+        } catch (err) {
+            setBulkError(err.response?.data?.message || err.message || 'Failed to preview student bulk update');
+        } finally {
+            setBulkLoading(false);
+        }
+    };
+
+    const handleExecuteBulk = async () => {
+        setBulkLoading(true);
+        setBulkError('');
+        try {
+            const targetSem = (Number(bulkForm.targetYear) - 1) * 2 + Number(bulkForm.targetSemesterInYear);
+            const payload = {
+                year: parseInt(bulkForm.year, 10),
+                fromSemester: bulkForm.fromSemester ? parseInt(bulkForm.fromSemester, 10) : undefined,
+                targetSemester: targetSem,
+                department: bulkForm.department !== 'All' ? bulkForm.department : undefined,
+            };
+            const { data } = await apiClient.post('/students/bulk-update-semester', payload);
+            setBulkResult(data);
+            setBulkStep('success');
+            fetchStudents();
+        } catch (err) {
+            setBulkError(err.response?.data?.message || err.message || 'Failed to execute bulk semester advance');
+        } finally {
+            setBulkLoading(false);
+        }
+    };
 
     const enhancedStudents = students.map(student => {
         const yearLabel = semesterToYearLabel(student.semester, maxYear);
@@ -459,7 +533,19 @@ const Students = () => {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                    {isAdmin && <button className="btn btn-primary" onClick={openAddModal}>+ Add Student</button>}
+                    {isAdmin && (
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <button
+                                className="btn btn-secondary"
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                onClick={openBulkModal}
+                            >
+                                <RefreshCw size={15} />
+                                Advance Semester
+                            </button>
+                            <button className="btn btn-primary" onClick={openAddModal}>+ Add Student</button>
+                        </div>
+                    )}
                 </div>
             </header>
 
@@ -768,6 +854,234 @@ const Students = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Semester Advance Modal */}
+            {showBulkModal && (
+                <div className="modal-overlay animate-fade-in" style={{ zIndex: 1000 }}>
+                    <div className="modal glass-panel animate-scale-up" style={{ maxWidth: bulkStep === 'preview' ? '800px' : '560px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <RefreshCw size={22} className="text-primary" />
+                                <h3 style={{ margin: 0, fontSize: '1.25rem' }}>
+                                    {bulkStep === 'config' && 'Bulk Advance Student Semester'}
+                                    {bulkStep === 'preview' && 'Review & Confirm Semester Advance'}
+                                    {bulkStep === 'success' && 'Semester Advance Complete'}
+                                </h3>
+                            </div>
+                            <button className="icon-btn" onClick={() => setShowBulkModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {bulkError && (
+                            <div style={{ padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', color: '#f87171', margin: '1rem 0 0', fontSize: '0.85rem' }}>
+                                {bulkError}
+                            </div>
+                        )}
+
+                        {/* STEP 1: CONFIGURATION */}
+                        {bulkStep === 'config' && (
+                            <form onSubmit={handlePreviewBulk} style={{ marginTop: '1rem' }}>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 1.25rem' }}>
+                                    Select the student cohort to update. You will review a preview of all affected and flagged students before any changes are applied.
+                                </p>
+
+                                <div className="modal-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                        <label className="form-label" style={{ fontWeight: '600', marginBottom: '0.4rem', display: 'block' }}>Department</label>
+                                        <select
+                                            className="form-input"
+                                            value={bulkForm.department}
+                                            onChange={e => setBulkForm({ ...bulkForm, department: e.target.value })}
+                                            style={{ width: '100%', padding: '0.6rem', borderRadius: '8px' }}
+                                        >
+                                            <option value="All">All Departments</option>
+                                            {availableDepartments.filter(d => d !== 'All').map(d => (
+                                                <option key={d} value={d}>{d}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: '600', marginBottom: '0.4rem', display: 'block' }}>Source Academic Year</label>
+                                        <select
+                                            className="form-input"
+                                            value={bulkForm.year}
+                                            onChange={e => setBulkForm({ ...bulkForm, year: parseInt(e.target.value, 10), targetYear: parseInt(e.target.value, 10) })}
+                                            style={{ width: '100%', padding: '0.6rem', borderRadius: '8px' }}
+                                        >
+                                            {Array.from({ length: maxYear || 6 }, (_, i) => i + 1).map(y => (
+                                                <option key={y} value={y}>{ordinalYearLabel(y)}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: '600', marginBottom: '0.4rem', display: 'block' }}>Current Semester (Optional)</label>
+                                        <select
+                                            className="form-input"
+                                            value={bulkForm.fromSemester}
+                                            onChange={e => setBulkForm({ ...bulkForm, fromSemester: e.target.value })}
+                                            style={{ width: '100%', padding: '0.6rem', borderRadius: '8px' }}
+                                        >
+                                            <option value="">All Semesters in this Year</option>
+                                            <option value={(bulkForm.year - 1) * 2 + 1}>Semester 1 (Sem {(bulkForm.year - 1) * 2 + 1})</option>
+                                            <option value={(bulkForm.year - 1) * 2 + 2}>Semester 2 (Sem {(bulkForm.year - 1) * 2 + 2})</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: '600', marginBottom: '0.4rem', display: 'block', color: 'var(--primary-color)' }}>Target Academic Year</label>
+                                        <select
+                                            className="form-input"
+                                            value={bulkForm.targetYear}
+                                            onChange={e => setBulkForm({ ...bulkForm, targetYear: parseInt(e.target.value, 10) })}
+                                            style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.4)' }}
+                                        >
+                                            {Array.from({ length: maxYear || 6 }, (_, i) => i + 1).map(y => (
+                                                <option key={y} value={y}>{ordinalYearLabel(y)}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: '600', marginBottom: '0.4rem', display: 'block', color: 'var(--primary-color)' }}>Target Semester in Year</label>
+                                        <select
+                                            className="form-input"
+                                            value={bulkForm.targetSemesterInYear}
+                                            onChange={e => setBulkForm({ ...bulkForm, targetSemesterInYear: parseInt(e.target.value, 10) })}
+                                            style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.4)' }}
+                                        >
+                                            <option value={1}>Semester 1</option>
+                                            <option value={2}>Semester 2</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div style={{ background: 'rgba(99, 102, 241, 0.08)', padding: '0.85rem', borderRadius: '10px', border: '1px solid rgba(99, 102, 241, 0.2)', marginBottom: '1.25rem', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-muted)' }}>Target Outcome: </span>
+                                    <strong style={{ color: '#fff' }}>
+                                        {ordinalYearLabel(bulkForm.targetYear)}, Semester {bulkForm.targetSemesterInYear} (Absolute Semester {(bulkForm.targetYear - 1) * 2 + bulkForm.targetSemesterInYear})
+                                    </strong>
+                                </div>
+
+                                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+                                    <button type="button" className="btn btn-secondary" onClick={() => setShowBulkModal(false)}>Cancel</button>
+                                    <button type="submit" className="btn btn-primary" disabled={bulkLoading}>
+                                        {bulkLoading ? 'Calculating Preview...' : 'Preview Affected Students →'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* STEP 2: PREVIEW & CONFIRMATION */}
+                        {bulkStep === 'preview' && bulkPreview && (
+                            <div style={{ marginTop: '1rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                                    <div className="glass-panel" style={{ padding: '1rem', borderRadius: '10px', textAlign: 'center', background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Eligible Students</span>
+                                        <h2 style={{ margin: '0.25rem 0 0', color: '#4ade80', fontSize: '1.75rem' }}>{bulkPreview.eligibleCount}</h2>
+                                    </div>
+                                    <div className="glass-panel" style={{ padding: '1rem', borderRadius: '10px', textAlign: 'center', background: bulkPreview.flaggedCount > 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255,255,255,0.03)', border: bulkPreview.flaggedCount > 0 ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(255,255,255,0.1)' }}>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Flagged Issues</span>
+                                        <h2 style={{ margin: '0.25rem 0 0', color: bulkPreview.flaggedCount > 0 ? '#f87171' : 'var(--text-muted)', fontSize: '1.75rem' }}>{bulkPreview.flaggedCount}</h2>
+                                    </div>
+                                </div>
+
+                                {/* Flagged Students Warning */}
+                                {bulkPreview.flaggedCount > 0 && (
+                                    <div style={{ background: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.3)', borderRadius: '10px', padding: '1rem', marginBottom: '1.25rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#fbbf24', fontWeight: '700' }}>
+                                            <AlertTriangle size={18} />
+                                            <span>{bulkPreview.flaggedCount} Student(s) with Data Issues Detected</span>
+                                        </div>
+                                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                                            These records cannot be automatically advanced due to incomplete data:
+                                        </p>
+                                        <div style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                                            {bulkPreview.flaggedStudents.map((f, idx) => (
+                                                <div key={idx} style={{ fontSize: '0.8rem', color: '#fbbf24', padding: '0.2rem 0', borderBottom: '1px solid rgba(234, 179, 8, 0.15)' }}>
+                                                    <strong>{f.name}</strong> ({f.email || f.rollNo || 'No ID'}) — <span style={{ color: '#f87171' }}>{f.reason}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Eligible Students List */}
+                                <div style={{ marginBottom: '1.25rem' }}>
+                                    <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>Students to be Updated ({bulkPreview.eligibleCount}):</h4>
+                                    <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}>
+                                        <table className="students-table" style={{ width: '100%', fontSize: '0.82rem', borderCollapse: 'collapse' }}>
+                                            <thead>
+                                                <tr style={{ background: 'rgba(255,255,255,0.05)', textAlign: 'left' }}>
+                                                    <th style={{ padding: '0.5rem 0.75rem' }}>Roll No</th>
+                                                    <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                                                    <th style={{ padding: '0.5rem 0.75rem' }}>Department</th>
+                                                    <th style={{ padding: '0.5rem 0.75rem' }}>Current Sem</th>
+                                                    <th style={{ padding: '0.5rem 0.75rem' }}>Target Sem</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {bulkPreview.eligibleStudents.slice(0, 50).map((st, i) => (
+                                                    <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                        <td style={{ padding: '0.4rem 0.75rem' }} className="font-mono">{st.rollNo}</td>
+                                                        <td style={{ padding: '0.4rem 0.75rem' }}>{st.name}</td>
+                                                        <td style={{ padding: '0.4rem 0.75rem' }}>{st.department}</td>
+                                                        <td style={{ padding: '0.4rem 0.75rem' }}>Sem {st.currentSemester}</td>
+                                                        <td style={{ padding: '0.4rem 0.75rem', color: '#4ade80', fontWeight: '700' }}>Sem {st.targetSemester}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {bulkPreview.eligibleCount > 50 && (
+                                            <p style={{ margin: '0.5rem', textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                                ... and {bulkPreview.eligibleCount - 50} more students
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                                    <button type="button" className="btn btn-secondary" onClick={() => setBulkStep('config')} disabled={bulkLoading}>
+                                        ← Back to Settings
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={handleExecuteBulk}
+                                        disabled={bulkLoading || bulkPreview.eligibleCount === 0}
+                                        style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}
+                                    >
+                                        {bulkLoading ? 'Applying Changes...' : `Confirm & Advance ${bulkPreview.eligibleCount} Student(s)`}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* STEP 3: SUCCESS */}
+                        {bulkStep === 'success' && bulkResult && (
+                            <div style={{ textAlign: 'center', padding: '1.5rem 1rem' }}>
+                                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(34, 197, 94, 0.2)', border: '2px solid #22c55e', color: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+                                    <CheckCircle size={36} />
+                                </div>
+                                <h3 style={{ margin: '0 0 0.5rem', color: '#4ade80' }}>Semester Advance Successful!</h3>
+                                <p style={{ margin: '0 0 1.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                    {bulkResult.message || `Successfully advanced ${bulkResult.updatedCount} students to Semester ${bulkResult.targetSemester} (${bulkResult.yearLabel}).`}
+                                </p>
+                                <button
+                                    type="button"
+                                    className="btn btn-primary"
+                                    onClick={() => setShowBulkModal(false)}
+                                    style={{ padding: '0.65rem 2rem' }}
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

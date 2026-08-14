@@ -453,7 +453,28 @@ const getDashboardStats = async (req, res) => {
                 }).sort({ createdAt: -1 }).limit(5),
             ]);
 
-            // Filter out non-academic or junk course records
+            // Determine active semester for this student cohort from AcademicConfig
+            let activeSemNum = 1;
+            try {
+                const AcademicConfig = require('../models/AcademicConfig');
+                const cfg = await AcademicConfig.findOne();
+                if (cfg) {
+                    const yearKey = `${studentYearNum}th Year`;
+                    const perYearTerms = cfg.perYearActiveTerms || {};
+                    let termStr = null;
+                    if (perYearTerms instanceof Map || typeof perYearTerms.get === 'function') {
+                        termStr = perYearTerms.get(yearKey) || perYearTerms.get(String(studentYearNum));
+                    } else {
+                        termStr = perYearTerms[yearKey] || perYearTerms[String(studentYearNum)];
+                    }
+                    const effectiveTerm = termStr || cfg.activeTerm || 'Semester 1';
+                    if (effectiveTerm && effectiveTerm.includes('2')) activeSemNum = 2;
+                }
+            } catch (cfgErr) {
+                console.error('Error fetching academic config for dashboard:', cfgErr.message);
+            }
+
+            // Filter out non-academic or junk course records & match semester
             const junkTitleRegex = /^(introduction|tutorial\s*i+|testing\s*job|practical\s*lab|prepared|approved|sr\.?|batch|group)/i;
             const nonAcademicCodeRegex = /^(PREPARED|APPROVED|SR\.?|BATCH|GROUP|PRIVATE\s*STUDY)/i;
 
@@ -465,6 +486,18 @@ const getDashboardStats = async (req, res) => {
                 const normCode = code.replace(/[\s-]+/g, '').toUpperCase();
                 if (!normCode || seenCodes.has(normCode)) continue;
                 if (junkTitleRegex.test(name) || nonAcademicCodeRegex.test(code) || nonAcademicCodeRegex.test(name)) continue;
+
+                // Match semester if available
+                let cSem = c.semester;
+                if (!cSem) {
+                    const digits = code.replace(/[^0-9]/g, '');
+                    if (digits.length >= 5) {
+                        const d = parseInt(digits[1], 10);
+                        if (d === 1 || d === 2) cSem = d;
+                    }
+                }
+                if (cSem && cSem !== activeSemNum) continue;
+
                 seenCodes.add(normCode);
                 validCourses.push(c);
             }

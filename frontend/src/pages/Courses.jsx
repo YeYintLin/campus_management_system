@@ -33,6 +33,15 @@ const yearNumberToLabel = (num) => {
     return labels[num] || '1st Year';
 };
 
+const deriveSemFromCode = (code = '') => {
+    const digits = String(code).replace(/[^0-9]/g, '');
+    if (digits.length >= 5) {
+        const semD = parseInt(digits[1], 10);
+        if (semD === 1 || semD === 2) return semD;
+    }
+    return null;
+};
+
 const isCourseTaughtByTeacher = (course, user) => {
     if (!user) return false;
     const userTeacherId = user._id ? String(user._id) : (user.id ? String(user.id) : '');
@@ -92,6 +101,7 @@ const Courses = () => {
     const [courses, setCourses] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
+    const [selectedSemester, setSelectedSemester] = useState('All');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [teachers, setTeachers] = useState([]);
@@ -220,6 +230,10 @@ TU Hmawbi Smart Campus Management System
             timetableData.forEach(sheet => {
                 const sheetYearNum = sheet.yearNumber || (sheet.yearLabel ? parseYearNumber(sheet.yearLabel) : 1);
                 const sheetYear = sheet.yearLabel ? normalizeYear(sheet.yearLabel) : normalizeYear(sheetYearNum);
+                let sheetSemNum = sheet.semesterNumber;
+                if (!sheetSemNum && sheet.semesterLabel) {
+                    sheetSemNum = sheet.semesterLabel.includes('2') ? 2 : 1;
+                }
 
                 if (Array.isArray(sheet.legend)) {
                     sheet.legend.forEach(item => {
@@ -230,6 +244,7 @@ TU Hmawbi Smart Campus Management System
                                 name: item.subject || item.code,
                                 year: sheetYearNum,
                                 yearLabel: sheetYear,
+                                semester: deriveSemFromCode(item.code) || sheetSemNum || 1,
                                 teacherName: item.teacher ? item.teacher.trim() : '',
                                 isFromTimetable: true
                             });
@@ -248,6 +263,7 @@ TU Hmawbi Smart Campus Management System
                 const ttInfo = timetableMap.get(cleanCode);
                 const effectiveYearNum = dbc.year || (ttInfo ? ttInfo.year : parseYearNumber(dbc.yearLabel));
                 const effectiveYearLabel = normalizeYear(dbc.yearLabel || effectiveYearNum);
+                const effectiveSem = dbc.semester || (ttInfo ? ttInfo.semester : deriveSemFromCode(dbc.code));
 
                 let newCourseObj = null;
 
@@ -257,6 +273,7 @@ TU Hmawbi Smart Campus Management System
                         name: dbc.name || ttInfo.name,
                         year: effectiveYearNum,
                         yearLabel: effectiveYearLabel,
+                        semester: effectiveSem,
                         teacher: dbc.teacher || (ttInfo.teacherName ? { name: ttInfo.teacherName } : null),
                         isFromTimetable: true
                     };
@@ -264,7 +281,8 @@ TU Hmawbi Smart Campus Management System
                     newCourseObj = {
                         ...dbc,
                         year: effectiveYearNum,
-                        yearLabel: effectiveYearLabel
+                        yearLabel: effectiveYearLabel,
+                        semester: effectiveSem
                     };
                 }
 
@@ -297,6 +315,7 @@ TU Hmawbi Smart Campus Management System
                         name: ttInfo.name,
                         year: ttInfo.year,
                         yearLabel: ttInfo.yearLabel,
+                        semester: ttInfo.semester || deriveSemFromCode(ttInfo.code) || 1,
                         description: `Official timetable subject offering for ${ttInfo.yearLabel}`,
                         teacher: ttInfo.teacherName ? { name: ttInfo.teacherName } : null,
                         students: [],
@@ -448,7 +467,16 @@ TU Hmawbi Smart Campus Management System
 
         const matchesYear = targetYear === 'All' || courseYear === 'All' || courseYear === targetYear;
 
-        return matchesSearch && matchesYear;
+        let matchesSemester = true;
+        if (selectedSemester !== 'All') {
+            const targetSemNum = (selectedSemester === 'Semester 1' || selectedSemester === 1) ? 1 : 2;
+            const cSem = course.semester || deriveSemFromCode(course.code);
+            if (cSem) {
+                matchesSemester = (cSem === targetSemNum);
+            }
+        }
+
+        return matchesSearch && matchesYear && matchesSemester;
     });
 
     return (
@@ -476,16 +504,32 @@ TU Hmawbi Smart Campus Management System
                 </div>
             </header>
 
-            <div className="year-filter-bar glass-panel">
-                {yearFilters.map(year => (
-                    <button
-                        key={year}
-                        className={`year-tag ${selectedYear === year ? 'active' : ''}`}
-                        onClick={() => setSelectedYear(year)}
-                    >
-                        {year}
-                    </button>
-                ))}
+            <div className="year-filter-bar glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                    {yearFilters.map(year => (
+                        <button
+                            key={year}
+                            className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                            onClick={() => setSelectedYear(year)}
+                        >
+                            {year}
+                        </button>
+                    ))}
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.6rem' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600', marginRight: '0.25rem' }}>Semester:</span>
+                    {['All', 'Semester 1', 'Semester 2'].map(sem => (
+                        <button
+                            key={sem}
+                            className={`year-tag ${selectedSemester === sem ? 'active' : ''}`}
+                            style={{ padding: '0.35rem 0.85rem', fontSize: '0.82rem' }}
+                            onClick={() => setSelectedSemester(sem)}
+                        >
+                            {sem}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {error && (
@@ -508,6 +552,7 @@ TU Hmawbi Smart Campus Management System
                         const baseColor = palette[index % palette.length];
                         const yearTag = course.yearLabel || (course.year ? yearNumberToLabel(course.year) : deriveYearTag(course.code));
                         const isManageable = canManageCourse(course);
+                        const courseSem = course.semester || deriveSemFromCode(course.code);
 
                         // Clean display code and title
                         let displayCode = (course.code || '').trim().replace(/^\(\d+\)\s*/, '');
@@ -533,9 +578,14 @@ TU Hmawbi Smart Campus Management System
                             <div key={course._id} className="glass-card course-card">
                                 <div className="course-color-strip" style={{ backgroundColor: baseColor }}></div>
                                 <div className="course-card-header">
-                                    <div className="header-left">
+                                    <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                         <span className="course-code">{displayCode}</span>
                                         <span className="year-badge">{yearTag}</span>
+                                        {courseSem && (
+                                            <span className="year-badge" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                                                Sem {courseSem}
+                                            </span>
+                                        )}
                                     </div>
                                     <span className={`badge ${status === 'Full' ? 'badge-warning' : 'badge-success'}`}>
                                         {status}

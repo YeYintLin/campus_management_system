@@ -39,9 +39,10 @@ const StudentDashboard = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const [statsRes, coursesRes, examsRes, gradesRes, attendanceRes, notifRes] = await Promise.allSettled([
+                const [statsRes, coursesRes, configRes, examsRes, gradesRes, attendanceRes, notifRes] = await Promise.allSettled([
                     apiClient.get('/dashboard/stats'),
                     apiClient.get('/courses'),
+                    apiClient.get('/academic-config'),
                     apiClient.get('/sessions', { params: { sessionType: 'Exam' } }),
                     apiClient.get('/grades', { params: { student: studentId } }),
                     apiClient.get('/attendance', { params: { student: studentId } }),
@@ -54,12 +55,35 @@ const StudentDashboard = () => {
                     const allC = Array.isArray(coursesRes.value.data) ? coursesRes.value.data : [];
                     const studentYearStr = String(user?.year || '1st Year');
                     const userYNum = parseInt(studentYearStr.replace(/\D/g, ''), 10) || 1;
+                    
+                    let activeSemNum = 1;
+                    if (configRes.status === 'fulfilled' && configRes.value.data) {
+                        const cfg = configRes.value.data;
+                        const perYearTerms = cfg.perYearActiveTerms || {};
+                        const yearKey = `${userYNum}th Year`;
+                        const termStr = perYearTerms[yearKey] || perYearTerms[`${userYNum}`] || cfg.activeTerm || 'Semester 1';
+                        if (termStr.includes('2')) activeSemNum = 2;
+                    }
+
                     const junkRegex = /^(introduction|tutorial\s*i+|testing\s*job|practical\s*lab|prepared|approved|sr\.?|batch|group)/i;
                     const myYearCourses = allC.filter(c => {
                         const yNum = c.year || parseInt(String(c.yearLabel || '').replace(/\D/g, ''), 10);
                         const cName = (c.name || '').trim();
                         if (junkRegex.test(cName)) return false;
-                        return yNum === userYNum;
+                        if (yNum !== userYNum) return false;
+
+                        // Derive semester
+                        let cSem = c.semester;
+                        if (!cSem) {
+                            const digits = String(c.code || '').replace(/[^0-9]/g, '');
+                            if (digits.length >= 5) {
+                                const d = parseInt(digits[1], 10);
+                                if (d === 1 || d === 2) cSem = d;
+                            }
+                        }
+                        if (cSem && cSem !== activeSemNum) return false;
+
+                        return true;
                     });
                     setStudentCourses(myYearCourses);
                 }
