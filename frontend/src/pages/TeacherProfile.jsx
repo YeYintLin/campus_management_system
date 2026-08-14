@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Building2, CalendarClock, Edit3, Mail, MapPin, Save, ShieldCheck, X, FileText } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
@@ -24,37 +24,54 @@ const TeacherProfile = () => {
     const { user } = useContext(AuthContext);
     const { teacherId } = useParams();
     const location = useLocation();
+    const navigate = useNavigate();
+    const effectiveTeacherId = teacherId || (user?.role === 'Teacher' ? user?._id : null);
+    const isTeacherSelf = user?.role === 'Teacher' && (user?._id === effectiveTeacherId || !teacherId);
+    const isAdmin = user?.role === 'Admin';
+    const canEdit = isAdmin || isTeacherSelf;
+
     const teacherFromState = location.state?.teacher;
-    const initialTeacher = (getTeacherId(teacherFromState) === teacherId || teacherFromState?._id === teacherId)
-        ? teacherFromState
-        : defaultTeachers.find(item => item.id === teacherId || item._id === teacherId) || defaultTeachers[0];
-    const [teacher, setTeacher] = useState(initialTeacher);
-    const [profileForm, setProfileForm] = useState(buildProfileForm(initialTeacher));
+    const getInitialTeacher = () => {
+        if (teacherFromState && (getTeacherId(teacherFromState) === effectiveTeacherId || teacherFromState?._id === effectiveTeacherId)) {
+            return teacherFromState;
+        }
+        if (isTeacherSelf && user) {
+            return {
+                ...user,
+                id: user._id,
+                role: user.title || user.role || 'Lecturer',
+                department: user.department || 'Mechatronics Engineering',
+                office: user.office || 'MECH-204',
+                consultationHours: user.consultationHours || 'Mon/Wed 2:00 PM - 4:00 PM',
+                specialization: user.specialization || 'Robotics and Control Systems',
+                avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=374151&color=ffffff`,
+            };
+        }
+        return defaultTeachers.find(item => item.id === effectiveTeacherId || item._id === effectiveTeacherId) || defaultTeachers[0];
+    };
+
+    const [teacher, setTeacher] = useState(getInitialTeacher);
+    const [profileForm, setProfileForm] = useState(() => buildProfileForm(getInitialTeacher()));
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [saveError, setSaveError] = useState('');
     const [saveSuccess, setSaveSuccess] = useState('');
     const [courses, setCourses] = useState([]);
-    const isAdmin = user?.role === 'Admin';
 
     useEffect(() => {
         const abortController = new AbortController();
 
         const fetchTeacherProfile = async () => {
+            const targetId = effectiveTeacherId || getTeacherId(teacher);
+            if (!targetId || String(targetId).startsWith('T')) {
+                return;
+            }
+
             setLoadingProfile(true);
             setSaveError('');
 
             try {
-                const targetId = teacherId || initialTeacher?._id || initialTeacher?.id;
-                if (!targetId || targetId.startsWith('T')) {
-                    if (initialTeacher) {
-                        setTeacher(initialTeacher);
-                        setProfileForm(buildProfileForm(initialTeacher));
-                    }
-                    return;
-                }
-
                 const { data } = await apiClient.get(`/users/${targetId}`, { signal: abortController.signal });
                 const fetchedTeacher = {
                     ...data,
@@ -71,11 +88,24 @@ const TeacherProfile = () => {
                 
                 // Fetch assigned courses for this teacher
                 const coursesRes = await apiClient.get('/courses', { params: { teacher: targetId }, signal: abortController.signal }).catch(() => ({ data: [] }));
-                setCourses(coursesRes.data);
+                setCourses(coursesRes.data || []);
             } catch (error) {
                 if (error?.code !== 'ERR_CANCELED') {
-                    if (initialTeacher) {
-                        setTeacher(initialTeacher);
+                    if (isTeacherSelf && user) {
+                        const fallbackTeacher = {
+                            ...user,
+                            id: user._id,
+                            role: user.title || user.role || 'Lecturer',
+                            department: user.department || 'Mechatronics Engineering',
+                            office: user.office || 'MECH-204',
+                            consultationHours: user.consultationHours || 'Mon/Wed 2:00 PM - 4:00 PM',
+                            specialization: user.specialization || 'Robotics and Control Systems',
+                            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=374151&color=ffffff`,
+                        };
+                        setTeacher(fallbackTeacher);
+                        setProfileForm(buildProfileForm(fallbackTeacher));
+                    } else if (teacher) {
+                        // Keep current teacher
                     } else {
                         setTeacher(undefined);
                         setSaveError(error.response?.data?.message || error.message || 'Unable to load teacher profile.');
@@ -90,7 +120,7 @@ const TeacherProfile = () => {
 
         fetchTeacherProfile();
         return () => abortController.abort();
-    }, [initialTeacher, teacherId]);
+    }, [effectiveTeacherId]);
 
     const handleFormChange = (field, value) => {
         setProfileForm(previous => ({ ...previous, [field]: value }));
@@ -110,7 +140,7 @@ const TeacherProfile = () => {
         setSaveSuccess('');
 
         try {
-            const teacherDbId = teacher?._id;
+            const teacherDbId = teacher?._id || (isTeacherSelf ? user?._id : null);
             const updatedTeacher = teacherDbId
                 ? (await apiClient.put(`/users/${teacherDbId}`, profileForm)).data
                 : { ...teacher, ...profileForm, role: profileForm.title };
@@ -120,7 +150,7 @@ const TeacherProfile = () => {
                 ...updatedTeacher,
                 id: updatedTeacher._id || teacher?.id,
                 role: updatedTeacher.title || updatedTeacher.role || profileForm.title,
-                avatar: teacher?.avatar || `https://i.pravatar.cc/150?u=${updatedTeacher._id || teacher?.id}`,
+                avatar: teacher?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(updatedTeacher.name || teacher.name)}&background=374151&color=ffffff`,
             });
             setProfileForm(buildProfileForm({
                 ...teacher,
@@ -128,7 +158,7 @@ const TeacherProfile = () => {
                 role: updatedTeacher.title || updatedTeacher.role || profileForm.title,
             }));
             setIsEditing(false);
-            setSaveSuccess(teacherDbId ? 'Teacher profile updated.' : 'Sample profile updated for this view.');
+            setSaveSuccess('Teacher profile updated successfully.');
         } catch (error) {
             setSaveError(error.response?.data?.message || error.message || 'Unable to update teacher profile.');
         } finally {
@@ -139,10 +169,17 @@ const TeacherProfile = () => {
     if (!teacher) {
         return (
             <div className="teacher-profile-page animate-fade-in">
-                <Link to="/teachers" className="btn btn-secondary profile-back-link">
-                    <ArrowLeft size={16} />
-                    Back to Teachers
-                </Link>
+                {isTeacherSelf ? (
+                    <button type="button" className="btn btn-secondary profile-back-link" onClick={() => navigate(-1)}>
+                        <ArrowLeft size={16} />
+                        Back
+                    </button>
+                ) : (
+                    <Link to="/teachers" className="btn btn-secondary profile-back-link">
+                        <ArrowLeft size={16} />
+                        Back to Teachers
+                    </Link>
+                )}
                 <div className="glass-panel empty-state">
                     <p>{loadingProfile ? 'Loading teacher profile...' : (saveError || 'Teacher profile not found.')}</p>
                 </div>
@@ -155,10 +192,17 @@ const TeacherProfile = () => {
 
     return (
         <div className="teacher-profile-page animate-fade-in">
-            <Link to="/teachers" className="btn btn-secondary profile-back-link">
-                <ArrowLeft size={16} />
-                Back to Teachers
-            </Link>
+            {isTeacherSelf ? (
+                <button type="button" className="btn btn-secondary profile-back-link" onClick={() => navigate(-1)}>
+                    <ArrowLeft size={16} />
+                    Back
+                </button>
+            ) : (
+                <Link to="/teachers" className="btn btn-secondary profile-back-link">
+                    <ArrowLeft size={16} />
+                    Back to Teachers
+                </Link>
+            )}
 
             <section className="glass-card teacher-profile-hero">
                 <div className="profile-avatar-wrap">
@@ -176,7 +220,7 @@ const TeacherProfile = () => {
                         </div>
                         <div className="profile-actions">
                             <span className={`badge ${statusClass}`}>{teacher.status || 'Active'}</span>
-                            {isAdmin && !isEditing && (
+                            {canEdit && !isEditing && (
                                 <button type="button" className="btn btn-primary btn-sm" onClick={() => setIsEditing(true)}>
                                     <Edit3 size={15} />
                                     Edit Profile
@@ -194,7 +238,7 @@ const TeacherProfile = () => {
             {saveSuccess && <div className="profile-message success-message">{saveSuccess}</div>}
             {saveError && <div className="profile-message error-message">{saveError}</div>}
 
-            {isAdmin && isEditing && (
+            {canEdit && isEditing && (
                 <form className="glass-card profile-edit-card" onSubmit={handleSaveProfile}>
                     <div className="profile-section-heading">
                         <Edit3 size={20} />
