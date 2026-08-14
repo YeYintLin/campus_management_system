@@ -173,7 +173,10 @@ const batchImportSessions = async (req, res) => {
                 count: parsedMatrix.length
             });
         } else {
-            const validSessions = (parsedSessions || []).filter(s => s && s.courseCode && s.date && !isNaN(new Date(s.date).getTime()));
+            const validSessions = (parsedSessions || []).filter(s => s && s.courseCode).map(s => ({
+                ...s,
+                date: (s.date && !isNaN(new Date(s.date).getTime())) ? s.date : new Date().toISOString()
+            }));
             if (validSessions.length === 0) {
                 return res.status(400).json({ message: `No valid ${sessionType} sessions found in uploaded Excel file.` });
             }

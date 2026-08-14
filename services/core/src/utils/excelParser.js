@@ -73,9 +73,9 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
 
         const fullText = JSON.stringify(jsonRows).toLowerCase();
         const isExamFormat = fullText.includes('sr. no') || fullText.includes('exam timetable') || fullText.includes('mid-term') || fullText.includes('final exam');
-        const isAcademicFormat = fullText.includes('monday') || fullText.includes('tuesday') || fullText.includes('lunch break') || fullText.includes('timetable for');
+        const isAcademicFormat = fullText.includes('monday') || fullText.includes('tuesday') || fullText.includes('mon') || fullText.includes('tue') || fullText.includes('lunch break') || fullText.includes('timetable for') || fullText.includes('period') || fullText.includes('time table');
 
-        if (targetCategory === 'Academic' || isAcademicFormat) {
+        if (targetCategory === 'Academic' || isAcademicFormat || targetCategory === 'Practical' || targetCategory === 'Tutorial') {
             let titleText = '';
             jsonRows.forEach(row => {
                 if (!Array.isArray(row)) return;
@@ -143,6 +143,9 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
             ) {
                 detectedSemester = 'Semester 1';
             }
+
+            let majorRoom = '3/212-A';
+            let familyTeacher = 'Faculty Member';
 
             jsonRows.forEach(row => {
                 if (!Array.isArray(row)) return;
@@ -231,12 +234,20 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
                 { period: 6, start: '03:00 PM', end: '03:50 PM', startMin: 900, endMin: 950 }
             ];
 
-            const daysList = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+            const matchDayName = (str = '') => {
+                const s = String(str).toLowerCase().trim();
+                if (s.includes('mon')) return 'Monday';
+                if (s.includes('tue')) return 'Tuesday';
+                if (s.includes('wed')) return 'Wednesday';
+                if (s.includes('thu')) return 'Thursday';
+                if (s.includes('fri')) return 'Friday';
+                return null;
+            };
 
             jsonRows.forEach(row => {
                 if (!Array.isArray(row) || row.length === 0) return;
                 const dayName = String(row[0] || '').trim();
-                const matchedDay = daysList.find(d => d.toLowerCase() === dayName.toLowerCase());
+                const matchedDay = matchDayName(dayName);
                 if (!matchedDay) return;
 
                 let periodIdx = 0;
@@ -277,9 +288,12 @@ const parseTUHmawbiExcel = (fileBuffer, targetCategory = 'Academic') => {
 
                         allMatrix.push(slotItem);
 
-                        // Also populate allSessions so non-Academic imports accept matrix slots
+                        // Populate allSessions for Practical/Tutorial imports
                         allSessions.push({
-                            sessionType: sessionType,
+                            year: detectedYear,
+                            semester: detectedSemester,
+                            major: 'MC',
+                            sessionType: (targetCategory === 'Practical' || targetCategory === 'Tutorial') ? targetCategory : sessionType,
                             examType: 'N/A',
                             courseCode: cleanCode,
                             courseName: legendInfo.name || cleanCode,
