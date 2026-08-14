@@ -587,8 +587,21 @@ const getUserAttendance = async (req, res) => {
             targetStudentId = req.user._id.toString();
         }
 
+        // Optimization: if filtering by student, use $elemMatch to only fetch records containing them
+        if (targetStudentId) {
+            query['records'] = { $elemMatch: { studentId: targetStudentId } };
+        }
+
         const attendanceRecords = await Attendance.find(query).sort({ date: -1 });
         const resolvedRecords = [];
+
+        // For students viewing their own records, skip the expensive per-record HTTP resolution
+        const isOwnStudentView = roleStr === 'student' && targetStudentId;
+        const selfStudentData = isOwnStudentView ? {
+            _id: req.user._id,
+            name: req.user.name || 'Student',
+            email: req.user.email || ''
+        } : null;
 
         for (const record of attendanceRecords) {
             let recordsToInclude = record.records;
@@ -600,20 +613,25 @@ const getUserAttendance = async (req, res) => {
 
             const resolvedStudentRecords = [];
             for (const r of recordsToInclude) {
-                let studentData = { _id: r.studentId, name: 'Unknown Student', email: '' };
-                try {
-                    const response = await axios.get(`${CORE_SERVICE_URL}/api/users/${r.studentId}`, {
-                        headers: { Authorization: req.headers.authorization }
-                    });
-                    if (response.data) {
-                        studentData = {
-                            _id: response.data._id,
-                            name: response.data.name,
-                            email: response.data.email
-                        };
+                let studentData = selfStudentData || { _id: r.studentId, name: 'Unknown Student', email: '' };
+
+                // Only call Core Service for non-student (teacher/admin) views
+                if (!isOwnStudentView) {
+                    try {
+                        const response = await axios.get(`${CORE_SERVICE_URL}/api/users/${r.studentId}`, {
+                            headers: { Authorization: req.headers.authorization },
+                            timeout: 3000
+                        });
+                        if (response.data) {
+                            studentData = {
+                                _id: response.data._id,
+                                name: response.data.name,
+                                email: response.data.email
+                            };
+                        }
+                    } catch (err) {
+                        console.error(`Failed to fetch user ${r.studentId} from Core Service:`, err.message);
                     }
-                } catch (err) {
-                    console.error(`Failed to fetch user ${r.studentId} from Core Service:`, err.message);
                 }
 
                 resolvedStudentRecords.push({
@@ -626,6 +644,7 @@ const getUserAttendance = async (req, res) => {
             resolvedRecords.push({
                 _id: record._id,
                 course: record.courseId,
+                courseCode: record.courseId,
                 date: record.date,
                 records: resolvedStudentRecords,
                 createdAt: record.createdAt,
