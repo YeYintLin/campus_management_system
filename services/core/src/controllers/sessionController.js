@@ -15,45 +15,9 @@ const batchImportSessions = async (req, res) => {
             return res.status(400).json({ message: 'Please upload an Excel file (.xlsx or .xls).' });
         }
 
-        const { year = '6th Year', semester = 'Semester 1', major = 'MC', sessionType = 'Academic' } = req.body;
+        const { year = '6th Year', semester = 'Semester 1', major = 'MC', sessionType = 'Practical' } = req.body;
 
-        // 0. Store original uploaded file bytes untouched for exact byte-for-byte export
-        const fileDoc = await TimetableFile.create({
-            originalName: req.file.originalname || 'TimeTable.xlsx',
-            mimeType: req.file.mimetype || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            data: req.file.buffer
-        });
-
-        // 1. Parse ExcelJS structured Semester blocks ONLY for Academic imports
-        if (sessionType === 'Academic') {
-            try {
-                const parsedSemesters = await parseTimetableBuffer(req.file.buffer);
-                if (parsedSemesters && parsedSemesters.length > 0) {
-                    await Semester.deleteMany({ sheetName: { $in: parsedSemesters.map(s => s.sheet_name) } });
-                    await Semester.insertMany(
-                        parsedSemesters.map((s, i) => ({
-                            sourceFile: fileDoc._id,
-                            sheetName: s.sheet_name,
-                            department: s.department,
-                            academicYear: s.academic_year,
-                            yearLabel: s.year_label,
-                            semesterLabel: s.semester_label,
-                            semesterOrder: i,
-                            majorRoom: s.major_room,
-                            combinedRoom: s.combined_room,
-                            familyTeacher: s.family_teacher,
-                            periods: s.periods,
-                            days: s.days,
-                            legend: s.legend
-                        }))
-                    );
-                }
-            } catch (semErr) {
-                console.error('Semester insert notice:', semErr.message);
-            }
-        }
-
-        // 2. Parse Excel file via server-side parser
+        // Parse Excel file via server-side parser
         let { parsedMatrix, parsedSessions, headerError } = parseTUHmawbiExcel(req.file.buffer, sessionType);
 
         // 3. Fallback extraction for Practical / Tutorial / Exam if multi-sheet timetable workbook is provided
