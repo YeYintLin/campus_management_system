@@ -104,6 +104,59 @@ const getStudentFailingCount = async (studentId, passMarkPercent = DEFAULT_PASS_
     }
 };
 
+// Helper: Resolve student User IDs for a set of courses (explicit roster or dynamic cohort match)
+const resolveStudentIdsForCourses = async (courses) => {
+    const studentUserIds = new Set();
+
+    for (const course of courses) {
+        // 1. Explicit roster in course.students
+        if (Array.isArray(course.students) && course.students.length > 0) {
+            for (const sid of course.students) {
+                if (sid) studentUserIds.add(sid.toString());
+            }
+            continue;
+        }
+
+        // 2. Computed cohort match (Year + Semester + Department)
+        const yearNum = course.year || 1;
+        let semNum = course.semester;
+        if (!semNum) {
+            const digits = (course.code || '').replace(/[^0-9]/g, '');
+            if (digits.length >= 5) {
+                const d = parseInt(digits[1], 10);
+                if (d === 1 || d === 2) semNum = d;
+            }
+        }
+        if (!semNum) semNum = 1;
+
+        const targetAbsSem = (yearNum - 1) * 2 + semNum;
+
+        const matchingStudents = await Student.find({ semester: targetAbsSem }).populate('user', '_id name status role');
+        for (const st of matchingStudents) {
+            const uid = st.user?._id || st.user;
+            if (uid) studentUserIds.add(uid.toString());
+        }
+
+        // Also check User with matching year
+        const yearLabel = `${yearNum}${yearNum === 1 ? 'st' : yearNum === 2 ? 'nd' : yearNum === 3 ? 'rd' : 'th'} Year`;
+        const matchingUsers = await User.find({
+            role: 'Student',
+            status: { $ne: 'Suspended' },
+            $or: [
+                { year: yearNum },
+                { year: yearLabel },
+                { year: new RegExp(`^${yearNum}`, 'i') }
+            ]
+        }).select('_id');
+
+        for (const u of matchingUsers) {
+            if (u._id) studentUserIds.add(u._id.toString());
+        }
+    }
+
+    return Array.from(studentUserIds);
+};
+
 // ─────────────────────────────────────────────
 // GET /api/dashboard/at-risk
 // Query: scope=all|own, attendance_threshold, failing_threshold
@@ -128,14 +181,13 @@ const getAtRiskStudents = async (req, res) => {
 
         if (scope === 'own' && req.user.role === 'Teacher') {
             // Teacher: only students enrolled in their courses
-            const myCourses = await Course.find({ teacher: req.user._id });
-            const idSet = new Set();
-            for (const course of myCourses) {
-                for (const sid of course.students) {
-                    idSet.add(sid.toString());
-                }
-            }
-            studentUserIds = Array.from(idSet);
+            const myCourses = await Course.find({
+                $or: [
+                    { teacher: req.user._id },
+                    { instructors: req.user._id }
+                ]
+            });
+            studentUserIds = await resolveStudentIdsForCourses(myCourses);
         } else {
             // Admin: all active students
             const students = await Student.find({ status: 'Active' }).populate('user', 'name email status');
@@ -329,15 +381,8 @@ const getDashboardStats = async (req, res) => {
                 myCourses.push(c);
             }
 
-            // Deduplicate enrolled students
-            const myStudentIds = new Set();
-            for (const course of myCourses) {
-                if (Array.isArray(course.students)) {
-                    for (const sid of course.students) {
-                        if (sid) myStudentIds.add(sid.toString());
-                    }
-                }
-            }
+            // Resolve student IDs taught across teacher's courses
+            const myStudentUserIds = await resolveStudentIdsForCourses(myCourses);
 
             // Today's schedule
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -366,54 +411,17 @@ const getDashboardStats = async (req, res) => {
                 };
             });
 
-            // Count courses with ungraded students (simplified: courses with 0 grades)
+            // Count courses with ungraded students (courses with 0 grades)
             let pendingGrading = 0;
             for (const course of myCourses) {
                 const gradeCount = await Grade.countDocuments({ course: course._id });
-                if (gradeCount === 0 && Array.isArray(course.students) && course.students.length > 0) {
+                if (gradeCount === 0 && myStudentUserIds.length > 0) {
                     pendingGrading++;
                 }
             }
 
-            let myStudentCount = myStudentIds.size;
-
-            if (myStudentCount === 0) {
-                // Fallback: count active students in teacher's department
-                let teacherDept = req.user.department || '';
-                if (!teacherDept && req.user.email) {
-                    const parts = req.user.email.split('@')[0].toLowerCase().split('.');
-                    if (parts.length >= 2) {
-                        const d = parts[1];
-                        if (d === 'mc' || d === 'mce') teacherDept = 'Mechatronics Engineering';
-                        else if (d === 'c' || d === 'ce') teacherDept = 'Civil Engineering';
-                        else if (d === 'ep') teacherDept = 'Electrical Power Engineering';
-                        else if (d === 'ec' || d === 'ece') teacherDept = 'Electronic Engineering';
-                        else if (d === 'it') teacherDept = 'Information Technology';
-                        else if (d === 'me') teacherDept = 'Mechanical Engineering';
-                    }
-                }
-                if (!teacherDept) teacherDept = 'Mechatronics Engineering';
-
-                const deptKeyword = teacherDept.split(' ')[0].toLowerCase();
-                const deptUsers = await User.find({
-                    role: 'Student',
-                    $or: [
-                        { department: new RegExp(deptKeyword, 'i') },
-                        { email: new RegExp(`\\.${deptKeyword.substring(0, 2)}\\.`, 'i') },
-                        { email: new RegExp(`\\.${deptKeyword}\\.`, 'i') }
-                    ]
-                }).select('_id');
-
-                myStudentCount = await Student.countDocuments({
-                    $or: [
-                        { user: { $in: deptUsers.map(u => u._id) } },
-                        { department: new RegExp(deptKeyword, 'i') }
-                    ]
-                });
-            }
-
             stats.activeCourses = myCourses.length;
-            stats.myStudentCount = myStudentCount;
+            stats.myStudentCount = myStudentUserIds.length;
             stats.pendingGrading = pendingGrading;
             stats.todaySchedule = scheduleWithNames;
 
