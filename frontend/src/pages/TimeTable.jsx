@@ -1690,8 +1690,8 @@ const TimeTable = () => {
 
             {/* Import Preview & Verification Modal */}
             {isPreviewModalOpen && previewData && (
-                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', backdropFilter: 'blur(8px)' }}>
-                    <div className="glass-card themed-modal-content animate-pop-in" style={{ width: '100%', maxWidth: '960px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: '1.75rem', borderRadius: '18px', border: '1px solid rgba(168,85,247,0.3)', overflow: 'hidden' }}>
+                <div className="timetable-modal-overlay">
+                    <div className="timetable-modal-card animate-pop-in">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--surface-border)', paddingBottom: '1rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <FileSpreadsheet size={24} style={{ color: '#a855f7' }} />
@@ -1709,7 +1709,7 @@ const TimeTable = () => {
                             </button>
                         </div>
 
-                        <div style={{ overflowY: 'auto', flex: 1, marginBottom: '1.25rem', border: '1px solid var(--surface-border)', borderRadius: '10px' }}>
+                        <div style={{ overflowY: 'auto', flex: 1, maxHeight: '55vh', marginBottom: '1.25rem', border: '1px solid var(--surface-border)', borderRadius: '10px' }}>
                             <table className="attendance-table" style={{ width: '100%', margin: 0 }}>
                                 <thead>
                                     <tr>
