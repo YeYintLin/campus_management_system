@@ -7,6 +7,58 @@ import { getNormalizedUserYear, normalizeYear, parseYearNumber } from '../utils/
 import { exportAcademicMatrixExcel, exportDateScheduleExcel, exportExamScheduleExcel } from '../utils/excelExporter';
 import './TimeTable.css';
 
+// Safe date parser to completely prevent RangeError: invalid date
+const safeParseDate = (rawDate) => {
+    if (!rawDate) return new Date().toISOString();
+    if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
+        return rawDate.toISOString();
+    }
+    const str = String(rawDate).trim();
+    if (!str) return new Date().toISOString();
+
+    const dmy = str.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+    if (dmy) {
+        const d = parseInt(dmy[1], 10);
+        const m = parseInt(dmy[2], 10) - 1;
+        let y = parseInt(dmy[3], 10);
+        if (y < 100) y += 2000;
+        const dt = new Date(Date.UTC(y, m, d));
+        if (!isNaN(dt.getTime())) return dt.toISOString();
+    }
+
+    const ymd = str.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+    if (ymd) {
+        const y = parseInt(ymd[1], 10);
+        const m = parseInt(ymd[2], 10) - 1;
+        const d = parseInt(ymd[3], 10);
+        const dt = new Date(Date.UTC(y, m, d));
+        if (!isNaN(dt.getTime())) return dt.toISOString();
+    }
+
+    try {
+        const parsed = new Date(str);
+        if (!isNaN(parsed.getTime())) {
+            return parsed.toISOString();
+        }
+    } catch (e) {}
+
+    return new Date().toISOString();
+};
+
+const deriveYearFromCode = (code = '', fallback = '3rd Year') => {
+    const digits = String(code).match(/\d{3,5}/);
+    if (digits) {
+        const firstDigit = digits[0].charAt(0);
+        if (firstDigit === '1') return '1st Year';
+        if (firstDigit === '2') return '2nd Year';
+        if (firstDigit === '3') return '3rd Year';
+        if (firstDigit === '4') return '4th Year';
+        if (firstDigit === '5') return '5th Year';
+        if (firstDigit === '6') return '6th Year';
+    }
+    return fallback;
+};
+
 // Client-side parser for Practical / Tutorial / Exam Excel preview (zero network dependency)
 const parseClientPracticalExcel = (file, category, defaultYear, defaultSemester) => {
     return new Promise((resolve, reject) => {
@@ -94,7 +146,7 @@ const parseClientPracticalExcel = (file, category, defaultYear, defaultSemester)
                         let cleanGroup = String(rawGroup || '').trim() || 'All';
                         let cleanPlace = String(rawPlace || '').trim() || (category === 'Tutorial' ? 'Classroom 3/212-A' : 'Mechatronics Lab');
 
-                        let parsedDate = rawDate ? new Date(rawDate).toISOString() : new Date().toISOString();
+                        let parsedDate = safeParseDate(rawDate);
                         const timeStr = String(rawTime || '09:00 AM - 09:50 AM');
                         const timeParts = timeStr.includes('to') ? timeStr.split('to') : timeStr.split('-');
                         const startTime = timeParts[0]?.trim() || '09:00 AM';
@@ -109,6 +161,8 @@ const parseClientPracticalExcel = (file, category, defaultYear, defaultSemester)
                             else if (yStr.includes('4')) yearLabel = '4th Year';
                             else if (yStr.includes('5')) yearLabel = '5th Year';
                             else if (yStr.includes('6')) yearLabel = '6th Year';
+                        } else {
+                            yearLabel = deriveYearFromCode(cleanCode, defaultYear || '3rd Year');
                         }
 
                         sessions.push({
