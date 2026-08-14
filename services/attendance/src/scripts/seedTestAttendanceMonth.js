@@ -22,9 +22,11 @@ async function seedTestAttendanceMonth() {
         });
         console.log('Cleared existing January test attendance records.');
 
-        // 2. Mock 14 student IDs
-        const students = [
-            '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14'
+        // 2. 14 5th Year Mechatronics students
+        const studentRolls = [
+            'V-MC-1', 'V-MC-2', 'V-MC-3', 'V-MC-4', 'V-MC-5',
+            'V-MC-6', 'V-MC-7', 'V-MC-8', 'V-MC-9', 'V-MC-10',
+            'V-MC-11', 'V-MC-12', 'V-MC-13', 'V-MC-14'
         ];
 
         // 3. Create 12 teaching sessions across January (e.g. every Mon, Wed, Fri)
@@ -37,13 +39,15 @@ async function seedTestAttendanceMonth() {
 
         for (let sIdx = 0; sIdx < sessionDates.length; sIdx++) {
             const dateStr = sessionDates[sIdx];
-            const records = students.map((stId, idx) => {
-                // Realistic attendance: occasional absence for 2 students
+            const records = [];
+
+            studentRolls.forEach((roll, idx) => {
                 const isAbsent = (idx === 3 && sIdx === 4) || (idx === 7 && sIdx === 8);
-                return {
-                    studentId: stId,
-                    status: isAbsent ? 'Absent' : 'Present'
-                };
+                const status = isAbsent ? 'Absent' : 'Present';
+                // Add roll number entry
+                records.push({ studentId: roll, status });
+                // Also add index entry
+                records.push({ studentId: String(idx + 1), status });
             });
 
             await Attendance.create({

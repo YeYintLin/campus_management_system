@@ -1786,13 +1786,24 @@ const Attendance = () => {
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Month</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         value={exportConfig.month}
                                         onChange={(e) => setExportConfig({ ...exportConfig, month: e.target.value })}
-                                        placeholder="e.g. ဇန်နဝါရီ"
                                         style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--surface-border)' }}
-                                    />
+                                    >
+                                        <option value="ဇန်နဝါရီ (Jan)" style={{ background: '#1e293b' }}>ဇန်နဝါရီ (January)</option>
+                                        <option value="ဖေဖော်ဝါရီ (Feb)" style={{ background: '#1e293b' }}>ဖေဖော်ဝါရီ (February)</option>
+                                        <option value="မတ် (Mar)" style={{ background: '#1e293b' }}>မတ် (March)</option>
+                                        <option value="ဧပြီ (Apr)" style={{ background: '#1e293b' }}>ဧပြီ (April)</option>
+                                        <option value="မေ (May)" style={{ background: '#1e293b' }}>မေ (May)</option>
+                                        <option value="ဇွန် (Jun)" style={{ background: '#1e293b' }}>ဇွန် (June)</option>
+                                        <option value="ဇူလိုင် (Jul)" style={{ background: '#1e293b' }}>ဇူလိုင် (July)</option>
+                                        <option value="သြဂုတ် (Aug)" style={{ background: '#1e293b' }}>သြဂုတ် (August)</option>
+                                        <option value="စက်တင်ဘာ (Sep)" style={{ background: '#1e293b' }}>စက်တင်ဘာ (September)</option>
+                                        <option value="အောက်တိုဘာ (Oct)" style={{ background: '#1e293b' }}>အောက်တိုဘာ (October)</option>
+                                        <option value="နိုဝင်ဘာ (Nov)" style={{ background: '#1e293b' }}>နိုဝင်ဘာ (November)</option>
+                                        <option value="ဒီဇင်ဘာ (Dec)" style={{ background: '#1e293b' }}>ဒီဇင်ဘာ (December)</option>
+                                    </select>
                                 </div>
                             </div>
 

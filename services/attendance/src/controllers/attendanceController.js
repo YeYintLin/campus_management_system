@@ -1144,7 +1144,13 @@ const exportRollCallExcel = async (req, res) => {
                     if (isRealStudent && p < conductedSessions) {
                         const rec = attendanceRecords[p];
                         if (rec && Array.isArray(rec.records)) {
-                            const studentRec = rec.records.find(r => String(r.studentId) === String(st._id) || String(r.studentId) === String(st.user?._id));
+                            const studentRec = rec.records.find(r =>
+                                String(r.studentId) === String(st._id) ||
+                                String(r.studentId) === String(st.user?._id) ||
+                                String(r.studentId) === String(i + 1) ||
+                                (rollStr && String(r.studentId).toUpperCase() === rollStr.toUpperCase()) ||
+                                (st.rollNo && String(r.studentId).toUpperCase() === String(st.rollNo).toUpperCase())
+                            );
                             rowValues.push(studentRec && studentRec.status === 'Present' ? '✓' : '');
                         } else {
                             rowValues.push('');
