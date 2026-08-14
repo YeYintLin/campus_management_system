@@ -54,12 +54,61 @@ const batchImportSessions = async (req, res) => {
         }
 
         // 2. Parse Excel file via server-side parser
-        const { parsedMatrix, parsedSessions, headerError } = parseTUHmawbiExcel(req.file.buffer, sessionType);
-        if (headerError) {
+        let { parsedMatrix, parsedSessions, headerError } = parseTUHmawbiExcel(req.file.buffer, sessionType);
+
+        // 3. Fallback extraction for Practical / Tutorial / Exam if multi-sheet timetable workbook is provided
+        if (sessionType !== 'Academic' && (!parsedSessions || parsedSessions.length === 0)) {
+            try {
+                const parsedSemesters = await parseTimetableBuffer(req.file.buffer);
+                if (parsedSemesters && parsedSemesters.length > 0) {
+                    parsedSessions = parsedSessions || [];
+                    parsedSemesters.forEach(s => {
+                        const sYear = s.year_label || `${s.year_number || 1}th Year`;
+                        const sSem = s.semester_label || `Semester ${s.semester_number || 1}`;
+                        if (Array.isArray(s.days)) {
+                            s.days.forEach(d => {
+                                if (Array.isArray(d.periods)) {
+                                    d.periods.forEach(p => {
+                                        if (p && p.subject && p.subject.code) {
+                                            const cleanCode = String(p.subject.code).trim();
+                                            parsedSessions.push({
+                                                year: sYear,
+                                                semester: sSem,
+                                                major: 'MC',
+                                                sessionType: ['Practical', 'Tutorial', 'Exam'].includes(sessionType) ? sessionType : 'Practical',
+                                                examType: 'N/A',
+                                                courseCode: cleanCode,
+                                                courseName: p.subject.name || cleanCode,
+                                                title: p.subject.name || cleanCode,
+                                                teacher: p.subject.teacher || s.family_teacher || 'Faculty Member',
+                                                groupTag: 'All',
+                                                date: new Date().toISOString(),
+                                                day: d.day,
+                                                startTime: p.time ? p.time.split('-')[0].trim() : '09:00 AM',
+                                                endTime: p.time ? p.time.split('-')[1].trim() : '09:50 AM',
+                                                startTimeMinutes: 540 + ((p.period_number || 1) - 1) * 60,
+                                                endTimeMinutes: 590 + ((p.period_number || 1) - 1) * 60,
+                                                place: p.subject.room || s.major_room || '3/212-A',
+                                                status: 'Draft'
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                    headerError = null;
+                }
+            } catch (fbErr) {
+                console.warn('Fallback timetable session parsing note:', fbErr.message);
+            }
+        }
+
+        if (headerError && sessionType === 'Academic') {
             return res.status(400).json({ message: headerError });
         }
 
-        // 2. Find or create authoritative ClassSections per parsed cohort
+        // 4. Find or create authoritative ClassSections per parsed cohort (only for Academic imports)
         const ClassSection = require('../models/ClassSection');
         const sectionMap = new Map();
         const itemsForSections = sessionType === 'Academic' ? (parsedMatrix || []) : (parsedSessions || []);
@@ -91,34 +140,19 @@ const batchImportSessions = async (req, res) => {
         }
 
         const createdSections = new Map();
-        for (const sec of sectionMap.values()) {
-            const updated = await ClassSection.findOneAndUpdate(
-                { year: sec.year, semester: sec.semester, major: sec.major },
-                {
-                    $set: {
-                        familyTeacher: sec.familyTeacher,
-                        majorRoom: sec.majorRoom
-                    }
-                },
-                { upsert: true, new: true }
-            );
-            createdSections.set(`${sec.year}_${sec.semester}_${sec.major}`, updated);
-        }
-
-        // 3. Link to existing official subject courses cleanly (without creating stray Course records)
-        const Course = require('../models/Course');
-        const itemsToProcess = sessionType === 'Academic' ? (parsedMatrix || []) : (parsedSessions || []);
-        for (const item of itemsToProcess) {
-            const cCode = (item.courseCode || '').trim().toUpperCase();
-            if (cCode) {
-                try {
-                    const existingCourse = await Course.findOne({ code: { $regex: new RegExp(`^${cCode.replace(/-/g, '[- ]?')}$`, 'i') } });
-                    if (existingCourse) {
-                        item.courseRef = existingCourse._id;
-                    }
-                } catch (findErr) {
-                    console.error('Course lookup notice:', findErr.message);
-                }
+        if (sessionType === 'Academic') {
+            for (const sec of sectionMap.values()) {
+                const updated = await ClassSection.findOneAndUpdate(
+                    { year: sec.year, semester: sec.semester, major: sec.major },
+                    {
+                        $set: {
+                            familyTeacher: sec.familyTeacher,
+                            majorRoom: sec.majorRoom
+                        }
+                    },
+                    { upsert: true, new: true }
+                );
+                createdSections.set(`${sec.year}_${sec.semester}_${sec.major}`, updated);
             }
         }
 
