@@ -17,8 +17,24 @@ const batchImportSessions = async (req, res) => {
 
         const { year = '6th Year', semester = 'Semester 1', major = 'MC', sessionType = 'Practical' } = req.body;
 
-        // Parse Excel file via server-side parser
-        let { parsedMatrix, parsedSessions, headerError } = parseTUHmawbiExcel(req.file.buffer, sessionType);
+        let parsedSessions = [];
+        if (req.body.sessions) {
+            try {
+                parsedSessions = typeof req.body.sessions === 'string' ? JSON.parse(req.body.sessions) : req.body.sessions;
+            } catch (e) {
+                console.warn('Failed to parse req.body.sessions:', e.message);
+            }
+        }
+
+        let parsedMatrix = [];
+        let headerError = null;
+
+        if ((!parsedSessions || parsedSessions.length === 0) && req.file) {
+            const resParsed = parseTUHmawbiExcel(req.file.buffer, sessionType);
+            parsedMatrix = resParsed.parsedMatrix;
+            parsedSessions = resParsed.parsedSessions;
+            headerError = resParsed.headerError;
+        }
 
         // 3. Fallback extraction for Practical / Tutorial / Exam if multi-sheet timetable workbook is provided
         if (sessionType !== 'Academic' && (!parsedSessions || parsedSessions.length === 0)) {

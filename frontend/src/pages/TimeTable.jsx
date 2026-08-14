@@ -1168,12 +1168,15 @@ const TimeTable = () => {
         setImportSuccess('');
 
         const formData = new FormData();
-        formData.append('file', previewData.file);
+        if (previewData.file) formData.append('file', previewData.file);
         formData.append('year', selectedYear);
         formData.append('semester', selectedSemester);
         formData.append('major', selectedMajor);
         formData.append('category', previewData.sessionType || selectedCategory);
         formData.append('sessionType', previewData.sessionType || selectedCategory);
+        if (previewData.sessions && previewData.sessions.length > 0) {
+            formData.append('sessions', JSON.stringify(previewData.sessions));
+        }
 
         try {
             const { data } = await apiClient.post('/sessions/batch-import', formData, {
