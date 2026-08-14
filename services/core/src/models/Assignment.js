@@ -20,17 +20,34 @@ const assignmentSchema = new mongoose.Schema(
             required: true,
         },
         fileUrl: {
-            type: String, // The assignment prompt file
+            type: String, // The assignment question/tutorial prompt file
+        },
+        fileName: {
+            type: String, // Original question file name
         },
         submissions: [
             {
                 student: {
                     type: mongoose.Schema.Types.ObjectId,
                     ref: 'User',
+                    required: true,
+                },
+                rollNo: {
+                    type: String,
+                },
+                fileName: {
+                    type: String,
+                },
+                fileSize: {
+                    type: String,
                 },
                 fileUrl: {
                     type: String, // The submitted assignment file
                     required: true,
+                },
+                isLate: {
+                    type: Boolean,
+                    default: false,
                 },
                 submittedAt: {
                     type: Date,

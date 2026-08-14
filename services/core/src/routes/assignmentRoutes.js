@@ -2,6 +2,7 @@ const express = require('express');
 const {
     getAllAssignments,
     getAssignments,
+    getAssignmentRosterReview,
     createAssignment,
     updateAssignment,
     deleteAssignment,
@@ -14,6 +15,9 @@ const router = express.Router();
 router.route('/')
     .get(protect, getAllAssignments)
     .post(protect, teacher, createAssignment);
+
+router.route('/:id/roster-review')
+    .get(protect, teacher, getAssignmentRosterReview);
 
 router.route('/:id')
     .put(protect, teacher, updateAssignment)

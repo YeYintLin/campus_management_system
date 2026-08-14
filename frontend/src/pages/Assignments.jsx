@@ -1,40 +1,117 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
-import { Edit2, Trash2, X, Calendar, Clock, BookOpen, Plus, FileText, CheckCircle, CheckCircle2, Upload, Users, Download, Send } from 'lucide-react';
+import {
+    Folder,
+    BookOpen,
+    Calendar,
+    Clock,
+    FileText,
+    Upload,
+    Users,
+    Download,
+    Plus,
+    Edit2,
+    Trash2,
+    X,
+    ChevronRight,
+    ArrowLeft,
+    CheckCircle2,
+    AlertTriangle,
+    Clock3,
+    Search,
+    RefreshCw,
+    Paperclip,
+    ExternalLink,
+    Filter
+} from 'lucide-react';
+import { getNormalizedUserYear, normalizeYear } from '../utils/userYear';
 import './Assignments.css';
+
+const deriveSemFromCourse = (course) => {
+    if (course.semester && (course.semester === 1 || course.semester === 2)) {
+        return course.semester;
+    }
+    const digits = String(course.code || course.name || '').replace(/[^0-9]/g, '');
+    if (digits.length >= 5) {
+        const s = parseInt(digits[1], 10);
+        if (s === 1 || s === 2) return s;
+    }
+    return 1;
+};
+
+const formatDueDate = (dateStr) => {
+    if (!dateStr) return 'No deadline';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+};
+
+const isDueDateOverdue = (dateStr) => {
+    if (!dateStr) return false;
+    return new Date(dateStr).getTime() < Date.now();
+};
 
 const Assignments = () => {
     const { user } = useContext(AuthContext);
-    const canManageAssignments = user?.role === 'Admin' || user?.role === 'Teacher';
     const isStudent = user?.role === 'Student';
+    const isTeacher = user?.role === 'Teacher';
+    const isAdmin = user?.role === 'Admin' || user?.role === 'AcademicAdmin';
+    const canManageAssignments = isAdmin || isTeacher;
+    const studentYear = getNormalizedUserYear(user);
 
+    // Data States
     const [assignments, setAssignments] = useState([]);
     const [courses, setCourses] = useState([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [currentAssignment, setCurrentAssignment] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    // Navigation & Drilldown States
+    const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : 'All');
+    const [selectedSemester, setSelectedSemester] = useState('All');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [activeSubject, setActiveSubject] = useState(null);
+    const [activeReviewAssignment, setActiveReviewAssignment] = useState(null);
+
+    // Roster Review Data
+    const [rosterData, setRosterData] = useState(null);
+    const [rosterLoading, setRosterLoading] = useState(false);
+    const [rosterSearch, setRosterSearch] = useState('');
+    const [rosterFilter, setRosterFilter] = useState('all'); // 'all' | 'submitted' | 'late' | 'missing'
+    const [rosterPage, setRosterPage] = useState(1);
+    const [rosterPerPage, setRosterPerPage] = useState(25);
+
+    // Modals
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingAssignment, setEditingAssignment] = useState(null);
     const [formData, setFormData] = useState({
-        title: '', course: '', description: '', dueDate: ''
+        title: '',
+        course: '',
+        description: '',
+        dueDate: '',
+        fileUrl: '',
+        fileName: '',
     });
+    const [uploadingQuestionFile, setUploadingQuestionFile] = useState(false);
 
-    // Student Submission Modal state
+    // Student Solution Submission Modal
     const [submitModalAssignment, setSubmitModalAssignment] = useState(null);
-    const [submissionFileUrl, setSubmissionFileUrl] = useState('');
+    const [selectedFile, setSelectedFile] = useState(null);
     const [submitting, setSubmitting] = useState(false);
-
-    // Teacher Submissions Inspection Drawer state
-    const [viewSubmissionsAssignment, setViewSubmissionsAssignment] = useState(null);
+    const fileInputRef = useRef(null);
+    const questionFileInputRef = useRef(null);
 
     useEffect(() => {
-        fetchAssignments();
         fetchCourses();
+        fetchAssignments();
     }, []);
 
     const fetchCourses = async () => {
         try {
             const { data } = await apiClient.get('/courses');
-            setCourses(data);
+            setCourses(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to fetch courses:', err);
         }
@@ -44,7 +121,7 @@ const Assignments = () => {
         setLoading(true);
         try {
             const { data } = await apiClient.get('/assignments');
-            setAssignments(data);
+            setAssignments(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to fetch assignments:', err);
         } finally {
@@ -52,293 +129,950 @@ const Assignments = () => {
         }
     };
 
-    const handleOpenModal = (assignment = null) => {
-        if (assignment) {
-            setCurrentAssignment(assignment);
-            setFormData({
-                title: assignment.title,
-                course: typeof assignment.course === 'object' ? assignment.course?._id : assignment.course,
-                description: assignment.description,
-                dueDate: assignment.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : ''
-            });
-        } else {
-            setCurrentAssignment(null);
-            setFormData({ title: '', course: '', description: '', dueDate: '' });
+    // Filter courses matching role, year, and semester
+    const filteredCourses = useMemo(() => {
+        return courses.filter(c => {
+            // Role scoping for Teachers
+            if (isTeacher) {
+                const teacherId = user?._id ? String(user._id) : '';
+                const teacherEmail = (user?.email || '').toLowerCase().trim();
+                const teacherName = (user?.name || '').toLowerCase().trim();
+
+                const cTeacher = c.teacher;
+                let match = false;
+                if (typeof cTeacher === 'object' && cTeacher) {
+                    if (cTeacher._id && String(cTeacher._id) === teacherId) match = true;
+                    if (cTeacher.email && cTeacher.email.toLowerCase() === teacherEmail) match = true;
+                } else if (typeof cTeacher === 'string' && cTeacher) {
+                    if (cTeacher === teacherId || cTeacher.toLowerCase() === teacherEmail || cTeacher.toLowerCase().includes(teacherName)) {
+                        match = true;
+                    }
+                }
+                if (!match) return false;
+            }
+
+            // Year filter
+            const cYear = c.yearLabel ? normalizeYear(c.yearLabel) : `${c.year || 1}${c.year === 1 ? 'st' : c.year === 2 ? 'nd' : c.year === 3 ? 'rd' : 'th'} Year`;
+            const yearMatch = selectedYear === 'All' || cYear === selectedYear;
+
+            // Semester filter
+            const semNum = deriveSemFromCourse(c);
+            let semMatch = true;
+            if (selectedSemester === 'Semester 1') semMatch = semNum === 1;
+            if (selectedSemester === 'Semester 2') semMatch = semNum === 2;
+
+            // Search query
+            const fullText = `${c.code || ''} ${c.name || ''}`.toLowerCase();
+            const searchMatch = !searchTerm || fullText.includes(searchTerm.toLowerCase());
+
+            return yearMatch && semMatch && searchMatch;
+        });
+    }, [courses, isTeacher, user, selectedYear, selectedSemester, searchTerm]);
+
+    // Assignments grouped by course ID
+    const assignmentsByCourse = useMemo(() => {
+        const map = new Map();
+        assignments.forEach(a => {
+            const cId = typeof a.course === 'object' ? a.course?._id : a.course;
+            if (cId) {
+                const list = map.get(String(cId)) || [];
+                list.push(a);
+                map.set(String(cId), list);
+            }
+        });
+        return map;
+    }, [assignments]);
+
+    // Assignments for currently open subject
+    const currentSubjectAssignments = useMemo(() => {
+        if (!activeSubject) return [];
+        return assignmentsByCourse.get(String(activeSubject._id)) || [];
+    }, [activeSubject, assignmentsByCourse]);
+
+    // Load Roster Review for an assignment
+    const openRosterReview = async (assignment) => {
+        setActiveReviewAssignment(assignment);
+        setRosterLoading(true);
+        setRosterPage(1);
+        setRosterFilter('all');
+        setRosterSearch('');
+        try {
+            const { data } = await apiClient.get(`/assignments/${assignment._id}/roster-review`);
+            setRosterData(data);
+        } catch (err) {
+            console.error('Failed to load roster review:', err);
+            alert(err.response?.data?.message || 'Failed to load student roster review.');
+        } finally {
+            setRosterLoading(false);
         }
-        setIsModalOpen(true);
     };
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setCurrentAssignment(null);
+    // Filtered Roster for Teacher Review Table
+    const filteredRoster = useMemo(() => {
+        if (!rosterData?.roster) return [];
+        return rosterData.roster.filter(st => {
+            // Status Tab Filter
+            if (rosterFilter === 'submitted' && st.status !== 'Submitted') return false;
+            if (rosterFilter === 'late' && st.status !== 'Late') return false;
+            if (rosterFilter === 'missing' && st.status !== 'Missing') return false;
+
+            // Search query
+            if (rosterSearch.trim()) {
+                const q = rosterSearch.toLowerCase().trim();
+                const roll = (st.rollNo || '').toLowerCase();
+                const name = (st.name || '').toLowerCase();
+                const email = (st.email || '').toLowerCase();
+                return roll.includes(q) || name.includes(q) || email.includes(q);
+            }
+            return true;
+        });
+    }, [rosterData, rosterFilter, rosterSearch]);
+
+    // Paginated Roster
+    const paginatedRoster = useMemo(() => {
+        if (rosterPerPage >= 999) return filteredRoster;
+        const start = (rosterPage - 1) * rosterPerPage;
+        return filteredRoster.slice(start, start + rosterPerPage);
+    }, [filteredRoster, rosterPage, rosterPerPage]);
+
+    const totalRosterPages = Math.ceil(filteredRoster.length / (rosterPerPage >= 999 ? 1 : rosterPerPage)) || 1;
+
+    // Handle Question Paper File Upload
+    const handleQuestionFileUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingQuestionFile(true);
+        const form = new FormData();
+        form.append('file', file);
+
+        try {
+            const { data: fileUrl } = await apiClient.post('/upload', form, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setFormData(prev => ({
+                ...prev,
+                fileUrl,
+                fileName: file.name
+            }));
+        } catch (err) {
+            console.error('Question file upload failed:', err);
+            alert('Failed to upload question paper file.');
+        } finally {
+            setUploadingQuestionFile(false);
+        }
     };
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSave = async (e) => {
+    // Handle Create / Edit Assignment Form Save
+    const handleSaveAssignment = async (e) => {
         e.preventDefault();
         try {
-            if (currentAssignment) {
-                await apiClient.put(`/assignments/${currentAssignment._id}`, formData);
+            const payload = {
+                title: formData.title,
+                course: formData.course,
+                description: formData.description,
+                dueDate: formData.dueDate,
+                fileUrl: formData.fileUrl || undefined,
+                fileName: formData.fileName || undefined,
+            };
+
+            if (editingAssignment) {
+                await apiClient.put(`/assignments/${editingAssignment._id}`, payload);
             } else {
-                await apiClient.post('/assignments', formData);
+                await apiClient.post('/assignments', payload);
             }
+
             fetchAssignments();
-            handleCloseModal();
+            setIsModalOpen(false);
+            setEditingAssignment(null);
         } catch (err) {
             console.error('Failed to save assignment:', err);
-            alert('Failed to save assignment.');
+            alert(err.response?.data?.message || 'Failed to save assignment.');
         }
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm("Are you sure you want to delete this assignment?")) {
+    // Handle Delete Assignment
+    const handleDeleteAssignment = async (id) => {
+        if (window.confirm("Are you sure you want to delete this tutorial/assignment?")) {
             try {
                 await apiClient.delete(`/assignments/${id}`);
                 fetchAssignments();
+                if (activeReviewAssignment?._id === id) {
+                    setActiveReviewAssignment(null);
+                }
             } catch (err) {
                 console.error('Failed to delete assignment:', err);
-                alert('Failed to delete assignment.');
+                alert(err.response?.data?.message || 'Failed to delete assignment.');
             }
         }
     };
 
+    // Handle Student Solution Submission
     const handleSubmitSolution = async (e) => {
         e.preventDefault();
-        if (!submitModalAssignment) return;
+        if (!submitModalAssignment || !selectedFile) {
+            alert('Please select a solution PDF or image file to upload.');
+            return;
+        }
+
         setSubmitting(true);
         try {
-            await apiClient.post(`/assignments/${submitModalAssignment._id}/submit`, {
-                fileUrl: submissionFileUrl || `Solution_${user?.name || 'Student'}_${submitModalAssignment.title.replace(/\s+/g, '_')}.pdf`
+            // 1. Upload the physical file to /api/upload
+            const form = new FormData();
+            form.append('file', selectedFile);
+
+            const { data: uploadedFileUrl } = await apiClient.post('/upload', form, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
-            alert('Assignment submitted successfully!');
+
+            // Format human-readable file size (e.g. 2.4 MB)
+            const sizeInMB = (selectedFile.size / (1024 * 1024)).toFixed(2);
+            const fileSizeStr = selectedFile.size < 1024 * 1024
+                ? `${Math.round(selectedFile.size / 1024)} KB`
+                : `${sizeInMB} MB`;
+
+            // 2. Submit to Assignment endpoint
+            await apiClient.post(`/assignments/${submitModalAssignment._id}/submit`, {
+                fileUrl: uploadedFileUrl,
+                fileName: selectedFile.name,
+                fileSize: fileSizeStr,
+            });
+
+            alert('Solution work submitted successfully!');
             setSubmitModalAssignment(null);
-            setSubmissionFileUrl('');
+            setSelectedFile(null);
             fetchAssignments();
         } catch (err) {
             console.error('Failed to submit assignment:', err);
-            alert(err.response?.data?.message || 'Failed to submit assignment');
+            alert(err.response?.data?.message || 'Failed to submit assignment.');
         } finally {
             setSubmitting(false);
         }
     };
 
+    const openCreateModal = (targetCourse = null) => {
+        const courseId = targetCourse?._id || activeSubject?._id || (courses[0]?._id || '');
+        setEditingAssignment(null);
+        setFormData({
+            title: '',
+            course: courseId,
+            description: '',
+            dueDate: '',
+            fileUrl: '',
+            fileName: '',
+        });
+        setIsModalOpen(true);
+    };
+
+    const openEditModal = (assignment) => {
+        setEditingAssignment(assignment);
+        setFormData({
+            title: assignment.title,
+            course: typeof assignment.course === 'object' ? assignment.course?._id : assignment.course,
+            description: assignment.description || '',
+            dueDate: assignment.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : '',
+            fileUrl: assignment.fileUrl || '',
+            fileName: assignment.fileName || '',
+        });
+        setIsModalOpen(true);
+    };
+
+    const yearsList = isStudent
+        ? [studentYear]
+        : ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
+
     return (
         <div className="assignments-page animate-fade-in">
+            {/* Header */}
             <header className="page-header">
                 <div>
-                    <h1>Assignments</h1>
-                    <p className="subtitle">Manage course assignments, due dates, and student submissions</p>
+                    <h1>Assignments & Tutorials</h1>
+                    <p className="subtitle">
+                        {isStudent
+                            ? 'Download tutorial question papers, submit solution files, and track your progress'
+                            : 'Organize course assignments, upload tutorial questions, and review student submissions'}
+                    </p>
                 </div>
                 {canManageAssignments && (
                     <div className="header-actions">
-                        <button className="btn btn-primary" onClick={() => handleOpenModal()}>
+                        <button className="btn btn-primary" onClick={() => openCreateModal()}>
                             <Plus size={18} />
-                            Create Assignment
+                            + New Assignment
                         </button>
                     </div>
                 )}
             </header>
 
-            <div className="assignments-grid">
-                {loading ? (
-                    <div className="empty-state-full glass-panel" style={{ gridColumn: '1 / -1' }}>
-                        <p>Loading assignments...</p>
-                    </div>
-                ) : assignments.length === 0 ? (
-                    <div className="empty-state-full glass-panel" style={{ gridColumn: '1 / -1' }}>
-                        <p>No assignments currently available.</p>
-                        {canManageAssignments && (
-                            <button className="btn btn-primary" onClick={() => handleOpenModal()}>+ Create One Now</button>
-                        )}
-                    </div>
-                ) : (
-                    assignments.map(assignment => {
-                        const dueDate = new Date(assignment.dueDate);
-                        const isOverdue = dueDate < new Date();
-                        const courseCode = typeof assignment.course === 'object' ? assignment.course?.code : assignment.course;
-                        const courseName = typeof assignment.course === 'object' ? assignment.course?.name : '';
-                        
-                        // Check student submission
-                        const mySubmission = isStudent && assignment.submissions?.find(s => {
-                            const sId = typeof s.student === 'object' ? s.student?._id : s.student;
-                            return sId && sId.toString() === user?._id?.toString();
-                        });
+            {/* Breadcrumbs Navigation */}
+            <div className="assignment-breadcrumbs glass-panel">
+                <button
+                    className={`breadcrumb-item ${!activeSubject ? 'active' : ''}`}
+                    onClick={() => {
+                        setActiveSubject(null);
+                        setActiveReviewAssignment(null);
+                    }}
+                >
+                    <Folder size={16} />
+                    <span>All Subjects</span>
+                </button>
 
-                        return (
-                            <div key={assignment._id} className="assignment-card glass-panel hover-glow" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                                <div>
-                                    <div className="assignment-card-header">
-                                        <div className="assignment-course">
-                                            <span className="course-code">{courseCode}</span>
-                                            {courseName && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{courseName}</span>}
-                                        </div>
-                                        <div className="assignment-actions">
-                                            {canManageAssignments && (
-                                                <>
-                                                    <button className="icon-btn" onClick={() => handleOpenModal(assignment)} title="Edit">
-                                                        <Edit2 size={16} />
-                                                    </button>
-                                                    <button className="icon-btn delete" onClick={() => handleDelete(assignment._id)} title="Delete">
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
+                {activeSubject && (
+                    <>
+                        <span className="breadcrumb-separator">/</span>
+                        <button
+                            className={`breadcrumb-item ${!activeReviewAssignment ? 'active' : ''}`}
+                            onClick={() => setActiveReviewAssignment(null)}
+                        >
+                            <BookOpen size={16} />
+                            <span>{activeSubject.code} - {activeSubject.name}</span>
+                        </button>
+                    </>
+                )}
 
-                                    <div className="assignment-card-body">
-                                        <h3 className="assignment-title">{assignment.title}</h3>
-                                        <p className="assignment-description">{assignment.description}</p>
-                                        
-                                        <div className="assignment-details">
-                                            <div className={`detail-item ${isOverdue ? 'overdue' : ''}`}>
-                                                <Calendar size={14} />
-                                                <span>Due: {dueDate.toLocaleDateString()}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Student Submission Action Bar */}
-                                {isStudent && (
-                                    <div style={{ marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        {mySubmission ? (
-                                            <span className="badge badge-success" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(34,197,94,0.15)', color: '#4ade80', padding: '0.45rem 0.85rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: '700' }}>
-                                                <CheckCircle2 size={16} />
-                                                <span>Submitted ({new Date(mySubmission.submittedAt).toLocaleDateString()})</span>
-                                            </span>
-                                        ) : (
-                                            <button
-                                                className="btn btn-primary"
-                                                onClick={() => setSubmitModalAssignment(assignment)}
-                                                disabled={isOverdue}
-                                                style={{ fontSize: '0.85rem', padding: '0.45rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', width: '100%', justifyContent: 'center' }}
-                                            >
-                                                <Upload size={16} />
-                                                <span>{isOverdue ? 'Deadline Passed' : 'Submit Assignment Work'}</span>
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Teacher Submissions Inspection Counter Button */}
-                                {canManageAssignments && (
-                                    <div style={{ marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <button
-                                            className="btn btn-secondary-glass"
-                                            onClick={() => setViewSubmissionsAssignment(assignment)}
-                                            style={{ fontSize: '0.85rem', padding: '0.45rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', width: '100%', justifyContent: 'center' }}
-                                        >
-                                            <Users size={16} />
-                                            <span>View Submissions ({assignment.submissions?.length || 0})</span>
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })
+                {activeReviewAssignment && (
+                    <>
+                        <span className="breadcrumb-separator">/</span>
+                        <span className="breadcrumb-item active">
+                            <Users size={16} />
+                            <span>{activeReviewAssignment.title} (Roster Review)</span>
+                        </span>
+                    </>
                 )}
             </div>
 
-            {/* Create / Edit Assignment Modal */}
-            {isModalOpen && (
-                <div className="modal-overlay" onClick={handleCloseModal}>
-                    <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <div>
-                                <h2>{currentAssignment ? 'Edit Assignment' : 'Create Assignment'}</h2>
-                                <p className="modal-subtitle">Fill in assignment parameters below</p>
+            {/* ══════════════════════════════════════════════════════════════
+                LEVEL 3: TEACHER ROSTER REVIEW VIEW
+               ══════════════════════════════════════════════════════════════ */}
+            {activeReviewAssignment ? (
+                <div className="roster-review-page animate-fade-in">
+                    {/* Header Banner */}
+                    <div className="glass-panel" style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <button className="btn btn-secondary-glass btn-sm" onClick={() => setActiveReviewAssignment(null)}>
+                                    <ArrowLeft size={16} /> Back to Subject
+                                </button>
+                                <span className="badge badge-primary font-mono">{rosterData?.assignment?.course?.code}</span>
                             </div>
-                            <button className="close-btn" onClick={handleCloseModal}><X size={24} /></button>
+                            <h2 style={{ margin: '0.5rem 0 0.2rem', color: '#fff' }}>{activeReviewAssignment.title}</h2>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                Due: {formatDueDate(activeReviewAssignment.dueDate)} • {activeReviewAssignment.description || 'No instructions provided.'}
+                            </p>
                         </div>
-                        <form onSubmit={handleSave} className="modal-body">
-                            <div className="form-grid">
-                                <div className="form-group full-width">
-                                    <label className="form-label">Assignment Title</label>
-                                    <input required type="text" name="title" value={formData.title} onChange={handleChange} className="form-input" placeholder="e.g. Chapter 3 Exercises" />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Course Code</label>
-                                    <select
-                                        required
-                                        name="course"
-                                        value={formData.course}
-                                        onChange={handleChange}
-                                        className="form-input"
+
+                        {activeReviewAssignment.fileUrl && (
+                            <a
+                                href={activeReviewAssignment.fileUrl.startsWith('http') ? activeReviewAssignment.fileUrl : `http://165.245.181.251:5001${activeReviewAssignment.fileUrl}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-secondary"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                            >
+                                <FileText size={16} />
+                                Question Paper PDF
+                            </a>
+                        )}
+                    </div>
+
+                    {/* Metrics Row */}
+                    {rosterData?.stats && (
+                        <div className="metrics-row">
+                            <div className="metric-card">
+                                <span className="metric-label">Total Enrolled</span>
+                                <span className="metric-value">{rosterData.stats.totalEnrolled}</span>
+                            </div>
+                            <div className="metric-card" style={{ borderColor: 'rgba(34, 197, 94, 0.3)', background: 'rgba(34, 197, 94, 0.05)' }}>
+                                <span className="metric-label" style={{ color: '#4ade80' }}>Submitted (On-time)</span>
+                                <span className="metric-value" style={{ color: '#4ade80' }}>{rosterData.stats.onTimeCount}</span>
+                            </div>
+                            <div className="metric-card" style={{ borderColor: 'rgba(234, 179, 8, 0.3)', background: 'rgba(234, 179, 8, 0.05)' }}>
+                                <span className="metric-label" style={{ color: '#fbbf24' }}>Submitted (Late)</span>
+                                <span className="metric-value" style={{ color: '#fbbf24' }}>{rosterData.stats.lateCount}</span>
+                            </div>
+                            <div className="metric-card" style={{ borderColor: 'rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.05)' }}>
+                                <span className="metric-label" style={{ color: '#f87171' }}>Missing / Unsubmitted</span>
+                                <span className="metric-value" style={{ color: '#f87171' }}>{rosterData.stats.missingCount}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Controls Bar */}
+                    <div className="roster-controls glass-panel" style={{ padding: '0.85rem 1.25rem' }}>
+                        <div className="roster-filter-pills">
+                            <button
+                                className={`roster-filter-btn ${rosterFilter === 'all' ? 'active' : ''}`}
+                                onClick={() => { setRosterFilter('all'); setRosterPage(1); }}
+                            >
+                                All Students ({rosterData?.stats?.totalEnrolled || 0})
+                            </button>
+                            <button
+                                className={`roster-filter-btn ${rosterFilter === 'submitted' ? 'active' : ''}`}
+                                onClick={() => { setRosterFilter('submitted'); setRosterPage(1); }}
+                            >
+                                On-Time ({rosterData?.stats?.onTimeCount || 0})
+                            </button>
+                            <button
+                                className={`roster-filter-btn ${rosterFilter === 'late' ? 'active' : ''}`}
+                                onClick={() => { setRosterFilter('late'); setRosterPage(1); }}
+                            >
+                                Late ({rosterData?.stats?.lateCount || 0})
+                            </button>
+                            <button
+                                className={`roster-filter-btn ${rosterFilter === 'missing' ? 'active' : ''}`}
+                                onClick={() => { setRosterFilter('missing'); setRosterPage(1); }}
+                            >
+                                Missing ({rosterData?.stats?.missingCount || 0})
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                            <div style={{ position: 'relative' }}>
+                                <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                <input
+                                    type="text"
+                                    placeholder="Search roll no, name..."
+                                    className="form-input"
+                                    value={rosterSearch}
+                                    onChange={e => { setRosterSearch(e.target.value); setRosterPage(1); }}
+                                    style={{ paddingLeft: '2rem', width: '220px', fontSize: '0.85rem' }}
+                                />
+                            </div>
+
+                            <select
+                                className="form-input"
+                                value={rosterPerPage}
+                                onChange={e => { setRosterPerPage(Number(e.target.value)); setRosterPage(1); }}
+                                style={{ width: '110px', fontSize: '0.85rem' }}
+                            >
+                                <option value={25}>25 / page</option>
+                                <option value={50}>50 / page</option>
+                                <option value={999}>View All</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Roster Table */}
+                    <div className="roster-table-container glass-panel">
+                        {rosterLoading ? (
+                            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                <RefreshCw className="animate-spin" size={24} style={{ margin: '0 auto 0.75rem' }} />
+                                <p style={{ margin: 0 }}>Loading student roster records...</p>
+                            </div>
+                        ) : paginatedRoster.length > 0 ? (
+                            <table className="roster-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '120px' }}>Roll No</th>
+                                        <th>Student Name</th>
+                                        <th>Status</th>
+                                        <th>Submitted At</th>
+                                        <th>Attached Solution File</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {paginatedRoster.map((st, idx) => {
+                                        const isDone = st.status === 'Submitted' || st.status === 'Late';
+                                        const fullFileUrl = st.fileUrl
+                                            ? (st.fileUrl.startsWith('http') ? st.fileUrl : `http://165.245.181.251:5001${st.fileUrl}`)
+                                            : null;
+
+                                        return (
+                                            <tr key={idx}>
+                                                <td className="font-mono" style={{ fontWeight: '700', color: '#a5b4fc' }}>
+                                                    {st.rollNo}
+                                                </td>
+                                                <td>
+                                                    <div style={{ fontWeight: '600', color: '#fff' }}>{st.name}</div>
+                                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{st.email}</div>
+                                                </td>
+                                                <td>
+                                                    {st.status === 'Submitted' && (
+                                                        <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80' }}>
+                                                            <CheckCircle2 size={13} /> On-time
+                                                        </span>
+                                                    )}
+                                                    {st.status === 'Late' && (
+                                                        <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(234, 179, 8, 0.15)', color: '#fbbf24' }}>
+                                                            <Clock3 size={13} /> Late
+                                                        </span>
+                                                    )}
+                                                    {st.status === 'Missing' && (
+                                                        <span className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171' }}>
+                                                            <X size={13} /> Missing
+                                                        </span>
+                                                    )}
+                                                    {st.status === 'Pending' && (
+                                                        <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(255, 255, 255, 0.08)', color: 'var(--text-muted)' }}>
+                                                            <Clock size={13} /> Pending
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td style={{ fontSize: '0.82rem', color: isDone ? '#cbd5e1' : 'var(--text-muted)' }}>
+                                                    {st.submittedAt ? new Date(st.submittedAt).toLocaleString() : '—'}
+                                                </td>
+                                                <td>
+                                                    {isDone && fullFileUrl ? (
+                                                        <a
+                                                            href={fullFileUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="btn btn-secondary-glass btn-sm"
+                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}
+                                                        >
+                                                            <FileText size={14} className="text-primary" />
+                                                            <span>{st.fileName || 'View Solution PDF'}</span>
+                                                            <ExternalLink size={12} style={{ opacity: 0.6 }} />
+                                                        </a>
+                                                    ) : (
+                                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No submission attached</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                <p style={{ margin: 0 }}>No student records match the selected filter.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Pagination Bar */}
+                    {totalRosterPages > 1 && rosterPerPage < 999 && (
+                        <div className="pagination-bar glass-panel">
+                            <span>
+                                Showing {(rosterPage - 1) * rosterPerPage + 1} - {Math.min(rosterPage * rosterPerPage, filteredRoster.length)} of {filteredRoster.length} students
+                            </span>
+                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                <button
+                                    className="btn btn-secondary-glass btn-sm"
+                                    disabled={rosterPage === 1}
+                                    onClick={() => setRosterPage(prev => Math.max(1, prev - 1))}
+                                >
+                                    Previous
+                                </button>
+                                <span style={{ padding: '0.3rem 0.75rem', alignSelf: 'center', fontSize: '0.85rem', fontWeight: '600' }}>
+                                    Page {rosterPage} of {totalRosterPages}
+                                </span>
+                                <button
+                                    className="btn btn-secondary-glass btn-sm"
+                                    disabled={rosterPage >= totalRosterPages}
+                                    onClick={() => setRosterPage(prev => Math.min(totalRosterPages, prev + 1))}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ) : activeSubject ? (
+                /* ══════════════════════════════════════════════════════════════
+                    LEVEL 2: INSIDE SUBJECT FOLDER (ASSIGNMENTS LIST)
+                   ══════════════════════════════════════════════════════════════ */
+                <div className="subject-assignments-view animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {/* Subject Banner */}
+                    <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderLeft: '4px solid #6366f1' }}>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+                                <button className="btn btn-secondary-glass btn-sm" onClick={() => setActiveSubject(null)}>
+                                    <ArrowLeft size={16} /> All Subjects
+                                </button>
+                                <span className="badge badge-primary font-mono">{activeSubject.code}</span>
+                                <span className="badge badge-secondary">Semester {deriveSemFromCourse(activeSubject)}</span>
+                            </div>
+                            <h2 style={{ margin: 0, color: '#fff' }}>{activeSubject.name}</h2>
+                            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                {activeSubject.yearLabel || 'Academic Subject'} • Department: {activeSubject.department || 'Mechatronics'}
+                            </p>
+                        </div>
+
+                        {canManageAssignments && (
+                            <button className="btn btn-primary" onClick={() => openCreateModal(activeSubject)}>
+                                <Plus size={16} /> + New Tutorial / Assignment
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Assignments List */}
+                    <div className="assignments-grid">
+                        {currentSubjectAssignments.length === 0 ? (
+                            <div className="glass-panel" style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                <FileText size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.5 }} />
+                                <h3>No Tutorials or Assignments Posted Yet</h3>
+                                <p style={{ margin: '0.25rem 0 1rem' }}>
+                                    {canManageAssignments
+                                        ? 'Upload the first tutorial question file for your students.'
+                                        : 'Your teacher has not uploaded assignments for this subject yet.'}
+                                </p>
+                                {canManageAssignments && (
+                                    <button className="btn btn-primary" onClick={() => openCreateModal(activeSubject)}>
+                                        + Create Assignment Now
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            currentSubjectAssignments.map(assignment => {
+                                const isOverdue = isDueDateOverdue(assignment.dueDate);
+                                const fullQuestionUrl = assignment.fileUrl
+                                    ? (assignment.fileUrl.startsWith('http') ? assignment.fileUrl : `http://165.245.181.251:5001${assignment.fileUrl}`)
+                                    : null;
+
+                                // Student's own submission
+                                const mySubmission = isStudent && assignment.submissions?.find(s => {
+                                    const sId = typeof s.student === 'object' ? s.student?._id : s.student;
+                                    return sId && String(sId) === String(user?._id);
+                                });
+
+                                return (
+                                    <div key={assignment._id} className="assignment-card glass-panel hover-glow">
+                                        <div>
+                                            <div className="assignment-card-header">
+                                                <div className="assignment-course">
+                                                    <span className="course-code">{activeSubject.code}</span>
+                                                </div>
+                                                <div className="assignment-actions">
+                                                    {canManageAssignments && (
+                                                        <>
+                                                            <button className="icon-btn" onClick={() => openEditModal(assignment)} title="Edit">
+                                                                <Edit2 size={15} />
+                                                            </button>
+                                                            <button className="icon-btn delete" onClick={() => handleDeleteAssignment(assignment._id)} title="Delete">
+                                                                <Trash2 size={15} />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="assignment-card-body" style={{ marginTop: '0.75rem' }}>
+                                                <h3 className="assignment-title">{assignment.title}</h3>
+                                                <p className="assignment-description">{assignment.description || 'No additional instructions.'}</p>
+
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: isOverdue ? '#f87171' : 'var(--text-muted)', marginTop: '0.4rem' }}>
+                                                    <Calendar size={14} />
+                                                    <span>Due: <strong>{formatDueDate(assignment.dueDate)}</strong> {isOverdue && '(Deadline Passed)'}</span>
+                                                </div>
+
+                                                {/* Question File Attachment */}
+                                                {fullQuestionUrl && (
+                                                    <div className="question-file-box">
+                                                        <div className="question-file-info">
+                                                            <FileText size={16} className="text-primary" />
+                                                            <span title={assignment.fileName || 'Question Paper'}>
+                                                                {assignment.fileName || 'Question_Paper.pdf'}
+                                                            </span>
+                                                        </div>
+                                                        <a
+                                                            href={fullQuestionUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="btn btn-secondary-glass btn-sm"
+                                                            style={{ fontSize: '0.78rem', padding: '0.25rem 0.6rem' }}
+                                                        >
+                                                            <Download size={13} /> Download
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Bottom Action Section */}
+                                        <div style={{ marginTop: '1.25rem', paddingTop: '0.85rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                                            {isStudent ? (
+                                                mySubmission ? (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80' }}>
+                                                                <CheckCircle2 size={14} /> Submitted {mySubmission.isLate ? '(Late)' : '(On-time)'}
+                                                            </span>
+                                                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                                                {new Date(mySubmission.submittedAt).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                            <a
+                                                                href={mySubmission.fileUrl.startsWith('http') ? mySubmission.fileUrl : `http://165.245.181.251:5001${mySubmission.fileUrl}`}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="btn btn-secondary btn-sm"
+                                                                style={{ flex: 1, justifyContent: 'center', fontSize: '0.8rem' }}
+                                                            >
+                                                                <FileText size={14} /> View My Solution
+                                                            </a>
+                                                            <button
+                                                                className="btn btn-secondary-glass btn-sm"
+                                                                onClick={() => {
+                                                                    setSelectedFile(null);
+                                                                    setSubmitModalAssignment(assignment);
+                                                                }}
+                                                                style={{ fontSize: '0.8rem' }}
+                                                                title="Resubmit solution file"
+                                                            >
+                                                                Replace File
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        className="btn btn-primary"
+                                                        onClick={() => {
+                                                            setSelectedFile(null);
+                                                            setSubmitModalAssignment(assignment);
+                                                        }}
+                                                        style={{ width: '100%', justifyContent: 'center', fontSize: '0.85rem' }}
+                                                    >
+                                                        <Upload size={16} />
+                                                        <span>Upload Solution PDF / Work</span>
+                                                    </button>
+                                                )
+                                            ) : (
+                                                /* Teacher Roster Button */
+                                                <button
+                                                    className="btn btn-secondary-glass"
+                                                    onClick={() => openRosterReview(assignment)}
+                                                    style={{ width: '100%', justifyContent: 'center', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                                >
+                                                    <Users size={16} />
+                                                    <span>Review Submissions Roster ({assignment.submissions?.length || 0})</span>
+                                                    <ChevronRight size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            ) : (
+                /* ══════════════════════════════════════════════════════════════
+                    LEVEL 1: SUBJECT FOLDERS DIRECTORY
+                   ══════════════════════════════════════════════════════════════ */
+                <div className="subjects-directory-view animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {/* Filters Bar */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div className="year-filter-bar glass-panel">
+                            {yearsList.map(year => (
+                                <button
+                                    key={year}
+                                    className={`year-tag ${selectedYear === year ? 'active' : ''}`}
+                                    onClick={() => setSelectedYear(year)}
+                                >
+                                    {year}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="glass-panel" style={{ padding: '0.75rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600' }}>Semester:</span>
+                                {['All', 'Semester 1', 'Semester 2'].map(sem => (
+                                    <button
+                                        key={sem}
+                                        className={`year-tag ${selectedSemester === sem ? 'active' : ''}`}
+                                        onClick={() => setSelectedSemester(sem)}
+                                        style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
                                     >
-                                        <option value="">Select Course</option>
-                                        {courses.map(c => (
-                                            <option key={c._id} value={c._id}>
-                                                {c.code} - {c.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Due Date</label>
-                                    <input required type="date" name="dueDate" value={formData.dueDate} onChange={handleChange} className="form-input" />
-                                </div>
-                                <div className="form-group full-width">
-                                    <label className="form-label">Description</label>
-                                    <textarea required name="description" value={formData.description} onChange={handleChange} className="form-input" rows="4" placeholder="Assignment instructions & criteria..."></textarea>
-                                </div>
+                                        {sem}
+                                    </button>
+                                ))}
                             </div>
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
-                                <button type="submit" className="btn btn-primary">{currentAssignment ? 'Update' : 'Create'}</button>
+
+                            <div style={{ position: 'relative' }}>
+                                <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                <input
+                                    type="text"
+                                    placeholder="Search subject code or name..."
+                                    className="form-input"
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    style={{ paddingLeft: '2rem', width: '250px', fontSize: '0.85rem' }}
+                                />
                             </div>
-                        </form>
+                        </div>
+                    </div>
+
+                    {/* Subject Folders Grid */}
+                    <div className="subject-folders-grid">
+                        {loading ? (
+                            <div className="glass-panel" style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                <RefreshCw className="animate-spin" size={24} style={{ margin: '0 auto 0.75rem' }} />
+                                <p style={{ margin: 0 }}>Loading subjects...</p>
+                            </div>
+                        ) : filteredCourses.length === 0 ? (
+                            <div className="glass-panel" style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                <Folder size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.5 }} />
+                                <h3>No Subjects Found</h3>
+                                <p style={{ margin: 0 }}>No subjects match the selected Year and Semester criteria.</p>
+                            </div>
+                        ) : (
+                            filteredCourses.map(course => {
+                                const courseAssignments = assignmentsByCourse.get(String(course._id)) || [];
+                                const totalCount = courseAssignments.length;
+                                const semNum = deriveSemFromCourse(course);
+
+                                return (
+                                    <div
+                                        key={course._id}
+                                        className="subject-folder-card glass-panel"
+                                        onClick={() => setActiveSubject(course)}
+                                    >
+                                        <div>
+                                            <div className="folder-top">
+                                                <div className="folder-icon-wrap">
+                                                    <Folder size={24} />
+                                                </div>
+                                                <div className="folder-badge-group">
+                                                    <span className="badge badge-primary font-mono">{course.code}</span>
+                                                    <span className="badge badge-secondary">Sem {semNum}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="folder-body">
+                                                <h3>{course.name}</h3>
+                                                <p>{course.yearLabel || `${course.year || 1}th Year`} • {course.department || 'Mechatronics'}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="folder-footer">
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                <FileText size={14} />
+                                                <strong>{totalCount}</strong> {totalCount === 1 ? 'Assignment' : 'Assignments'}
+                                            </span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: '#818cf8', fontWeight: '600' }}>
+                                                Open Folder <ChevronRight size={14} />
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* Student Submit Solution Modal */}
-            {submitModalAssignment && (
-                <div className="modal-overlay animate-fade-in" style={{ zIndex: 1100 }} onClick={() => setSubmitModalAssignment(null)}>
-                    <div className="glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '1.75rem', borderRadius: '20px', background: 'var(--surface-color, #1e293b)' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ background: 'rgba(99,102,241,0.15)', padding: '0.6rem', borderRadius: '12px', color: '#6366f1' }}>
-                                    <Upload size={24} />
-                                </div>
-                                <div>
-                                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Submit Assignment</h3>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{submitModalAssignment.title}</p>
-                                </div>
+            {/* ══════════════════════════════════════════════════════════════
+                MODAL 1: TEACHER CREATE / EDIT ASSIGNMENT
+               ══════════════════════════════════════════════════════════════ */}
+            {isModalOpen && (
+                <div className="modal-overlay animate-fade-in" style={{ zIndex: 1100 }}>
+                    <div className="modal glass-panel animate-scale-up" style={{ maxWidth: '580px', width: '90%' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.85rem' }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.25rem' }}>
+                                    {editingAssignment ? 'Edit Tutorial / Assignment' : 'Create New Tutorial / Assignment'}
+                                </h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                    Upload question files and specify submission criteria
+                                </p>
                             </div>
-                            <button className="close-btn" type="button" onClick={() => setSubmitModalAssignment(null)}><X size={18} /></button>
+                            <button className="icon-btn" onClick={() => setIsModalOpen(false)}>
+                                <X size={20} />
+                            </button>
                         </div>
 
-                        <form onSubmit={handleSubmitSolution} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <form onSubmit={handleSaveAssignment} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                             <div className="form-group">
-                                <label className="form-label">Solution File / Attachment Name</label>
+                                <label className="form-label">Subject / Course</label>
+                                <select
+                                    required
+                                    className="form-input"
+                                    value={formData.course}
+                                    onChange={e => setFormData({ ...formData, course: e.target.value })}
+                                >
+                                    <option value="" disabled>Select Subject</option>
+                                    {courses.map(c => (
+                                        <option key={c._id} value={c._id}>
+                                            {c.code} - {c.name} ({c.yearLabel || `${c.year}th Year`})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Title</label>
                                 <input
                                     type="text"
-                                    className="form-input"
-                                    placeholder="e.g. Solution_Report_HSS61011.pdf"
-                                    value={submissionFileUrl}
-                                    onChange={(e) => setSubmissionFileUrl(e.target.value)}
                                     required
+                                    className="form-input"
+                                    placeholder="e.g. Tutorial 1: State Space Analysis"
+                                    value={formData.title}
+                                    onChange={e => setFormData({ ...formData, title: e.target.value })}
                                 />
                             </div>
 
-                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                <p style={{ margin: '0 0 0.4rem', fontWeight: '700', color: '#fff' }}>Submission Guidelines:</p>
-                                <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-                                    <li>Ensure your file covers all assignment criteria.</li>
-                                    <li>Once submitted, your teacher will be notified automatically.</li>
-                                </ul>
+                            <div className="form-group">
+                                <label className="form-label">Due Date & Deadline</label>
+                                <input
+                                    type="date"
+                                    required
+                                    className="form-input"
+                                    value={formData.dueDate}
+                                    onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
+                                />
                             </div>
 
-                            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                                <button type="button" className="btn btn-secondary" onClick={() => setSubmitModalAssignment(null)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" disabled={submitting} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Send size={16} />
-                                    <span>{submitting ? 'Submitting...' : 'Confirm Submission'}</span>
+                            <div className="form-group">
+                                <label className="form-label">Instructions / Description</label>
+                                <textarea
+                                    className="form-input"
+                                    rows="3"
+                                    placeholder="Provide detailed instructions, problem numbers, or criteria..."
+                                    value={formData.description}
+                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                />
+                            </div>
+
+                            {/* Question File Upload */}
+                            <div className="form-group">
+                                <label className="form-label">Attach Question Paper / Tutorial PDF (Optional)</label>
+                                <input
+                                    type="file"
+                                    ref={questionFileInputRef}
+                                    style={{ display: 'none' }}
+                                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                                    onChange={handleQuestionFileUpload}
+                                />
+
+                                {formData.fileUrl ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', padding: '0.6rem 0.85rem', borderRadius: '10px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                                            <FileText size={16} className="text-primary" />
+                                            <span style={{ fontSize: '0.85rem', color: '#fff', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {formData.fileName || 'Attached_Question_File.pdf'}
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary-glass btn-sm"
+                                            onClick={() => setFormData({ ...formData, fileUrl: '', fileName: '' })}
+                                            style={{ color: '#f87171' }}
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => questionFileInputRef.current?.click()}
+                                        disabled={uploadingQuestionFile}
+                                        style={{ width: '100%', justifyContent: 'center', border: '1px dashed rgba(255,255,255,0.2)' }}
+                                    >
+                                        <Paperclip size={16} />
+                                        {uploadingQuestionFile ? 'Uploading file...' : 'Choose Question Paper File (PDF/Doc)'}
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary">
+                                    {editingAssignment ? 'Save Changes' : 'Create Assignment'}
                                 </button>
                             </div>
                         </form>
@@ -346,49 +1080,78 @@ const Assignments = () => {
                 </div>
             )}
 
-            {/* Teacher Inspection Drawer for Submissions */}
-            {viewSubmissionsAssignment && (
-                <div className="modal-overlay animate-fade-in" style={{ zIndex: 1100 }} onClick={() => setViewSubmissionsAssignment(null)}>
-                    <div className="glass-panel" style={{ width: '90%', maxWidth: '600px', padding: '1.75rem', borderRadius: '20px', background: 'var(--surface-color, #1e293b)' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ background: 'rgba(20,184,166,0.15)', padding: '0.6rem', borderRadius: '12px', color: '#14b8a6' }}>
-                                    <Users size={24} />
+            {/* ══════════════════════════════════════════════════════════════
+                MODAL 2: STUDENT SOLUTION UPLOAD
+               ══════════════════════════════════════════════════════════════ */}
+            {submitModalAssignment && (
+                <div className="modal-overlay animate-fade-in" style={{ zIndex: 1100 }}>
+                    <div className="modal glass-panel animate-scale-up" style={{ maxWidth: '500px', width: '90%' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.85rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <div style={{ background: 'rgba(99,102,241,0.15)', padding: '0.5rem', borderRadius: '10px', color: '#818cf8' }}>
+                                    <Upload size={20} />
                                 </div>
                                 <div>
-                                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Student Submissions</h3>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{viewSubmissionsAssignment.title}</p>
+                                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Submit Solution Work</h3>
+                                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>{submitModalAssignment.title}</p>
                                 </div>
                             </div>
-                            <button className="close-btn" type="button" onClick={() => setViewSubmissionsAssignment(null)}><X size={18} /></button>
+                            <button className="icon-btn" onClick={() => setSubmitModalAssignment(null)}>
+                                <X size={20} />
+                            </button>
                         </div>
 
-                        {viewSubmissionsAssignment.submissions && viewSubmissionsAssignment.submissions.length > 0 ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '350px', overflowY: 'auto' }}>
-                                {viewSubmissionsAssignment.submissions.map((sub, idx) => {
-                                    const studentName = typeof sub.student === 'object' ? sub.student?.name : 'Student';
-                                    const studentEmail = typeof sub.student === 'object' ? sub.student?.email : '';
-                                    return (
-                                        <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', padding: '0.85rem 1rem', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div>
-                                                <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#fff' }}>{studentName}</h4>
-                                                <p style={{ margin: '0.1rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{studentEmail}</p>
-                                                <span style={{ fontSize: '0.75rem', color: '#4ade80' }}>Submitted: {new Date(sub.submittedAt).toLocaleString()}</span>
-                                            </div>
-                                            <span className="badge badge-primary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>
-                                                {sub.fileUrl}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
+                        <form onSubmit={handleSubmitSolution} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                style={{ display: 'none' }}
+                                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                                onChange={e => {
+                                    if (e.target.files?.[0]) {
+                                        setSelectedFile(e.target.files[0]);
+                                    }
+                                }}
+                            />
+
+                            {/* Dropzone */}
+                            <div
+                                className="file-dropzone"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <Upload size={32} style={{ color: '#818cf8', margin: '0 auto 0.5rem' }} />
+                                {selectedFile ? (
+                                    <div>
+                                        <p style={{ margin: 0, fontWeight: '700', color: '#fff' }}>{selectedFile.name}</p>
+                                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#4ade80' }}>
+                                            {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready to submit
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <p style={{ margin: 0, fontWeight: '600', color: '#fff' }}>Click or drag your solution PDF / photo here</p>
+                                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Supports PDF, JPG, PNG, DOCX up to 10MB</p>
+                                    </div>
+                                )}
                             </div>
-                        ) : (
-                            <p className="text-muted" style={{ margin: 0, padding: '1rem 0' }}>No student submissions recorded yet for this assignment.</p>
-                        )}
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
-                            <button className="btn btn-secondary" onClick={() => setViewSubmissionsAssignment(null)}>Close</button>
-                        </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '0.75rem 1rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                                <p style={{ margin: '0 0 0.3rem', fontWeight: '700', color: '#cbd5e1' }}>Submission Note:</p>
+                                <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+                                    <li>You can take photos of your handwritten tutorial notes and save as PDF.</li>
+                                    <li>Resubmissions replace previous uploads before the due date.</li>
+                                </ul>
+                            </div>
+
+                            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                <button type="button" className="btn btn-secondary" onClick={() => setSubmitModalAssignment(null)} disabled={submitting}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary" disabled={submitting || !selectedFile}>
+                                    {submitting ? 'Uploading & Submitting...' : 'Confirm Submission'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
