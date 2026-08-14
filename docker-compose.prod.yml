@@ -44,6 +44,7 @@ services:
       PORT: 5002
       MONGODB_URI: mongodb://mongo:27017/core_db
       JWT_SECRET: 2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792
+      BUG_REPORT_ADMIN_EMAIL: ${BUG_REPORT_ADMIN_EMAIL:-yeyint2702@gmail.com}
     expose:
       - "5002"
     volumes:

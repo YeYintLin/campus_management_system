@@ -42,6 +42,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const fileLogRoutes = require('./routes/fileLogRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const bugReportRoutes = require('./routes/bugReportRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
@@ -59,6 +60,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/files', fileLogRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/bug-reports', bugReportRoutes);
 
 // Healthcheck endpoint (used by Docker/Kubernetes probes)
 app.get('/health', (req, res) => {

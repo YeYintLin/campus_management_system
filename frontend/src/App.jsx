@@ -25,6 +25,7 @@ const AcademicSettings = lazy(() => import('./pages/AcademicSettings'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const Chat = lazy(() => import('./pages/Chat'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const BugReport = lazy(() => import('./pages/BugReport'));
 
 const restrictedRoles = new Set(['Student', 'Teacher']);
 
@@ -58,6 +59,7 @@ function App() {
             <Route path="/time-table" element={<TimeTable />} />
             <Route path="/files" element={<Files />} />
             <Route path="/assignments" element={<Assignments />} />
+            <Route path="/bug-report" element={<BugReport />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/admin/ai-settings" element={<AIPromptSettings />} />
             <Route path="/admin/accounts" element={<AccountManagement />} />
