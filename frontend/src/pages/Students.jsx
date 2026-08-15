@@ -308,15 +308,10 @@ const Students = () => {
         }
     }, [isAdmin, userDepartment]);
 
-    const availableDepartments = [
-        'All',
-        'Mechatronics Engineering',
-        'Civil Engineering',
-        'Electrical Power Engineering',
-        'Electronic Engineering',
-        'Information Technology',
-        'Mechanical Engineering'
-    ];
+    const availableDepartments = React.useMemo(() => {
+        const configured = (departmentOptions || []).map(d => d.name).filter(Boolean);
+        return ['All', ...configured];
+    }, [departmentOptions]);
 
     const filteredStudents = enhancedStudents.filter(student => {
         const fullText = `${student.displayName} ${student.user?.email || ''} ${student.enrollmentNumber || ''} ${student.department || ''}`.toLowerCase();
@@ -332,31 +327,21 @@ const Students = () => {
             const emailStr = (student.user?.email || '').toLowerCase();
             const target = selectedDepartment.toLowerCase().trim();
 
+            const deptObj = departmentOptions.find(d => d.name.toLowerCase() === target || target.includes(d.name.toLowerCase()));
+            const targetCode = (deptObj?.code || '').toUpperCase();
+
             // Extract department code from roll number (e.g. "V-MC-1" → "MC", "III-C-5" → "C")
             const rollDeptMatch = rollStr.match(/^[IVX]+-([A-Z]+)-/);
             const rollDeptCode = rollDeptMatch ? rollDeptMatch[1] : '';
 
             // Extract department code from email prefix (e.g. "v.mc.1@" → "mc", "iii.c.5@" → "c")
             const emailParts = emailStr.split('@')[0].split('.');
-            const emailDeptCode = emailParts.length >= 2 ? emailParts[1].toLowerCase() : '';
+            const emailDeptCode = emailParts.length >= 2 ? emailParts[1].toUpperCase() : '';
 
-            if (target.includes('mechatronics')) {
-                matchesDept = sDept.includes('mechatronics') || rollDeptCode === 'MC' || rollDeptCode === 'MCE' || emailDeptCode === 'mc' || emailDeptCode === 'mce';
-            } else if (target.includes('civil')) {
-                matchesDept = sDept.includes('civil') || rollDeptCode === 'C' || rollDeptCode === 'CE' || emailDeptCode === 'c' || emailDeptCode === 'ce';
-            } else if (target.includes('electrical power')) {
-                matchesDept = sDept.includes('electrical power') || sDept.includes('electrical') || rollDeptCode === 'EP' || emailDeptCode === 'ep';
-            } else if (target.includes('electronic')) {
-                matchesDept = sDept.includes('electronic') || rollDeptCode === 'EC' || rollDeptCode === 'ECE' || emailDeptCode === 'ec' || emailDeptCode === 'ece';
-            } else if (target.includes('information')) {
-                matchesDept = sDept.includes('information') || rollDeptCode === 'IT' || emailDeptCode === 'it';
-            } else if (target.includes('mechanical')) {
-                matchesDept = (sDept.includes('mechanical') && !sDept.includes('mechatronics')) || rollDeptCode === 'ME' || rollDeptCode === 'MECH' || emailDeptCode === 'me';
-            } else if (target.includes('architecture')) {
-                matchesDept = sDept.includes('architecture') || rollDeptCode === 'AR' || rollDeptCode === 'ARCH' || emailDeptCode === 'arch' || emailDeptCode === 'ar';
-            } else {
-                matchesDept = sDept.includes(target) || target.includes(sDept);
-            }
+            const codeMatches = Boolean(targetCode && (rollDeptCode === targetCode || emailDeptCode === targetCode));
+            const nameMatches = Boolean(sDept && (sDept.includes(target) || target.includes(sDept)));
+
+            matchesDept = codeMatches || nameMatches;
         }
 
         return matchesSearch && matchesYear && matchesDept;
@@ -563,16 +548,20 @@ const Students = () => {
 
             {isAdmin ? (
                 <div className="year-filter-bar glass-panel" style={{ marginBottom: '1.5rem', background: 'rgba(99, 102, 241, 0.05)' }}>
-                    {availableDepartments.map(dept => (
-                        <button
-                            key={dept}
-                            className={`year-tag ${selectedDepartment === dept ? 'active' : ''}`}
-                            onClick={() => setSelectedDepartment(dept)}
-                            style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
-                        >
-                            {dept === 'Mechatronics Engineering' ? 'Mechatronics (VMC)' : dept === 'Civil Engineering' ? 'Civil (VC)' : dept}
-                        </button>
-                    ))}
+                    {availableDepartments.map(dept => {
+                        const deptObj = departmentOptions.find(d => d.name === dept);
+                        const label = dept === 'All' ? 'All' : (deptObj ? `${deptObj.name} (${deptObj.code})` : dept);
+                        return (
+                            <button
+                                key={dept}
+                                className={`year-tag ${selectedDepartment === dept ? 'active' : ''}`}
+                                onClick={() => setSelectedDepartment(dept)}
+                                style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
+                            >
+                                {label}
+                            </button>
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="glass-panel" style={{ marginBottom: '1.5rem', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(99, 102, 241, 0.05)', borderRadius: '12px' }}>
