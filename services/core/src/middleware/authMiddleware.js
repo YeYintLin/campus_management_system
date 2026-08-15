@@ -27,20 +27,23 @@ const protect = async (req, res, next) => {
             req.user = {
                 _id: decoded.id,
                 id: decoded.id,
+                name: decoded.name || '',
                 role: decoded.role,
                 email: decoded.email,
                 year: decoded.year,
                 department: decoded.department,
             };
 
-            // Stale Session Mitigation: If year claim is missing in older JWT tokens, look up user.year from DB
-            if (!req.user.year && req.user.id) {
+            // Stale Session Mitigation: If year or name claim is missing in older JWT tokens, look up from DB
+            if ((!req.user.year || !req.user.name) && req.user.id) {
                 try {
                     const User = require('../models/User');
-                    const userDoc = await User.findById(req.user.id).select('year department');
+                    const userDoc = await User.findById(req.user.id).select('name year department role');
                     if (userDoc) {
-                        req.user.year = userDoc.year;
-                        req.user.department = userDoc.department;
+                        if (!req.user.name) req.user.name = userDoc.name;
+                        if (!req.user.year) req.user.year = userDoc.year;
+                        if (!req.user.department) req.user.department = userDoc.department;
+                        if (!req.user.role) req.user.role = userDoc.role;
                     }
                 } catch (dbErr) {
                     console.error('Fallback user lookup error:', dbErr.message);

@@ -46,11 +46,17 @@ const upload = multer({
     },
 });
 
-router.post('/', protect, upload.single('file'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).send('No file uploaded.');
-    }
-    res.send(`/${req.file.path.replace(/\\/g, '/')}`);
+router.post('/', protect, (req, res) => {
+    upload.single('file')(req, res, (err) => {
+        if (err) {
+            console.error('File upload error:', err.message);
+            return res.status(400).json({ message: err.message || 'File upload failed' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded.' });
+        }
+        return res.send(`/${req.file.path.replace(/\\/g, '/')}`);
+    });
 });
 
 module.exports = router;

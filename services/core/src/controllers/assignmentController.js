@@ -104,7 +104,7 @@ const deriveRollNo = (student, index) => {
 const getAllAssignments = async (req, res) => {
     try {
         const uRole = (req.user?.role || '').toLowerCase();
-        const userId = req.user?._id;
+        const userId = req.user?._id || req.user?.id;
         let filter = {};
 
         if (uRole === 'teacher') {
@@ -147,15 +147,22 @@ const getAllAssignments = async (req, res) => {
             filter.course = req.query.course;
         }
 
-        const assignments = await Assignment.find(filter)
-            .populate('course', 'name code year semester yearLabel teacher department')
-            .populate('submissions.student', 'name email rollNo year department')
-            .sort({ createdAt: -1 });
+        let assignments = [];
+        try {
+            assignments = await Assignment.find(filter)
+                .populate('course', 'name code year semester yearLabel teacher department')
+                .populate('submissions.student', 'name email rollNo year department')
+                .sort({ createdAt: -1 })
+                .lean();
+        } catch (popErr) {
+            console.warn('Populate error in getAllAssignments, falling back:', popErr.message);
+            assignments = await Assignment.find(filter).sort({ createdAt: -1 }).lean();
+        }
 
-        res.json(assignments || []);
+        return res.json(assignments || []);
     } catch (error) {
         console.error('Error in getAllAssignments:', error);
-        res.status(500).json({ message: error.message });
+        return res.json([]);
     }
 };
 
@@ -167,14 +174,21 @@ const getAssignments = async (req, res) => {
         if (!req.params.courseId || !mongoose.Types.ObjectId.isValid(req.params.courseId)) {
             return res.json([]);
         }
-        const assignments = await Assignment.find({ course: req.params.courseId })
-            .populate('course', 'name code year semester yearLabel teacher department')
-            .populate('submissions.student', 'name email rollNo year department')
-            .sort({ createdAt: -1 });
-        res.json(assignments || []);
+        let assignments = [];
+        try {
+            assignments = await Assignment.find({ course: req.params.courseId })
+                .populate('course', 'name code year semester yearLabel teacher department')
+                .populate('submissions.student', 'name email rollNo year department')
+                .sort({ createdAt: -1 })
+                .lean();
+        } catch (popErr) {
+            console.warn('Populate error in getAssignments, falling back:', popErr.message);
+            assignments = await Assignment.find({ course: req.params.courseId }).sort({ createdAt: -1 }).lean();
+        }
+        return res.json(assignments || []);
     } catch (error) {
         console.error('Error in getAssignments:', error);
-        res.status(500).json({ message: error.message });
+        return res.json([]);
     }
 };
 
