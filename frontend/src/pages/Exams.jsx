@@ -451,9 +451,9 @@ const Exams = () => {
                 <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--surface-border)', paddingBottom: '1rem' }}>
                         <div>
-                            <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#fff' }}>Official Master Room Seating Plan</h2>
+                            <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Official Master Room Seating Plan</h2>
                             <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                Applicable to all examination subjects for <strong>{isStudent ? studentYear : selectedYear}</strong>
+                                Reference room arrangement for <strong>{isStudent ? studentYear : selectedYear}</strong> (Room 1 / 109)
                             </p>
                         </div>
 
@@ -476,6 +476,10 @@ const Exams = () => {
                                 <span>Afternoon Shift (12:30 PM)</span>
                             </button>
                         </div>
+                    </div>
+
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1rem', background: 'rgba(var(--primary-rgb), 0.06)', padding: '0.5rem 0.85rem', borderRadius: '8px', border: '1px dashed rgba(var(--primary-rgb), 0.25)' }}>
+                        ℹ️ <em>Note: Seating arrangements vary by room and exam hall. Below is the paired seating structure for <strong>Room 1 / 109</strong>. Switch to the <strong>Hand-Written Paper Photo</strong> tab to view or upload the exact official paper seating sheet for this shift.</em>
                     </div>
 
                     {/* VIEW MODE TABS: GRID VS PAPER PHOTO */}
@@ -535,27 +539,35 @@ const Exams = () => {
                             )}
                         </div>
                     ) : (
-                        <div style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '14px', padding: '1.25rem', color: '#f0f6fc', fontFamily: "'Inter', sans-serif" }}>
+                        <div className="seating-plan-grid-container" style={{ borderRadius: '14px', padding: '1.25rem', fontFamily: "'Inter', sans-serif" }}>
                             {/* OFFICIAL PAPER DOCUMENT HEADER */}
-                            <div style={{ borderBottom: '2px solid rgba(255,255,255,0.2)', paddingBottom: '0.85rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <div className="seating-paper-header" style={{ borderBottom: '2px solid rgba(255,255,255,0.15)', paddingBottom: '0.85rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 <div>
-                                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#38bdf8', fontWeight: '700' }}>နည်းပညာတက္ကသိုလ် (မှော်ဘီ)</h3>
-                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.9rem', color: '#94a3b8', fontWeight: '600' }}>စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား ({examSessionShift === 'afternoon' ? 'မွန်းလွဲပိုင်း' : 'နံနက်ပိုင်း'})</p>
-                                    <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#cbd5e1', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                                        <span>သင်တန်းအမည်: <strong style={{ color: '#fff' }}>{selectedYear === '1st Year' ? 'I (BE)' : selectedYear === '2nd Year' ? 'II (Mech + MC + EP)' : selectedYear === '3rd Year' ? 'III (Mech + MC + EP)' : selectedYear === '4th Year' ? 'IV (Mech + MC + EP)' : selectedYear === '5th Year' ? 'V (Mech + MC + EP)' : 'VI (Mech + MC + EP)'}</strong></span>
-                                        <span>အချိန်: <strong style={{ color: '#fbbf24' }}>{examSessionShift === 'afternoon' ? '12:30 PM - 03:30 PM' : '08:30 AM - 11:30 AM'}</strong></span>
+                                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--primary-color)', fontWeight: '700' }}>နည်းပညာတက္ကသိုလ် (မှော်ဘီ)</h3>
+                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '600' }}>စာမေးပွဲဖြေဆိုရန် ထိုင်ခုံဇယား ({examSessionShift === 'afternoon' ? 'မွန်းလွဲပိုင်း' : 'နံနက်ပိုင်း'})</p>
+                                    <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                        <span>သင်တန်းအမည်: <strong style={{ color: 'var(--text-primary)' }}>{selectedYear === '1st Year' ? 'I (BE)' : selectedYear === '2nd Year' ? 'II (Mech + MC + EP)' : selectedYear === '3rd Year' ? 'III (Mech + MC + EP)' : selectedYear === '4th Year' ? 'IV (Mech + MC + EP)' : selectedYear === '5th Year' ? 'V (Mech + MC + EP)' : 'VI (Mech + MC + EP)'}</strong></span>
+                                        <span>အချိန်: <strong style={{ color: '#f59e0b' }}>{examSessionShift === 'afternoon' ? '12:30 PM - 03:30 PM' : '08:30 AM - 11:30 AM'}</strong></span>
                                     </div>
                                 </div>
-                                <div style={{ background: 'rgba(56,189,248,0.15)', padding: '0.4rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.3)', textAlign: 'right' }}>
-                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Room / Hall</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#38bdf8' }}>Room 1 / 109</div>
+                                <div className="seating-room-badge" style={{ background: 'rgba(56,189,248,0.12)', padding: '0.4rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.25)', textAlign: 'right' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Room / Hall</div>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--primary-color)' }}>Room 1 / 109</div>
                                 </div>
                             </div>
 
+                            {/* MAJOR COLOR LEGEND */}
+                            <div className="seating-legend-bar" style={{ marginBottom: '0.85rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.78rem', fontWeight: '700', padding: '0.5rem 0.75rem', borderRadius: '8px' }}>
+                                <div className="legend-item"><span className="legend-dot ep-dot"></span> EP (Electronics/Physics)</div>
+                                <div className="legend-item"><span className="legend-dot mech-dot"></span> Mech (Mechatronics)</div>
+                                <div className="legend-item"><span className="legend-dot mc-dot"></span> MC (Microelectronics)</div>
+                                <div className="legend-item"><span className="legend-dot ext-dot"></span> Ext / EC (External)</div>
+                            </div>
+
                             {/* MOBILE HORIZONTAL SCROLL HELP BANNER */}
-                            <div style={{ background: 'rgba(56,189,248,0.1)', padding: '0.4rem 0.75rem', borderRadius: '8px', border: '1px dashed rgba(56,189,248,0.3)', marginBottom: '0.85rem', fontSize: '0.78rem', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div className="seating-scroll-hint" style={{ background: 'rgba(56,189,248,0.08)', padding: '0.4rem 0.75rem', borderRadius: '8px', border: '1px dashed rgba(56,189,248,0.25)', marginBottom: '0.85rem', fontSize: '0.78rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <span>👈 👉 Swipe left/right to view all 4 Exam Hall Columns side-by-side</span>
-                                <span style={{ fontWeight: '700', fontSize: '0.7rem', background: '#38bdf8', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>4 Columns</span>
+                                <span style={{ fontWeight: '700', fontSize: '0.7rem', background: 'var(--primary-color)', color: '#fff', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>4 Columns</span>
                             </div>
 
                             {/* HORIZONTAL SCROLL CONTAINER TO PRESERVE EXACT 4-COLUMN PAPER LAYOUT ON MOBILE */}
@@ -563,7 +575,7 @@ const Exams = () => {
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))', gap: '0.75rem', minWidth: '680px' }}>
                                     {/* COLUMN 1 */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 1</div>
+                                        {renderDeskPill('VI-EP 1')}
                                         {[
                                             ['VI-EP 2', 'VI-Mech 49'],
                                             ['VI-Mech 50', 'VI-EP 3'],
@@ -578,9 +590,9 @@ const Exams = () => {
                                             ['VI-EP 12', 'VI-Mech 59'],
                                             ['VI-Mech 61', 'VI-EP 13']
                                         ].map(([left, right], idx) => (
-                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
-                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
-                                                <div style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                            <div key={idx} className="desk-pair-container">
+                                                {renderDeskPill(left)}
+                                                {renderDeskPill(right)}
                                             </div>
                                         ))}
                                     </div>
@@ -601,9 +613,9 @@ const Exams = () => {
                                             ['VI-EP 24', 'VI-Mech 72'],
                                             ['VI-Mech 73', 'VI-EP 25']
                                         ].map(([left, right], idx) => (
-                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
-                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
-                                                <div style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                            <div key={idx} className="desk-pair-container">
+                                                {renderDeskPill(left)}
+                                                {renderDeskPill(right)}
                                             </div>
                                         ))}
                                     </div>
@@ -624,16 +636,16 @@ const Exams = () => {
                                             ['VI-EP 36', 'VI-MC 6'],
                                             ['VI-MC 7', 'VI-EP 37']
                                         ].map(([left, right], idx) => (
-                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
-                                                <div style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
-                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                            <div key={idx} className="desk-pair-container">
+                                                {renderDeskPill(left)}
+                                                {renderDeskPill(right)}
                                             </div>
                                         ))}
                                     </div>
 
                                     {/* COLUMN 4 */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid #6366f1', borderRadius: '6px', padding: '0.35rem', textAlign: 'center', fontWeight: '700', fontSize: '0.78rem', color: '#a5b4fc' }}>VI-EP 38</div>
+                                        {renderDeskPill('VI-EP 38')}
                                         {[
                                             ['VI-EP 39', 'VI-MC 8'],
                                             ['VI-MC 9', 'VI-EP 40'],
@@ -645,22 +657,22 @@ const Exams = () => {
                                             ['VI-MC 15', 'VI-EP 46'],
                                             ['VI-EP 47', 'Ext-1']
                                         ].map(([left, right], idx) => (
-                                            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '2px', textAlign: 'center', fontSize: '0.74rem', fontWeight: '700' }}>
-                                                <div style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{left}</div>
-                                                <div style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', padding: '0.3rem 0.1rem', borderRadius: '4px' }}>{right}</div>
+                                            <div key={idx} className="desk-pair-container">
+                                                {renderDeskPill(left)}
+                                                {renderDeskPill(right)}
                                             </div>
                                         ))}
-                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 48</div>
-                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 49</div>
-                                        <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0.3rem', textAlign: 'center', fontWeight: '700', fontSize: '0.74rem', color: '#a5b4fc' }}>VI-EP 50</div>
+                                        {renderDeskPill('VI-EP 48')}
+                                        {renderDeskPill('VI-EP 49')}
+                                        {renderDeskPill('VI-EP 50')}
                                     </div>
                                 </div>
                             </div>
 
                             {/* HANDWRITTEN PAPER SUMMARY BREAKDOWN MATCHING FOOTER OF PHOTO */}
-                            <div style={{ background: 'rgba(0,0,0,0.4)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px border rgba(255,255,255,0.15)', fontSize: '0.83rem', fontFamily: 'monospace' }}>
-                                <div style={{ color: '#38bdf8', fontWeight: '700', marginBottom: '0.3rem' }}>✍️ Official Paper Roll Count Breakdown (ထိုင်ခုံစာရင်း ချုပ်):</div>
-                                <div style={{ color: '#e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                            <div className="seating-breakdown-box" style={{ background: 'rgba(0,0,0,0.3)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--surface-border)', fontSize: '0.83rem', fontFamily: 'monospace' }}>
+                                <div className="seating-breakdown-title" style={{ color: 'var(--primary-color)', fontWeight: '700', marginBottom: '0.3rem' }}>✍️ Official Paper Roll Count Breakdown (ထိုင်ခုံစာရင်း ချုပ်):</div>
+                                <div style={{ color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                                     <div>• VI.Mech. 49 to 79 + Ext-1 to Ext-2 = <strong>29 Students</strong> (60,77,78,Ext-1 etc.)</div>
                                     <div>• VI.EP. 1 to 50 = <strong>50 Students</strong></div>
                                     <div>• VI.MC. 1 to 15 = <strong>15 Students</strong></div>
