@@ -12,15 +12,9 @@ async function seedTestAttendanceMonth() {
 
         const courseId = 'McE-52039';
 
-        // 1. Remove previous test records for July 2026 if any
-        await Attendance.deleteMany({
-            courseId,
-            date: {
-                $gte: new Date('2026-07-01T00:00:00Z'),
-                $lte: new Date('2026-07-31T23:59:59Z')
-            }
-        });
-        console.log('Cleared existing July test attendance records.');
+        // 1. Remove any previous test records for McE-52039 (purges old January + July records)
+        await Attendance.deleteMany({ courseId });
+        console.log('Cleared all existing test attendance records for McE-52039.');
 
         // 2. 14 5th Year Mechatronics students
         const studentRolls = [
