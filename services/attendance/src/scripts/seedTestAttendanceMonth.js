@@ -23,11 +23,13 @@ async function seedTestAttendanceMonth() {
             'V-MC-11', 'V-MC-12', 'V-MC-13', 'V-MC-14'
         ];
 
-        // 3. Create 9 teaching sessions across July (e.g. every Tue, Thu)
+        // 3. Create 5 teaching sessions across July (strictly Wednesdays)
         const sessionDates = [
-            '2026-07-02', '2026-07-07', '2026-07-09',
-            '2026-07-14', '2026-07-16', '2026-07-21',
-            '2026-07-23', '2026-07-28', '2026-07-30'
+            '2026-07-01', // Wed
+            '2026-07-08', // Wed
+            '2026-07-15', // Wed
+            '2026-07-22', // Wed
+            '2026-07-29'  // Wed
         ];
 
         for (let sIdx = 0; sIdx < sessionDates.length; sIdx++) {
@@ -35,7 +37,7 @@ async function seedTestAttendanceMonth() {
             const records = [];
 
             studentRolls.forEach((roll, idx) => {
-                const isAbsent = (idx === 3 && sIdx === 4) || (idx === 7 && sIdx === 8);
+                const isAbsent = (idx === 3 && sIdx === 2) || (idx === 7 && sIdx === 4);
                 const status = isAbsent ? 'Absent' : 'Present';
                 // Add roll number entry
                 records.push({ studentId: roll, status });
@@ -50,11 +52,11 @@ async function seedTestAttendanceMonth() {
                 date: new Date(`${dateStr}T09:00:00Z`),
                 records
             });
-            console.log(`✅ Created test session #${sIdx + 1} on ${dateStr}`);
+            console.log(`✅ Created test session #${sIdx + 1} on ${dateStr} (Wednesday)`);
         }
 
         console.log('\n=============================================');
-        console.log('Successfully seeded 9 attendance sessions for McE-52039 (July 2026).');
+        console.log('Successfully seeded 5 Wednesday attendance sessions for McE-52039 (July 2026).');
         console.log('You can now click "Download Roll Call (.xlsx)" on the website to see the complete form with checkmarks and calculated hours!');
         console.log('To clean up without trace later, run:');
         console.log('node src/scripts/cleanTestAttendanceMonth.js');
