@@ -277,11 +277,7 @@
         align-items: stretch;
     }
     
-    .status-btn span {
-        display: none;
-    }
-
-    .glass-panel {
+    .attendance-page .glass-panel {
         border-radius: 20px !important;
         padding: 1.25rem !important;
         margin-bottom: 1.25rem !important;
@@ -291,18 +287,18 @@
         overflow: hidden !important;
     }
 
-    :root[data-theme='light'] .glass-panel {
+    :root[data-theme='light'] .attendance-page .glass-panel {
         background: rgba(255, 255, 255, 0.9) !important;
         border: 1px solid rgba(0, 0, 0, 0.1) !important;
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06) !important;
     }
 
-    .btn,
-    .form-input,
-    button[type="submit"],
-    input[type="text"],
-    .btn-primary,
-    .btn-secondary {
+    .attendance-page .btn,
+    .attendance-page .form-input,
+    .attendance-page button[type="submit"],
+    .attendance-page input[type="text"],
+    .attendance-page .btn-primary,
+    .attendance-page .btn-secondary {
         min-height: 48px !important;
         border-radius: 12px !important;
     }
