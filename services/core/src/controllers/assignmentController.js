@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Assignment = require('../models/Assignment');
 const Course = require('../models/Course');
 const Student = require('../models/Student');
@@ -23,13 +24,17 @@ const isTeacherAuthorizedForCourse = (course, user) => {
     let cEmail = '';
 
     if (typeof course.teacher === 'object') {
-        cId = course.teacher._id ? String(course.teacher._id) : '';
-        cName = (course.teacher.name || '').toLowerCase().trim();
-        cEmail = (course.teacher.email || '').toLowerCase().trim();
+        if (course.teacher instanceof mongoose.Types.ObjectId || course.teacher._bsontype === 'ObjectID') {
+            cId = String(course.teacher);
+        } else {
+            cId = course.teacher._id ? String(course.teacher._id) : String(course.teacher || '');
+            cName = (course.teacher.name || '').toLowerCase().trim();
+            cEmail = (course.teacher.email || '').toLowerCase().trim();
+        }
     } else if (typeof course.teacher === 'string') {
         cName = course.teacher.toLowerCase().trim();
         if (course.teacher.includes('@')) cEmail = course.teacher.toLowerCase().trim();
-        else if (course.teacher.length > 15) cId = course.teacher;
+        else if (course.teacher.length >= 24) cId = course.teacher;
     }
 
     if (teacherId && cId && teacherId === cId) return true;
@@ -107,7 +112,7 @@ const getAllAssignments = async (req, res) => {
             const myCourseIds = allCourses
                 .filter(c => isTeacherAuthorizedForCourse(c, req.user))
                 .map(c => c._id);
-            if (req.query.course) {
+            if (req.query.course && mongoose.Types.ObjectId.isValid(req.query.course)) {
                 filter.course = req.query.course;
             } else {
                 filter.course = { $in: myCourseIds };
@@ -133,12 +138,12 @@ const getAllAssignments = async (req, res) => {
             });
             const enrolledCourseIds = enrolledCourses.map(c => c._id);
 
-            if (req.query.course) {
+            if (req.query.course && mongoose.Types.ObjectId.isValid(req.query.course)) {
                 filter.course = req.query.course;
             } else {
                 filter.course = { $in: enrolledCourseIds };
             }
-        } else if (req.query.course) {
+        } else if (req.query.course && mongoose.Types.ObjectId.isValid(req.query.course)) {
             filter.course = req.query.course;
         }
 
@@ -147,7 +152,7 @@ const getAllAssignments = async (req, res) => {
             .populate('submissions.student', 'name email rollNo year department')
             .sort({ createdAt: -1 });
 
-        res.json(assignments);
+        res.json(assignments || []);
     } catch (error) {
         console.error('Error in getAllAssignments:', error);
         res.status(500).json({ message: error.message });
@@ -159,12 +164,16 @@ const getAllAssignments = async (req, res) => {
 // @access  Private
 const getAssignments = async (req, res) => {
     try {
+        if (!req.params.courseId || !mongoose.Types.ObjectId.isValid(req.params.courseId)) {
+            return res.json([]);
+        }
         const assignments = await Assignment.find({ course: req.params.courseId })
             .populate('course', 'name code year semester yearLabel teacher department')
             .populate('submissions.student', 'name email rollNo year department')
             .sort({ createdAt: -1 });
-        res.json(assignments);
+        res.json(assignments || []);
     } catch (error) {
+        console.error('Error in getAssignments:', error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -174,6 +183,9 @@ const getAssignments = async (req, res) => {
 // @access  Private (Teacher, Admin)
 const getAssignmentRosterReview = async (req, res) => {
     try {
+        if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).json({ message: 'Assignment not found' });
+        }
         const assignment = await Assignment.findById(req.params.id)
             .populate('course')
             .populate('submissions.student', 'name email rollNo year department');
