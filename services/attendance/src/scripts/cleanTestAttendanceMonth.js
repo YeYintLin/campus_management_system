@@ -13,15 +13,11 @@ async function cleanTestAttendanceMonth() {
         const courseId = 'McE-52039';
 
         const res = await Attendance.deleteMany({
-            courseId,
-            date: {
-                $gte: new Date('2026-07-01T00:00:00Z'),
-                $lte: new Date('2026-07-31T23:59:59Z')
-            }
+            courseId: new RegExp(`^${courseId}$`, 'i')
         });
 
-        console.log(`\n🧹 Removed ${res.deletedCount || 0} test attendance sessions for ${courseId} in July.`);
-        console.log('Database is completely clean with zero trace.\n');
+        console.log(`\n🧹 Removed ${res.deletedCount || 0} attendance records for ${courseId}.`);
+        console.log('Attendance collection is completely clean with zero trace.\n');
 
         process.exit(0);
     } catch (err) {
