@@ -344,3 +344,169 @@
     color: var(--text-muted);
 }
 
+/* Subject Banner Component */
+.subject-banner {
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    border-left: 4px solid #6366f1;
+}
+
+.subject-banner-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.subject-banner-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.subject-banner-header .badge,
+.subject-banner-header .btn {
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.subject-banner-title {
+    margin: 0;
+    color: #fff;
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.subject-banner-meta {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE & TABLET RESPONSIVE RULES
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .assignments-page {
+        padding-bottom: 7.5rem;
+        gap: 1rem;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .page-header h1 {
+        font-size: 1.6rem;
+        line-height: 1.2;
+    }
+
+    .page-header .subtitle {
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+
+    .assignment-breadcrumbs {
+        padding: 0.55rem 0.85rem;
+        font-size: 0.82rem;
+        gap: 0.35rem;
+    }
+
+    .breadcrumb-item {
+        padding: 0.15rem 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    .breadcrumb-item span {
+        max-width: 140px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .subject-banner {
+        padding: 1rem 1.15rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.85rem;
+    }
+
+    .subject-banner-header {
+        gap: 0.4rem;
+    }
+
+    .subject-banner-header .badge,
+    .subject-banner-header .btn {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.55rem;
+    }
+
+    .subject-banner-title {
+        font-size: 1.2rem;
+        line-height: 1.3;
+    }
+
+    .subject-folders-grid,
+    .assignments-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .assignment-card {
+        padding: 1.15rem;
+        gap: 0.85rem;
+    }
+
+    .assignment-title {
+        font-size: 1.1rem;
+    }
+
+    .question-file-box {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.6rem;
+    }
+
+    .question-file-box .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .metrics-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .metric-card {
+        padding: 0.85rem 1rem;
+    }
+
+    .metric-value {
+        font-size: 1.4rem;
+    }
+
+    .roster-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .roster-controls .search-box input {
+        width: 100% !important;
+    }
+
+    .roster-filter-pills {
+        justify-content: flex-start;
+        overflow-x: auto;
+        padding-bottom: 0.25rem;
+    }
+}
+

@@ -689,17 +689,17 @@ const Assignments = () => {
                    ══════════════════════════════════════════════════════════════ */
                 <div className="subject-assignments-view animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {/* Subject Banner */}
-                    <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderLeft: '4px solid #6366f1' }}>
-                        <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+                    <div className="glass-panel subject-banner">
+                        <div className="subject-banner-info">
+                            <div className="subject-banner-header">
                                 <button className="btn btn-secondary-glass btn-sm" onClick={() => setActiveSubject(null)}>
                                     <ArrowLeft size={16} /> All Subjects
                                 </button>
                                 <span className="badge badge-primary font-mono">{activeSubject.code}</span>
                                 <span className="badge badge-secondary">Semester {deriveSemFromCourse(activeSubject)}</span>
                             </div>
-                            <h2 style={{ margin: 0, color: '#fff' }}>{activeSubject.name}</h2>
-                            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            <h2 className="subject-banner-title">{activeSubject.name}</h2>
+                            <p className="subject-banner-meta">
                                 {activeSubject.yearLabel || 'Academic Subject'} • Department: {activeSubject.department || 'Mechatronics'}
                             </p>
                         </div>
