@@ -142,21 +142,31 @@ const Assignments = () => {
         return courses.filter(c => {
             // Role scoping for Teachers
             if (isTeacher) {
-                const teacherId = user?._id ? String(user._id) : '';
+                const teacherId = user?._id ? String(user._id) : (user?.id ? String(user.id) : '');
                 const teacherEmail = (user?.email || '').toLowerCase().trim();
                 const teacherName = (user?.name || '').toLowerCase().trim();
+                const cleanTeacher = teacherName.replace(/\b(daw|u|prof|dr|mr|mrs|ms|tr)\b/gi, '').trim();
 
                 const cTeacher = c.teacher;
-                let match = false;
-                if (typeof cTeacher === 'object' && cTeacher) {
-                    if (cTeacher._id && String(cTeacher._id) === teacherId) match = true;
-                    if (cTeacher.email && cTeacher.email.toLowerCase() === teacherEmail) match = true;
-                } else if (typeof cTeacher === 'string' && cTeacher) {
-                    if (cTeacher === teacherId || cTeacher.toLowerCase() === teacherEmail || cTeacher.toLowerCase().includes(teacherName)) {
-                        match = true;
+                if (cTeacher) {
+                    let match = false;
+                    if (typeof cTeacher === 'object') {
+                        const cId = cTeacher._id ? String(cTeacher._id) : String(cTeacher);
+                        const cEmail = (cTeacher.email || '').toLowerCase().trim();
+                        const cName = (cTeacher.name || '').toLowerCase().trim();
+                        const cleanC = cName.replace(/\b(daw|u|prof|dr|mr|mrs|ms|tr)\b/gi, '').trim();
+
+                        if (teacherId && cId && teacherId === cId) match = true;
+                        if (teacherEmail && cEmail && teacherEmail === cEmail) match = true;
+                        if (cleanTeacher && cleanC && (cleanC.includes(cleanTeacher) || cleanTeacher.includes(cleanC))) match = true;
+                    } else if (typeof cTeacher === 'string') {
+                        const cStr = cTeacher.toLowerCase().trim();
+                        const cleanC = cStr.replace(/\b(daw|u|prof|dr|mr|mrs|ms|tr)\b/gi, '').trim();
+                        if (cStr === teacherId || cStr === teacherEmail) match = true;
+                        if (cleanTeacher && cleanC && (cleanC.includes(cleanTeacher) || cleanTeacher.includes(cleanC))) match = true;
                     }
+                    if (!match) return false;
                 }
-                if (!match) return false;
             }
 
             // Year filter

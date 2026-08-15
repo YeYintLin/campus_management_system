@@ -13,11 +13,12 @@ const isTeacherAuthorizedForCourse = (course, user) => {
     if (uRole === 'admin' || uRole === 'academicadmin' || uRole === 'superadmin') return true;
     if (uRole !== 'teacher') return false;
 
-    const teacherId = user._id ? String(user._id) : '';
+    const teacherId = user._id ? String(user._id) : (user.id ? String(user.id) : '');
     const teacherName = (user.name || '').toLowerCase().trim();
     const teacherEmail = (user.email || '').toLowerCase().trim();
 
-    if (!course || !course.teacher) return false;
+    if (!course) return false;
+    if (!course.teacher) return true; // Unassigned courses can be managed by teachers
 
     let cId = '';
     let cName = '';
@@ -40,9 +41,9 @@ const isTeacherAuthorizedForCourse = (course, user) => {
     if (teacherId && cId && teacherId === cId) return true;
     if (teacherEmail && cEmail && teacherEmail === cEmail) return true;
 
-    const cleanUser = teacherName.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim();
-    const cleanCourse = cName.replace(/\b(daw|u|prof|dr|mr|mrs|ms)\b/gi, '').trim();
-    if (cleanUser.length >= 3 && cleanCourse.length >= 3) {
+    const cleanUser = teacherName.replace(/\b(daw|u|prof|dr|mr|mrs|ms|tr)\b/gi, '').trim();
+    const cleanCourse = cName.replace(/\b(daw|u|prof|dr|mr|mrs|ms|tr)\b/gi, '').trim();
+    if (cleanUser.length >= 2 && cleanCourse.length >= 2) {
         if (cleanCourse.includes(cleanUser) || cleanUser.includes(cleanCourse)) return true;
     }
 
@@ -114,7 +115,7 @@ const getAllAssignments = async (req, res) => {
                 .map(c => c._id);
             if (req.query.course && mongoose.Types.ObjectId.isValid(req.query.course)) {
                 filter.course = req.query.course;
-            } else {
+            } else if (myCourseIds.length > 0) {
                 filter.course = { $in: myCourseIds };
             }
         } else if (uRole === 'student') {
