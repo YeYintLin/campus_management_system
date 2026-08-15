@@ -15,12 +15,12 @@ async function cleanTestAttendanceMonth() {
         const res = await Attendance.deleteMany({
             courseId,
             date: {
-                $gte: new Date('2026-01-01T00:00:00Z'),
-                $lte: new Date('2026-01-31T23:59:59Z')
+                $gte: new Date('2026-07-01T00:00:00Z'),
+                $lte: new Date('2026-07-31T23:59:59Z')
             }
         });
 
-        console.log(`\n🧹 Removed ${res.deletedCount || 0} test attendance sessions for ${courseId} in January.`);
+        console.log(`\n🧹 Removed ${res.deletedCount || 0} test attendance sessions for ${courseId} in July.`);
         console.log('Database is completely clean with zero trace.\n');
 
         process.exit(0);

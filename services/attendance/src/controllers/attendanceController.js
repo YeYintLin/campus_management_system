@@ -403,7 +403,7 @@ const getSessionOverrides = async (req, res) => {
 const getAttendance = async (req, res) => {
     try {
         const { courseId } = req.params;
-        const { date } = req.query;
+        const { date, range, startDate, endDate } = req.query;
 
         // Build flexible query supporting both course._id and course.code
         let query = {
@@ -439,6 +439,30 @@ const getAttendance = async (req, res) => {
             const end = new Date(date);
             end.setHours(23, 59, 59, 999);
             query.date = { $gte: start, $lte: end };
+        } else if (range) {
+            const now = new Date();
+            if (range === 'today') {
+                const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
+                const todayEnd = new Date(now); todayEnd.setHours(23,59,59,999);
+                query.date = { $gte: todayStart, $lte: todayEnd };
+            } else if (range === 'week') {
+                const day = now.getDay();
+                const monday = new Date(now);
+                monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+                monday.setHours(0,0,0,0);
+                const sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
+                sunday.setHours(23,59,59,999);
+                query.date = { $gte: monday, $lte: sunday };
+            } else if (range === 'month') {
+                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+                query.date = { $gte: monthStart, $lte: monthEnd };
+            }
+        } else if (startDate && endDate) {
+            const s = new Date(startDate); s.setHours(0,0,0,0);
+            const e = new Date(endDate); e.setHours(23,59,59,999);
+            query.date = { $gte: s, $lte: e };
         }
 
         const attendanceRecords = await Attendance.find(query).sort({ date: -1 });
@@ -973,9 +997,38 @@ const exportRollCallExcel = async (req, res) => {
             return numA - numB;
         });
 
+        // Fetch academic year from Academic Config
+        let academicYearLabel = '2025-2026';
+        try {
+            const configRes = await axios.get(`${CORE_SERVICE_URL}/api/academic-config`, {
+                headers: { 'x-internal-service-token': INTERNAL_SERVICE_SECRET },
+                timeout: 3000
+            });
+            if (configRes?.data?.currentAcademicYear) {
+                academicYearLabel = configRes.data.currentAcademicYear;
+            }
+        } catch (e) {
+            console.error('Failed to fetch academic config for export:', e.message);
+        }
+        const [acStartYear, acEndYear] = academicYearLabel.split('-').map(s => s.trim());
+
+        // Parse month from Myanmar label to JS month index (0-based)
+        const monthMap = {
+            'ဇန်နဝါရီ': 0, 'ဖေဖော်ဝါရီ': 1, 'မတ်': 2, 'ဧပြီ': 3,
+            'မေ': 4, 'ဇွန်': 5, 'ဇူလိုင်': 6, 'သြဂုတ်': 7,
+            'စက်တင်ဘာ': 8, 'အောက်တိုဘာ': 9, 'နိုဝင်ဘာ': 10, 'ဒီဇင်ဘာ': 11
+        };
+        const monthKey = (month || '').split('(')[0].trim();
+        const monthIdx = monthMap[monthKey] ?? new Date().getMonth();
+        // Academic year: Nov/Dec belong to start year, Jan-Oct belong to end year
+        const calYear = monthIdx >= 10 ? parseInt(acStartYear, 10) : parseInt(acEndYear, 10);
+        const monthStart = new Date(calYear, monthIdx, 1);
+        const monthEnd = new Date(calYear, monthIdx + 1, 0, 23, 59, 59, 999);
+
         // Fetch Attendance Records for date mapping
         const attendanceRecords = await Attendance.find({
-            courseId: new RegExp(`^${courseId.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&')}$`, 'i')
+            courseId: new RegExp(`^${courseId.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&')}$`, 'i'),
+            date: { $gte: monthStart, $lte: monthEnd }
         }).sort({ date: 1 });
 
         const workbook = new ExcelJS.Workbook();
@@ -1072,8 +1125,8 @@ const exportRollCallExcel = async (req, res) => {
             sheet.getCell('A1').font = { bold: true, size: 14 };
             sheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
 
-            // Row 2: Attendance Record ( 2025 - 2026 ) (Height 22.8)
-            const row2 = sheet.addRow(['Attendance Record ( 2025 - 2026 )']);
+            // Row 2: Attendance Record ( dynamic ) (Height 22.8)
+            const row2 = sheet.addRow([`Attendance Record ( ${acStartYear} - ${acEndYear} )`]);
             row2.height = 22.8;
             sheet.mergeCells('A2:Y2');
             sheet.getCell('A2').font = { bold: true, size: 12 };
@@ -1094,7 +1147,7 @@ const exportRollCallExcel = async (req, res) => {
             const conductedSessions = attendanceRecords.length;
             const totalMonthlyHours = conductedSessions > 0 ? conductedSessions * hourWeight : 0;
             const monthLabel = month && String(month).trim() !== '' ? month : 'ဇန်နဝါရီ';
-            const row4 = sheet.addRow([`၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ${monthLabel} လ`, '', '', '', '', '', `ယခုလတက်ချိန် - ${toMyanmarDigits(totalMonthlyHours)} နာရီ`]);
+            const row4 = sheet.addRow([`${toMyanmarDigits(acStartYear)} - ${toMyanmarDigits(acEndYear)} ခုနှစ်၊ ${monthLabel} လ`, '', '', '', '', '', `ယခုလတက်ချိန် - ${toMyanmarDigits(totalMonthlyHours)} နာရီ`]);
             row4.height = 24.75;
             sheet.mergeCells('A4:F4');
             sheet.mergeCells('G4:Y4');

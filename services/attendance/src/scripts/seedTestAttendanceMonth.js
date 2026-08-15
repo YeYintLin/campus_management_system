@@ -12,15 +12,15 @@ async function seedTestAttendanceMonth() {
 
         const courseId = 'McE-52039';
 
-        // 1. Remove previous test records for January 2026 if any
+        // 1. Remove previous test records for July 2026 if any
         await Attendance.deleteMany({
             courseId,
             date: {
-                $gte: new Date('2026-01-01T00:00:00Z'),
-                $lte: new Date('2026-01-31T23:59:59Z')
+                $gte: new Date('2026-07-01T00:00:00Z'),
+                $lte: new Date('2026-07-31T23:59:59Z')
             }
         });
-        console.log('Cleared existing January test attendance records.');
+        console.log('Cleared existing July test attendance records.');
 
         // 2. 14 5th Year Mechatronics students
         const studentRolls = [
@@ -29,12 +29,11 @@ async function seedTestAttendanceMonth() {
             'V-MC-11', 'V-MC-12', 'V-MC-13', 'V-MC-14'
         ];
 
-        // 3. Create 12 teaching sessions across January (e.g. every Mon, Wed, Fri)
+        // 3. Create 9 teaching sessions across July (e.g. every Tue, Thu)
         const sessionDates = [
-            '2026-01-05', '2026-01-07', '2026-01-09',
-            '2026-01-12', '2026-01-14', '2026-01-16',
-            '2026-01-19', '2026-01-21', '2026-01-23',
-            '2026-01-26', '2026-01-28', '2026-01-30'
+            '2026-07-02', '2026-07-07', '2026-07-09',
+            '2026-07-14', '2026-07-16', '2026-07-21',
+            '2026-07-23', '2026-07-28', '2026-07-30'
         ];
 
         for (let sIdx = 0; sIdx < sessionDates.length; sIdx++) {
@@ -61,7 +60,7 @@ async function seedTestAttendanceMonth() {
         }
 
         console.log('\n=============================================');
-        console.log('Successfully seeded 12 attendance sessions for McE-52039 (January 2026).');
+        console.log('Successfully seeded 9 attendance sessions for McE-52039 (July 2026).');
         console.log('You can now click "Download Roll Call (.xlsx)" on the website to see the complete form with checkmarks and calculated hours!');
         console.log('To clean up without trace later, run:');
         console.log('node src/scripts/cleanTestAttendanceMonth.js');

@@ -120,6 +120,10 @@ const Attendance = () => {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
 
+    // State for Date Range History (Today / This Week / This Month / Custom)
+    const [dateRangeMode, setDateRangeMode] = useState(null); // null | 'today' | 'week' | 'month'
+    const [historyRecords, setHistoryRecords] = useState([]); // Array of { date, present, absent, total, percentage }
+    const [historyLoading, setHistoryLoading] = useState(false);
     // State for Active Live Session (Zero-Tap / Code / QR)
     const [activeSession, setActiveSession] = useState(null);
     const [secondsLeft, setSecondsLeft] = useState(0);
@@ -880,14 +884,97 @@ const Attendance = () => {
     const handleCourseSelect = (course) => {
         setSelectedCourse(course);
         setView('marking');
-        setSearchTerm(''); // Clear search term so student roster is not filtered by course code search
+        setSearchTerm('');
+        setDateRangeMode(null);
+        setHistoryRecords([]);
         loadCourseAttendance(course, selectedDate);
     };
 
     const handleDateChange = (newDate) => {
         setSelectedDate(newDate);
+        setDateRangeMode(null);
+        setHistoryRecords([]);
         if (selectedCourse) {
             loadCourseAttendance(selectedCourse, newDate);
+        }
+    };
+
+    // Load attendance history for a date range (Today / This Week / This Month)
+    const loadAttendanceHistory = useCallback(async (course, range) => {
+        if (!course) return;
+        setHistoryLoading(true);
+        try {
+            const courseKey = course.code || course._id;
+            let params = {};
+            if (range === 'today') {
+                params = { range: 'today' };
+            } else if (range === 'week') {
+                params = { range: 'week' };
+            } else if (range === 'month') {
+                params = { range: 'month' };
+            }
+            const { data } = await apiClient.get(`/attendance/course/${courseKey}`, { params });
+            // Group records by date and calculate summary
+            const dateMap = {};
+            if (Array.isArray(data)) {
+                data.forEach(record => {
+                    const dateStr = record.date ? new Date(record.date).toISOString().split('T')[0] : 'Unknown';
+                    const dayName = record.date ? new Date(record.date).toLocaleDateString('en-US', { weekday: 'long' }) : '';
+                    if (!dateMap[dateStr]) {
+                        dateMap[dateStr] = { date: dateStr, day: dayName, present: 0, absent: 0, total: 0 };
+                    }
+                    if (Array.isArray(record.records)) {
+                        // Deduplicate by studentId — only count unique students
+                        const seen = new Set();
+                        record.records.forEach(r => {
+                            const sid = r.student?._id || r.studentId || r.student;
+                            if (sid && !seen.has(String(sid))) {
+                                seen.add(String(sid));
+                                dateMap[dateStr].total++;
+                                if ((r.status || '').toLowerCase() === 'present') {
+                                    dateMap[dateStr].present++;
+                                } else {
+                                    dateMap[dateStr].absent++;
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+            const summary = Object.values(dateMap)
+                .sort((a, b) => a.date.localeCompare(b.date))
+                .map(d => ({
+                    ...d,
+                    percentage: d.total > 0 ? Math.round((d.present / d.total) * 1000) / 10 : 0
+                }));
+            setHistoryRecords(summary);
+        } catch (err) {
+            console.error('Error loading attendance history:', err);
+            setHistoryRecords([]);
+        } finally {
+            setHistoryLoading(false);
+        }
+    }, []);
+
+    const handleRangeSelect = (range) => {
+        if (dateRangeMode === range) {
+            // Toggle off — go back to single-date marking view
+            setDateRangeMode(null);
+            setHistoryRecords([]);
+            return;
+        }
+        setDateRangeMode(range);
+        if (selectedCourse) {
+            loadAttendanceHistory(selectedCourse, range);
+        }
+    };
+
+    const handleHistoryRowClick = (dateStr) => {
+        setSelectedDate(dateStr);
+        setDateRangeMode(null);
+        setHistoryRecords([]);
+        if (selectedCourse) {
+            loadCourseAttendance(selectedCourse, dateStr);
         }
     };
 
@@ -1541,6 +1628,103 @@ const Attendance = () => {
                 </div>
             ) : (
                 <div className="marking-view">
+                    {/* ── Date Range Preset Buttons ── */}
+                    <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginRight: '0.25rem' }}>Quick View:</span>
+                        {[
+                            { key: 'today', label: 'Today' },
+                            { key: 'week', label: 'This Week' },
+                            { key: 'month', label: 'This Month' },
+                        ].map(({ key, label }) => (
+                            <button
+                                key={key}
+                                className={`year-tag ${dateRangeMode === key ? 'active' : ''}`}
+                                onClick={() => handleRangeSelect(key)}
+                                style={{ fontSize: '0.78rem', padding: '0.3rem 0.75rem' }}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* ── Date Range Summary Table ── */}
+                    {dateRangeMode && (
+                        <div className="glass-panel" style={{ marginBottom: '1.25rem', padding: '1rem 1.25rem' }}>
+                            <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', color: '#818cf8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Clock size={16} />
+                                {dateRangeMode === 'today' ? "Today's Attendance" : dateRangeMode === 'week' ? 'This Week' : 'This Month'} — {selectedCourse?.code}
+                            </h4>
+                            {historyLoading ? (
+                                <p style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)' }}>Loading records...</p>
+                            ) : historyRecords.length > 0 ? (
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="attendance-table" style={{ width: '100%' }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ textAlign: 'left' }}>Date</th>
+                                                <th style={{ textAlign: 'left' }}>Day</th>
+                                                <th className="text-center" style={{ color: '#22c55e' }}>Present</th>
+                                                <th className="text-center" style={{ color: '#ef4444' }}>Absent</th>
+                                                <th className="text-center">Total</th>
+                                                <th className="text-center">%</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {historyRecords.map(rec => (
+                                                <tr
+                                                    key={rec.date}
+                                                    onClick={() => handleHistoryRowClick(rec.date)}
+                                                    style={{ cursor: 'pointer', transition: 'background 0.2s' }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(99,102,241,0.1)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = ''}
+                                                >
+                                                    <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{rec.date}</td>
+                                                    <td>{rec.day}</td>
+                                                    <td className="text-center" style={{ color: '#22c55e', fontWeight: 700 }}>{rec.present}</td>
+                                                    <td className="text-center" style={{ color: '#ef4444', fontWeight: 700 }}>{rec.absent}</td>
+                                                    <td className="text-center" style={{ fontWeight: 600 }}>{rec.total}</td>
+                                                    <td className="text-center">
+                                                        <span style={{
+                                                            padding: '0.2rem 0.5rem',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: 700,
+                                                            background: rec.percentage >= 90 ? 'rgba(34,197,94,0.15)' : rec.percentage >= 75 ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)',
+                                                            color: rec.percentage >= 90 ? '#22c55e' : rec.percentage >= 75 ? '#eab308' : '#ef4444'
+                                                        }}>
+                                                            {rec.percentage}%
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {/* Totals Row */}
+                                            <tr style={{ borderTop: '2px solid rgba(255,255,255,0.15)', fontWeight: 700 }}>
+                                                <td colSpan={2} style={{ color: '#818cf8' }}>Total ({historyRecords.length} session{historyRecords.length !== 1 ? 's' : ''})</td>
+                                                <td className="text-center" style={{ color: '#22c55e' }}>{historyRecords.reduce((s, r) => s + r.present, 0)}</td>
+                                                <td className="text-center" style={{ color: '#ef4444' }}>{historyRecords.reduce((s, r) => s + r.absent, 0)}</td>
+                                                <td className="text-center">{historyRecords.reduce((s, r) => s + r.total, 0)}</td>
+                                                <td className="text-center">
+                                                    {(() => {
+                                                        const totalP = historyRecords.reduce((s, r) => s + r.present, 0);
+                                                        const totalAll = historyRecords.reduce((s, r) => s + r.total, 0);
+                                                        const pct = totalAll > 0 ? Math.round((totalP / totalAll) * 1000) / 10 : 0;
+                                                        return <span style={{ fontWeight: 800, color: '#818cf8' }}>{pct}%</span>;
+                                                    })()}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <p style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                        Click any row to view that day's detailed attendance roster.
+                                    </p>
+                                </div>
+                            ) : (
+                                <p style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                    No attendance records found for this period.
+                                </p>
+                            )}
+                        </div>
+                    )}
                     <div className="marking-controls glass-panel">
                         <div className="search-box">
                             <Search size={18} />
@@ -1735,10 +1919,15 @@ const Attendance = () => {
                                     onChange={(e) => {
                                         const cId = e.target.value;
                                         const selectedC = courses.find(c => (c.code || c._id) === cId);
+                                        const detectedSem = deriveSemFromCode(cId);
+                                        // Pick a sensible default month for the detected semester
+                                        const defaultMonth = detectedSem === 2 ? 'မေ (May)' : 'နိုဝင်ဘာ (Nov)';
                                         setExportConfig(prev => ({
                                             ...prev,
                                             courseId: cId,
-                                            year: selectedC?.yearLabel || (selectedC?.year ? `${selectedC.year}th Year` : prev.year)
+                                            year: selectedC?.yearLabel || (selectedC?.year ? `${selectedC.year}th Year` : prev.year),
+                                            semester: detectedSem ? String(detectedSem) : prev.semester,
+                                            month: defaultMonth
                                         }));
                                     }}
                                     style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', background: 'rgba(15, 23, 42, 0.6)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', fontSize: '0.95rem', cursor: 'pointer' }}
@@ -1754,6 +1943,11 @@ const Attendance = () => {
                             <div>
                                 <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#4ade80', marginBottom: '0.5rem' }}>
                                     📅 Select Month for Roll Call
+                                    {exportConfig.semester && (
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                                            (Semester {exportConfig.semester})
+                                        </span>
+                                    )}
                                 </label>
                                 <select
                                     value={exportConfig.month}
@@ -1770,18 +1964,30 @@ const Attendance = () => {
                                         cursor: 'pointer'
                                     }}
                                 >
-                                    <option value="ဇန်နဝါရီ (Jan)" style={{ background: '#1e293b' }}>ဇန်နဝါရီ (January)</option>
-                                    <option value="ဖေဖော်ဝါရီ (Feb)" style={{ background: '#1e293b' }}>ဖေဖော်ဝါရီ (February)</option>
-                                    <option value="မတ် (Mar)" style={{ background: '#1e293b' }}>မတ် (March)</option>
-                                    <option value="ဧပြီ (Apr)" style={{ background: '#1e293b' }}>ဧပြီ (April)</option>
-                                    <option value="မေ (May)" style={{ background: '#1e293b' }}>မေ (May)</option>
-                                    <option value="ဇွန် (Jun)" style={{ background: '#1e293b' }}>ဇွန် (June)</option>
-                                    <option value="ဇူလိုင် (Jul)" style={{ background: '#1e293b' }}>ဇူလိုင် (July)</option>
-                                    <option value="သြဂုတ် (Aug)" style={{ background: '#1e293b' }}>သြဂုတ် (August)</option>
-                                    <option value="စက်တင်ဘာ (Sep)" style={{ background: '#1e293b' }}>စက်တင်ဘာ (September)</option>
-                                    <option value="အောက်တိုဘာ (Oct)" style={{ background: '#1e293b' }}>အောက်တိုဘာ (October)</option>
-                                    <option value="နိုဝင်ဘာ (Nov)" style={{ background: '#1e293b' }}>နိုဝင်ဘာ (November)</option>
-                                    <option value="ဒီဇင်ဘာ (Dec)" style={{ background: '#1e293b' }}>ဒီဇင်ဘာ (December)</option>
+                                    {(() => {
+                                        const allMonths = [
+                                            { value: 'နိုဝင်ဘာ (Nov)', label: 'နိုဝင်ဘာ (November)' },
+                                            { value: 'ဒီဇင်ဘာ (Dec)', label: 'ဒီဇင်ဘာ (December)' },
+                                            { value: 'ဇန်နဝါရီ (Jan)', label: 'ဇန်နဝါရီ (January)' },
+                                            { value: 'ဖေဖော်ဝါရီ (Feb)', label: 'ဖေဖော်ဝါရီ (February)' },
+                                            { value: 'မတ် (Mar)', label: 'မတ် (March)' },
+                                            { value: 'ဧပြီ (Apr)', label: 'ဧပြီ (April)' },
+                                            { value: 'မေ (May)', label: 'မေ (May)' },
+                                            { value: 'ဇွန် (Jun)', label: 'ဇွန် (June)' },
+                                            { value: 'ဇူလိုင် (Jul)', label: 'ဇူလိုင် (July)' },
+                                            { value: 'သြဂုတ် (Aug)', label: 'သြဂုတ် (August)' },
+                                            { value: 'စက်တင်ဘာ (Sep)', label: 'စက်တင်ဘာ (September)' },
+                                            { value: 'အောက်တိုဘာ (Oct)', label: 'အောက်တိုဘာ (October)' },
+                                        ];
+                                        // Semester 1: Nov-Mar (indices 0-4), Semester 2: May-Oct (indices 6-11)
+                                        const sem = parseInt(exportConfig.semester, 10);
+                                        const sem1Months = allMonths.slice(0, 5); // Nov, Dec, Jan, Feb, Mar
+                                        const sem2Months = allMonths.slice(6);     // May, Jun, Jul, Aug, Sep, Oct
+                                        const filtered = sem === 1 ? sem1Months : sem === 2 ? sem2Months : allMonths;
+                                        return filtered.map(m => (
+                                            <option key={m.value} value={m.value} style={{ background: '#1e293b' }}>{m.label}</option>
+                                        ));
+                                    })()}
                                 </select>
                             </div>
 
