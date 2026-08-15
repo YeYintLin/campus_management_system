@@ -1083,7 +1083,8 @@ const exportRollCallExcel = async (req, res) => {
 
             // Row 3: Class Code & Subject Header
             const row3 = sheet.addRow([classCode, '', '', '', '', '', `ဘာသာရပ် - ${courseInfo.name || courseInfo.code}`]);
-            sheet.mergeCells('A3:B3');
+            sheet.mergeCells('A3:F3');
+            sheet.mergeCells('G3:Y3');
             sheet.getCell('A3').font = { bold: true, size: 10 };
             sheet.getCell('G3').font = { bold: true, size: 10 };
             sheet.getCell('A3').alignment = { horizontal: 'left', vertical: 'middle' };
@@ -1092,9 +1093,11 @@ const exportRollCallExcel = async (req, res) => {
             // Row 4: Academic Year/Month & Monthly Total Hours (Height 24.75)
             const conductedSessions = attendanceRecords.length;
             const totalMonthlyHours = conductedSessions > 0 ? conductedSessions * hourWeight : 0;
-            const monthLabel = month && String(month).trim() !== '' ? month : 'ဇန်နဝါရီ (Jan)';
-            const row4 = sheet.addRow([`၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ${monthLabel} လ`, '', '', '', '', '', `ယခုလတက်ချိန် - ${totalMonthlyHours} နာရီ`]);
+            const monthLabel = month && String(month).trim() !== '' ? month : 'ဇန်နဝါရီ';
+            const row4 = sheet.addRow([`၂၀၂၅ - ၂၀၂၆ ခုနှစ်၊ ${monthLabel} လ`, '', '', '', '', '', `ယခုလတက်ချိန် - ${toMyanmarDigits(totalMonthlyHours)} နာရီ`]);
             row4.height = 24.75;
+            sheet.mergeCells('A4:F4');
+            sheet.mergeCells('G4:Y4');
             sheet.getCell('A4').font = { size: 10 };
             sheet.getCell('G4').font = { bold: true, size: 10 };
             sheet.getCell('A4').alignment = { horizontal: 'left', vertical: 'middle' };
