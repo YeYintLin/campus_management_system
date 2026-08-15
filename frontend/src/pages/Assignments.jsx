@@ -187,25 +187,54 @@ const Assignments = () => {
         });
     }, [courses, isTeacher, user, selectedYear, selectedSemester, searchTerm]);
 
-    // Assignments grouped by course ID
+    // Assignments grouped by course (matched by ID, course code, or name)
     const assignmentsByCourse = useMemo(() => {
         const map = new Map();
-        assignments.forEach(a => {
-            const cId = typeof a.course === 'object' ? a.course?._id : a.course;
-            if (cId) {
-                const list = map.get(String(cId)) || [];
-                list.push(a);
-                map.set(String(cId), list);
-            }
+        courses.forEach(c => {
+            const cIdStr = String(c._id);
+            const cCode = (c.code || '').replace(/[\s-]+/g, '').toUpperCase();
+            const cName = (c.name || '').toLowerCase().trim();
+
+            const matched = assignments.filter(a => {
+                const cObj = typeof a.course === 'object' ? a.course : null;
+                const aCourseId = cObj ? String(cObj._id) : String(a.course);
+                if (aCourseId === cIdStr) return true;
+                if (cObj) {
+                    const aCode = (cObj.code || '').replace(/[\s-]+/g, '').toUpperCase();
+                    const aName = (cObj.name || '').toLowerCase().trim();
+                    if (cCode && aCode && aCode === cCode) return true;
+                    if (cName && aName && (aName.includes(cName) || cName.includes(aName))) return true;
+                }
+                return false;
+            });
+
+            map.set(cIdStr, matched);
         });
         return map;
-    }, [assignments]);
+    }, [courses, assignments]);
 
     // Assignments for currently open subject
     const currentSubjectAssignments = useMemo(() => {
         if (!activeSubject) return [];
-        return assignmentsByCourse.get(String(activeSubject._id)) || [];
-    }, [activeSubject, assignmentsByCourse]);
+        const targetId = activeSubject._id ? String(activeSubject._id) : '';
+        const targetCode = (activeSubject.code || '').replace(/[\s-]+/g, '').toUpperCase();
+        const targetName = (activeSubject.name || '').toLowerCase().trim();
+
+        return assignments.filter(a => {
+            const cObj = typeof a.course === 'object' ? a.course : null;
+            const aCourseId = cObj ? String(cObj._id) : String(a.course);
+
+            if (targetId && aCourseId && aCourseId === targetId) return true;
+
+            if (cObj) {
+                const aCode = (cObj.code || '').replace(/[\s-]+/g, '').toUpperCase();
+                const aName = (cObj.name || '').toLowerCase().trim();
+                if (targetCode && aCode && aCode === targetCode) return true;
+                if (targetName && aName && (aName.includes(targetName) || targetName.includes(aName))) return true;
+            }
+            return false;
+        });
+    }, [activeSubject, assignments]);
 
     // Load Roster Review for an assignment
     const openRosterReview = async (assignment) => {
