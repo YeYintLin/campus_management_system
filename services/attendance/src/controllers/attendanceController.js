@@ -1195,6 +1195,10 @@ const exportRollCallExcel = async (req, res) => {
 
                 const rowValues = [myanmarNo, rollStr, nameStr];
 
+                // Pre-calculate attendance stats for formula result caching
+                let studentPresentSessions = 0;
+                const effectiveSessions = Math.min(conductedSessions, 19);
+
                 // Checkmarks for 19 period columns (D to V)
                 for (let p = 0; p < 19; p++) {
                     if (isRealStudent && p < conductedSessions) {
@@ -1207,7 +1211,9 @@ const exportRollCallExcel = async (req, res) => {
                                 (rollStr && String(r.studentId).toUpperCase() === rollStr.toUpperCase()) ||
                                 (st.rollNo && String(r.studentId).toUpperCase() === String(st.rollNo).toUpperCase())
                             );
-                            rowValues.push(studentRec && studentRec.status === 'Present' ? '✓' : '');
+                            const isPresent = studentRec && studentRec.status === 'Present';
+                            if (isPresent) studentPresentSessions++;
+                            rowValues.push(isPresent ? '✓' : '');
                         } else {
                             rowValues.push('');
                         }
@@ -1216,7 +1222,12 @@ const exportRollCallExcel = async (req, res) => {
                     }
                 }
 
-                // Append empty strings for formulas
+                const calcAttendedHrs = isRealStudent ? studentPresentSessions * hourWeight : 0;
+                const calcAbsentHrs = isRealStudent ? (conductedSessions - studentPresentSessions) * hourWeight : 0;
+                const calcTotalHrs = calcAttendedHrs + calcAbsentHrs;
+                const calcPctStr = calcTotalHrs > 0 ? `${(Math.round((calcAttendedHrs / calcTotalHrs) * 1000) / 10).toFixed(1)}%` : '0%';
+
+                // Append empty strings for formula cells W, X, Y
                 rowValues.push('', '', '');
                 const row = sheet.addRow(rowValues);
                 row.height = 27.75;
@@ -1231,14 +1242,14 @@ const exportRollCallExcel = async (req, res) => {
                     } else if (col === 3) {
                         cell.alignment = { horizontal: 'left', vertical: 'middle' };
                     } else if (col >= 23 && isRealStudent) {
-                        const endColLetter = conductedSessions > 0 ? String.fromCharCode(68 + conductedSessions - 1) : 'V';
-                        // Formulas for W, X, Y
+                        const endColLetter = effectiveSessions > 0 ? String.fromCharCode(68 + effectiveSessions - 1) : 'V';
+                        // Formulas for W, X, Y with pre-calculated result for instant display in all viewers
                         if (col === 23) {
-                            cell.value = { formula: `=COUNTIF(D${rowNum}:${endColLetter}${rowNum}, "✓") * ${hourWeight}` };
+                            cell.value = { formula: `=COUNTIF(D${rowNum}:${endColLetter}${rowNum}, "✓") * ${hourWeight}`, result: calcAttendedHrs };
                         } else if (col === 24) {
-                            cell.value = { formula: `=(${conductedSessions} - COUNTIF(D${rowNum}:${endColLetter}${rowNum}, "✓")) * ${hourWeight}` };
+                            cell.value = { formula: `=(${conductedSessions} - COUNTIF(D${rowNum}:${endColLetter}${rowNum}, "✓")) * ${hourWeight}`, result: calcAbsentHrs };
                         } else if (col === 25) {
-                            cell.value = { formula: `=IF((W${rowNum}+X${rowNum})>0, ROUND((W${rowNum}/(W${rowNum}+X${rowNum}))*100, 1) & "%", "0%")` };
+                            cell.value = { formula: `=IF((W${rowNum}+X${rowNum})>0, ROUND((W${rowNum}/(W${rowNum}+X${rowNum}))*100, 1) & "%", "0%")`, result: calcPctStr };
                         }
                         cell.alignment = { horizontal: 'center', vertical: 'middle' };
                     } else {
