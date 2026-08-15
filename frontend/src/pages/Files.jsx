@@ -42,6 +42,18 @@ const deriveYearTag = (code = '', defaultYear = null) => {
     return '1st Year';
 };
 
+const deriveDeptFromCode = (code = '') => {
+    const c = String(code).toUpperCase();
+    if (c.includes('MCE') || c.match(/\bMC\b/)) return 'mechatronics';
+    if (c.includes('CE') && !c.includes('MCE') && !c.includes('ECE')) return 'civil';
+    if (c.includes('EP')) return 'electrical power';
+    if (c.includes('ECE') || (c.includes('EC') && !c.includes('MCE'))) return 'electronic';
+    if (c.includes('IT')) return 'information';
+    if (c.includes('ME') && !c.includes('MCE')) return 'mechanical';
+    if (c.includes('ARCH') || c.includes('AR') || c.includes('AG')) return 'architecture';
+    return '';
+};
+
 
 
 const isCourseTaughtByTeacher = (course, user) => {
@@ -462,15 +474,37 @@ For questions regarding this resource, please contact your course instructor.
         const fParent = (f.parentFolder || '').trim();
         const current = (selectedFolder || '').trim();
 
+        // 1. Hierarchy Check
         if (current) {
-            // Inside a folder: only show items whose parentFolder equals selectedFolder (case-insensitive)
-            // AND folder name is not equal to selectedFolder (prevent self-listing)
             const matchesParent = fParent.toLowerCase() === current.toLowerCase() && fName.toLowerCase() !== current.toLowerCase();
-            return matchesParent && fName.toLowerCase().includes(searchTerm.toLowerCase());
+            if (!matchesParent) return false;
         } else {
-            // At root: only show folders without a parentFolder
-            return !fParent && fName.toLowerCase().includes(searchTerm.toLowerCase());
+            if (fParent) return false;
         }
+
+        // 2. Search Term Check
+        if (searchTerm && !fName.toLowerCase().includes(searchTerm.toLowerCase())) {
+            return false;
+        }
+
+        // 3. Year Scoping Check
+        if (selectedYear !== 'All') {
+            const fYear = f.year ? normalizeYear(f.year) : 'All';
+            if (fYear !== 'All' && fYear !== normalizeYear(selectedYear)) {
+                return false;
+            }
+        }
+
+        // 4. Student Department Scoping Check (Subject folders match student department)
+        if (isStudent && user?.department && f.isSubjectFolder && f.code) {
+            const courseDept = deriveDeptFromCode(f.code);
+            const userDept = user.department.toLowerCase().trim();
+            if (courseDept && !userDept.includes(courseDept) && !courseDept.includes(userDept)) {
+                return false;
+            }
+        }
+
+        return true;
     });
 
     const filteredFiles = files.filter(f => {
@@ -480,7 +514,17 @@ For questions regarding this resource, please contact your course instructor.
         const matchesCategory = current 
             ? fCategory === current
             : !folders.some(fold => (fold.name || '').trim().toLowerCase() === fCategory);
-        return matchesCategory && f.name.toLowerCase().includes(searchTerm.toLowerCase()) && (selectedYear === 'All' || f.year === selectedYear);
+        if (!matchesCategory) return false;
+
+        if (searchTerm && !f.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+
+        if (selectedYear !== 'All') {
+            const fYear = f.year ? normalizeYear(f.year) : 'All';
+            if (fYear !== 'All' && fYear !== normalizeYear(selectedYear)) {
+                return false;
+            }
+        }
+        return true;
     });
 
     return (
@@ -584,7 +628,15 @@ For questions regarding this resource, please contact your course instructor.
                     )}
                     <div className="folders-grid">
                         {filteredFolders.map(folder => {
-                            const fileCount = files.filter(f => f.category === folder.name).length;
+                            const fileCount = files.filter(f => {
+                                const matchesCat = (f.category || '').trim().toLowerCase() === (folder.name || '').trim().toLowerCase();
+                                if (!matchesCat) return false;
+                                if (selectedYear !== 'All') {
+                                    const fYear = f.year ? normalizeYear(f.year) : 'All';
+                                    return fYear === 'All' || fYear === normalizeYear(selectedYear);
+                                }
+                                return true;
+                            }).length;
                             return (
                                 <div key={folder.name} className="folder-card glass-panel hover-glow" onClick={() => handleFolderClick(folder.name)}>
                                     <div className="folder-icon-wrapper" style={{ backgroundColor: `${folder.iconColor}15`, color: folder.iconColor }}>
