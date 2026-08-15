@@ -710,7 +710,7 @@ const PracticalScheduleView = ({
                     <div className="approval-seal-content">
                         <ShieldCheck size={24} style={{ color: '#4ade80' }} />
                         <div>
-                            <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#f8fafc' }}>
+                            <div style={{ fontSize: '0.88rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                                 Department Endorsement & Approval
                             </div>
                             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -1371,11 +1371,11 @@ const TimeTable = () => {
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Dept:</span>
                     <select
                         className="form-input"
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', background: 'rgba(0,0,0,0.3)', color: '#fff', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', background: 'var(--control-bg)', color: 'var(--text-primary)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
                         value={selectedMajor}
                         onChange={e => setSelectedMajor(e.target.value)}
                     >
-                        {majors.map(m => <option key={m} value={m} style={{ background: '#1e293b' }}>{m}</option>)}
+                        {majors.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                 </div>
             </div>
@@ -1383,10 +1383,10 @@ const TimeTable = () => {
             {/* Class Section Info Bar */}
             <div className="class-section-info glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', padding: '0.6rem 1rem', borderRadius: '12px' }}>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    Technological University (Hmawbi) — <strong style={{ color: '#fff' }}>{selectedYear} ({selectedSemester})</strong> | Dept: <strong style={{ color: '#818cf8' }}>{selectedMajor}</strong>
+                    Technological University (Hmawbi) — <strong style={{ color: 'var(--text-primary)' }}>{selectedYear} ({selectedSemester})</strong> | Dept: <strong style={{ color: 'var(--primary-color)' }}>{selectedMajor}</strong>
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Family Teacher: <span style={{ color: '#4ade80', fontWeight: '600' }}>{classSectionInfo.familyTeacher}</span> | Room: <span style={{ color: '#6366f1', fontWeight: '600' }}>{classSectionInfo.majorRoom}</span>
+                    Family Teacher: <span style={{ color: '#16a34a', fontWeight: '600' }}>{classSectionInfo.familyTeacher}</span> | Room: <span style={{ color: 'var(--primary-color)', fontWeight: '600' }}>{classSectionInfo.majorRoom}</span>
                 </div>
             </div>
 
@@ -1400,8 +1400,8 @@ const TimeTable = () => {
                     ) : selectedCategory === 'Academic' ? (
                         !hasAnySlots ? (
                             <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                <Calendar size={48} style={{ opacity: 0.3, marginBottom: '1rem', color: '#818cf8' }} />
-                                <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '0.5rem' }}>No Timetable Published for {selectedYear} ({selectedSemester})</h3>
+                                <Calendar size={48} style={{ opacity: 0.3, marginBottom: '1rem', color: 'var(--primary-color)' }} />
+                                <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No Timetable Published for {selectedYear} ({selectedSemester})</h3>
                                 <p style={{ fontSize: '0.9rem', maxWidth: '440px', margin: '0 auto 1.5rem auto' }}>
                                     There are no class schedules published for {selectedYear} ({selectedSemester}) in {selectedMajor} Department.
                                 </p>

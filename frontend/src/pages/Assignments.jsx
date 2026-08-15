@@ -501,7 +501,7 @@ const Assignments = () => {
                                 </button>
                                 <span className="badge badge-primary font-mono">{rosterData?.assignment?.course?.code}</span>
                             </div>
-                            <h2 style={{ margin: '0.5rem 0 0.2rem', color: '#fff' }}>{activeReviewAssignment.title}</h2>
+                            <h2 style={{ margin: '0.5rem 0 0.2rem', color: 'var(--text-primary)' }}>{activeReviewAssignment.title}</h2>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                                 Due: {formatDueDate(activeReviewAssignment.dueDate)} • {activeReviewAssignment.description || 'No instructions provided.'}
                             </p>
@@ -623,11 +623,11 @@ const Assignments = () => {
 
                                         return (
                                             <tr key={idx}>
-                                                <td className="font-mono" style={{ fontWeight: '700', color: '#a5b4fc' }}>
+                                                <td className="font-mono" style={{ fontWeight: '700', color: 'var(--primary-color)' }}>
                                                     {st.rollNo}
                                                 </td>
                                                 <td>
-                                                    <div style={{ fontWeight: '600', color: '#fff' }}>{st.name}</div>
+                                                    <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{st.name}</div>
                                                     <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{st.email}</div>
                                                 </td>
                                                 <td>
@@ -647,12 +647,12 @@ const Assignments = () => {
                                                         </span>
                                                     )}
                                                     {st.status === 'Pending' && (
-                                                        <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(255, 255, 255, 0.08)', color: 'var(--text-muted)' }}>
+                                                        <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(var(--primary-rgb), 0.08)', color: 'var(--text-muted)' }}>
                                                             <Clock size={13} /> Pending
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td style={{ fontSize: '0.82rem', color: isDone ? '#cbd5e1' : 'var(--text-muted)' }}>
+                                                <td style={{ fontSize: '0.82rem', color: isDone ? 'var(--text-main)' : 'var(--text-muted)' }}>
                                                     {st.submittedAt ? new Date(st.submittedAt).toLocaleString() : '—'}
                                                 </td>
                                                 <td>
@@ -1080,10 +1080,10 @@ const Assignments = () => {
                                 />
 
                                 {formData.fileUrl ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', padding: '0.6rem 0.85rem', borderRadius: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(var(--primary-rgb), 0.1)', border: '1px solid rgba(var(--primary-rgb), 0.3)', padding: '0.6rem 0.85rem', borderRadius: '10px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
                                             <FileText size={16} className="text-primary" />
-                                            <span style={{ fontSize: '0.85rem', color: '#fff', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {formData.fileName || 'Attached_Question_File.pdf'}
                                             </span>
                                         </div>
@@ -1102,7 +1102,7 @@ const Assignments = () => {
                                         className="btn btn-secondary"
                                         onClick={() => questionFileInputRef.current?.click()}
                                         disabled={uploadingQuestionFile}
-                                        style={{ width: '100%', justifyContent: 'center', border: '1px dashed rgba(255,255,255,0.2)' }}
+                                        style={{ width: '100%', justifyContent: 'center', border: '1px dashed var(--surface-border)' }}
                                     >
                                         <Paperclip size={16} />
                                         {uploadingQuestionFile ? 'Uploading file...' : 'Choose Question Paper File (PDF/Doc)'}
@@ -1129,13 +1129,13 @@ const Assignments = () => {
             {submitModalAssignment && (
                 <div className="modal-overlay animate-fade-in" style={{ zIndex: 1100 }}>
                     <div className="modal glass-panel animate-scale-up" style={{ maxWidth: '500px', width: '90%' }}>
-                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.85rem' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--surface-border)', paddingBottom: '0.85rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                <div style={{ background: 'rgba(99,102,241,0.15)', padding: '0.5rem', borderRadius: '10px', color: '#818cf8' }}>
+                                <div style={{ background: 'rgba(var(--primary-rgb), 0.15)', padding: '0.5rem', borderRadius: '10px', color: 'var(--primary-color)' }}>
                                     <Upload size={20} />
                                 </div>
                                 <div>
-                                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Submit Solution Work</h3>
+                                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Submit Solution Work</h3>
                                     <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>{submitModalAssignment.title}</p>
                                 </div>
                             </div>
@@ -1162,17 +1162,17 @@ const Assignments = () => {
                                 className="file-dropzone"
                                 onClick={() => fileInputRef.current?.click()}
                             >
-                                <Upload size={32} style={{ color: '#818cf8', margin: '0 auto 0.5rem' }} />
+                                <Upload size={32} style={{ color: 'var(--primary-color)', margin: '0 auto 0.5rem' }} />
                                 {selectedFile ? (
                                     <div>
-                                        <p style={{ margin: 0, fontWeight: '700', color: '#fff' }}>{selectedFile.name}</p>
+                                        <p style={{ margin: 0, fontWeight: '700', color: 'var(--text-primary)' }}>{selectedFile.name}</p>
                                         <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#4ade80' }}>
                                             {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready to submit
                                         </p>
                                     </div>
                                 ) : (
                                     <div>
-                                        <p style={{ margin: 0, fontWeight: '600', color: '#fff' }}>Click or drag your solution PDF / photo here</p>
+                                        <p style={{ margin: 0, fontWeight: '600', color: 'var(--text-primary)' }}>Click or drag your solution PDF / photo here</p>
                                         <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Supports PDF, JPG, PNG, DOCX up to 10MB</p>
                                     </div>
                                 )}

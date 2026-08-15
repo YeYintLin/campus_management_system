@@ -630,7 +630,7 @@
 }
 
 .session-schedule-table th {
-    background: rgba(10, 15, 30, 0.55);
+    background: var(--grid-overlay);
     font-size: 0.74rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -808,5 +808,35 @@
     overflow: hidden !important;
     box-sizing: border-box !important;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   LIGHT THEME OVERRIDES FOR TIMETABLE
+   ══════════════════════════════════════════════════════════════ */
+:root[data-theme='light'] .session-schedule-table th {
+    background: rgba(15, 23, 42, 0.05);
+    color: #475569;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+:root[data-theme='light'] .session-schedule-table td {
+    color: #0b1220;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='light'] .session-schedule-table tbody tr:hover {
+    background: rgba(8, 145, 178, 0.04);
+}
+
+:root[data-theme='light'] .approval-seal-card {
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+}
+
+:root[data-theme='light'] .timetable-grid th {
+    background: rgba(15, 23, 42, 0.04);
+    color: #475569;
+}
+
 
 
