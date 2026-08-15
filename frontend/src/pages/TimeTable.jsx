@@ -837,6 +837,7 @@ const TimeTable = () => {
     const [dateSessions, setDateSessions] = useState([]);
     const [classSectionInfo, setClassSectionInfo] = useState({ familyTeacher: 'Daw Thin Yu Maw', majorRoom: '3/212-A' });
     const [loading, setLoading] = useState(true);
+    const [coursesMap, setCoursesMap] = useState({});
 
     // Excel import state
     const fileInputRef = useRef(null);
@@ -849,6 +850,23 @@ const TimeTable = () => {
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [confirmingImport, setConfirmingImport] = useState(false);
     const [cleaningCorrupted, setCleaningCorrupted] = useState(false);
+
+    // Global Subject Name Mapping Loader
+    useEffect(() => {
+        apiClient.get('/courses')
+            .then(res => {
+                const map = {};
+                (res.data || []).forEach(c => {
+                    if (c.code && c.name) {
+                        const norm = c.code.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                        map[norm] = c.name;
+                        map[c.code.trim().toLowerCase()] = c.name;
+                    }
+                });
+                setCoursesMap(prev => ({ ...prev, ...map }));
+            })
+            .catch(() => {});
+    }, []);
 
     useEffect(() => {
         if (!isTeacher) return;
@@ -960,6 +978,21 @@ const TimeTable = () => {
             const semDoc = Array.isArray(data) ? null : data?.semesterDoc;
             const secObj = Array.isArray(data) ? null : data?.classSection;
             const slotsList = Array.isArray(data) ? data : (data?.slots || []);
+
+            // Extract subject name mappings from timetable sheet legend
+            if (semDoc?.legend && Array.isArray(semDoc.legend)) {
+                const legMap = {};
+                semDoc.legend.forEach(item => {
+                    const code = item.code || item.courseCode || '';
+                    const subj = item.subject || item.name || item.courseName || '';
+                    if (code && subj) {
+                        const norm = code.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                        legMap[norm] = subj;
+                        legMap[code.trim().toLowerCase()] = subj;
+                    }
+                });
+                setCoursesMap(prev => ({ ...prev, ...legMap }));
+            }
 
             let fTeacher = semDoc?.familyTeacher || secObj?.familyTeacher || 'Faculty Member';
             let mRoom = semDoc?.majorRoom || secObj?.majorRoom || '3/212-A';
@@ -1255,12 +1288,35 @@ const TimeTable = () => {
         return 'tier-lecture';
     };
 
-    const formatCourseDisplayName = (code = '', name = '') => {
-        const raw = (code || name || '').trim();
-        if (raw.toLowerCase().includes('extra-cirruculum') || raw.toLowerCase().includes('extracurricular') || raw.toLowerCase().includes('extra-curriculum') || raw.toLowerCase().includes('extra cirruculum')) {
-            return 'Extra Activity';
+    const resolveCourseDisplay = (session) => {
+        if (!session) return { subject: '', code: '' };
+        const rawCode = (session.course || '').trim();
+        const rawName = (session.name || '').trim();
+
+        if (rawCode.toLowerCase().includes('extra') || rawName.toLowerCase().includes('extra')) {
+            return { subject: 'Extra Activity', code: '' };
         }
-        return raw;
+
+        const normCode = rawCode.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        const normName = rawName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+        let foundName = coursesMap[normCode] || coursesMap[rawCode.toLowerCase()];
+        if (!foundName && normName && coursesMap[normName]) {
+            foundName = coursesMap[normName];
+        }
+        if (!foundName && rawName && rawName.toLowerCase() !== rawCode.toLowerCase()) {
+            foundName = rawName;
+        }
+
+        const subject = foundName || rawCode;
+        const code = (rawCode && rawCode.toLowerCase() !== subject.toLowerCase()) ? rawCode : '';
+
+        return { subject, code };
+    };
+
+    const formatCourseDisplayName = (code = '', name = '') => {
+        const res = resolveCourseDisplay({ course: code, name });
+        return res.subject;
     };
 
     const hasAnySlots = Object.values(schedules).some(dayObj => Object.values(dayObj || {}).some(slot => slot && slot.course));
@@ -1443,14 +1499,18 @@ const TimeTable = () => {
                                                 }
 
                                                 const session = schedules[day]?.[p.period] || schedules[day]?.[p.slotKey];
+                                                const { subject, code } = resolveCourseDisplay(session);
                                                 return (
                                                     <td key={pIdx} className="schedule-td">
                                                         {session ? (
                                                             <div className={`session-block ${getTypeClass(session.type)} hover-glow`}>
                                                                 <div className="session-top">
-                                                                    <span className="course-name" title={session.name || session.course}>
-                                                                        {formatCourseDisplayName(session.course, session.name)}
+                                                                    <span className="course-name" title={code ? `${subject} (${code})` : subject}>
+                                                                        {subject}
                                                                     </span>
+                                                                    {code && (
+                                                                        <span className="course-code-mini font-mono">{code}</span>
+                                                                    )}
                                                                 </div>
                                                                 <div className="session-bottom-row">
                                                                     <div className="session-room">
@@ -1462,7 +1522,7 @@ const TimeTable = () => {
                                                             </div>
                                                         ) : (
                                                             <div className="empty-slot">
-                                                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.15)' }}>-</span>
+                                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', opacity: 0.3 }}>-</span>
                                                             </div>
                                                         )}
                                                     </td>
@@ -1498,7 +1558,7 @@ const TimeTable = () => {
                         {/* Mobile Day Selector Bar */}
                         <div className="year-filter-bar glass-panel" style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             {(actualToday === 'Saturday' || actualToday === 'Sunday') && (
-                                <div style={{ fontSize: '0.75rem', color: '#4ade80', fontWeight: '600', padding: '0.2rem 0.5rem', background: 'rgba(34,197,94,0.1)', borderRadius: '6px' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: '600', padding: '0.2rem 0.5rem', background: 'rgba(34,197,94,0.1)', borderRadius: '6px' }}>
                                     🎉 Today is {actualToday} (Weekend) — Showing Monday's Schedule
                                 </div>
                             )}
@@ -1517,38 +1577,43 @@ const TimeTable = () => {
                                 if (p.isLunch) {
                                     return (
                                         <div key={idx} className="glass-panel" style={{ padding: '0.9rem 1.1rem', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
-                                            <Coffee size={18} style={{ color: '#f87171' }} />
+                                            <Coffee size={18} style={{ color: '#ef4444' }} />
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <span style={{ fontWeight: '700', fontSize: '0.82rem', color: '#f87171', letterSpacing: '0.05em' }}>LUNCH BREAK</span>
-                                                <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)' }}>12:00 to 1:00 PM</span>
+                                                <span style={{ fontWeight: '700', fontSize: '0.82rem', color: '#ef4444', letterSpacing: '0.05em' }}>LUNCH BREAK</span>
+                                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>12:00 to 1:00 PM</span>
                                             </div>
                                         </div>
                                     );
                                 }
 
                                 const session = schedules[selectedMobileDay]?.[p.period] || schedules[selectedMobileDay]?.[p.slotKey];
+                                const { subject, code } = resolveCourseDisplay(session);
+
                                 return (
-                                    <div key={idx} className="glass-panel" style={{ padding: '1.1rem', borderRadius: '14px', background: 'rgba(30, 41, 59, 0.4)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                                        <div style={{ marginBottom: session ? '0.5rem' : '0.25rem' }}>
-                                            <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    <div key={idx} className="glass-panel mobile-period-card">
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: session ? '0.5rem' : '0.25rem' }}>
+                                            <span className="mobile-period-time">
                                                 PERIOD {p.period} ({p.time})
                                             </span>
+                                            {session && code && (
+                                                <span className="mobile-period-code font-mono">{code}</span>
+                                            )}
                                         </div>
                                         {session ? (
                                             <div>
-                                                <h4 style={{ margin: '0 0 0.35rem', fontSize: '1rem', color: '#fff', fontWeight: '600', lineHeight: 1.3 }}>
-                                                    {formatCourseDisplayName(session.course, session.name)}
+                                                <h4 className="mobile-period-subject">
+                                                    {subject}
                                                 </h4>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                        <MapPin size={12} />
+                                                <div className="mobile-period-meta">
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                        <MapPin size={13} style={{ color: 'var(--primary-color)' }} />
                                                         <span>Room: {session.room}</span>
                                                     </div>
-                                                    <span className="type-tag" style={{ fontSize: '0.7rem' }}>{session.sessionLabel || session.type}</span>
+                                                    <span className="type-tag">{session.sessionLabel || session.type}</span>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)' }}>Free Period</p>
+                                            <p className="mobile-period-free">Free Period</p>
                                         )}
                                     </div>
                                 );

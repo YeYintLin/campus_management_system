@@ -137,14 +137,26 @@
 
 .course-name {
   font-weight: 800;
-  font-size: 0.95rem;
-  line-height: 1.2;
-  color: var(--text-main);
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  font-size: 0.92rem;
+  line-height: 1.25;
+  color: var(--text-primary);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.course-code-mini {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
 }
 
 .session-bottom-row {
@@ -809,9 +821,124 @@
     box-sizing: border-box !important;
 }
 
+/* Mobile Period Timeline Cards */
+.mobile-period-card {
+    padding: 1.15rem;
+    border-radius: 14px;
+    background: var(--surface-color);
+    border: 1px solid var(--surface-border);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mobile-period-time {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.mobile-period-code {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    background: rgba(var(--primary-rgb), 0.12);
+    color: var(--primary-color);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+}
+
+.mobile-period-subject {
+    margin: 0 0 0.35rem;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.mobile-period-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+}
+
+.mobile-period-free {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+    opacity: 0.7;
+}
+
 /* ══════════════════════════════════════════════════════════════
    LIGHT THEME OVERRIDES FOR TIMETABLE
    ══════════════════════════════════════════════════════════════ */
+:root[data-theme='light'] .mobile-period-card {
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+}
+
+:root[data-theme='light'] .mobile-period-time {
+    color: #0891b2;
+}
+
+:root[data-theme='light'] .mobile-period-subject {
+    color: #0b1220;
+}
+
+:root[data-theme='light'] .mobile-period-code {
+    background: rgba(8, 145, 178, 0.1);
+    color: #0e7490;
+    border: 1px solid rgba(8, 145, 178, 0.25);
+}
+
+:root[data-theme='light'] .course-name {
+    color: #0b1220;
+    text-shadow: none;
+}
+
+:root[data-theme='light'] .course-code-mini {
+    background: rgba(15, 23, 42, 0.08);
+    color: #334155;
+}
+
+:root[data-theme='light'] .session-room {
+    color: #475569;
+}
+
+:root[data-theme='light'] .type-tag {
+    background: rgba(15, 23, 42, 0.08);
+    color: #334155;
+}
+
+:root[data-theme='light'] .tier-lecture {
+    background: linear-gradient(135deg, rgba(8, 145, 178, 0.08), rgba(8, 145, 178, 0.16));
+    border: 1px solid rgba(8, 145, 178, 0.2);
+    border-left: 4px solid #0891b2;
+}
+
+:root[data-theme='light'] .tier-lab {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.08), rgba(236, 72, 153, 0.16));
+    border: 1px solid rgba(236, 72, 153, 0.2);
+    border-left: 4px solid #ec4899;
+}
+
+:root[data-theme='light'] .tier-tutorial {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(34, 197, 94, 0.16));
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    border-left: 4px solid #22c55e;
+}
+
+:root[data-theme='light'] .tier-seminar {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.16));
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-left: 4px solid #f59e0b;
+}
+
 :root[data-theme='light'] .session-schedule-table th {
     background: rgba(15, 23, 42, 0.05);
     color: #475569;
@@ -837,6 +964,7 @@
     background: rgba(15, 23, 42, 0.04);
     color: #475569;
 }
+
 
 
 
