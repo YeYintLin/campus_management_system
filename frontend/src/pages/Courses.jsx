@@ -79,12 +79,35 @@ const isCourseTaughtByTeacher = (course, user) => {
     return false;
 };
 
+const DEFAULT_GRADING_SCHEME = {
+    finalExam: 40,
+    midterm: 25,
+    lab: 20,
+    quizzes: 15,
+};
+
+const DEFAULT_CURRICULUM_MODULES = [
+    { week: 'Weeks 1 – 4', title: 'Foundational Theory & Mathematics', description: 'Core definitions, mathematical modeling, system equations, and initial conditions.' },
+    { week: 'Weeks 5 – 8', title: 'Intermediate Analysis & Laboratory Design', description: 'Transfer functions, frequency response, system stability, and simulation labs.' },
+    { week: 'Weeks 9 – 12', title: 'Advanced Engineering Applications', description: 'Digital control, sensor integration, state-space representation, and case studies.' },
+    { week: 'Weeks 13 – 16', title: 'Review, Project & Final Assessment', description: 'System optimization, team project demonstrations, and comprehensive final evaluation.' },
+];
+
+const DEFAULT_REFERENCES = [
+    'TU Hmawbi Engineering Department Official Curriculum Guide',
+    'Standard Academic Course Textbook & Lecture Manual',
+    'IEEE & Digital Simulation Guidelines'
+];
+
 const initialCourseForm = {
     name: '',
     code: '',
     year: 1,
     description: '',
     teacher: '',
+    gradingScheme: { ...DEFAULT_GRADING_SCHEME },
+    curriculumModules: DEFAULT_CURRICULUM_MODULES.map(m => ({ ...m })),
+    references: [...DEFAULT_REFERENCES],
 };
 
 const Courses = () => {
@@ -132,8 +155,7 @@ const Courses = () => {
     const canManageCourse = (course) => {
         if (isAdmin) return true;
         if (isTeacher) {
-            const teacherId = course.teacher?._id || course.teacher;
-            return teacherId && teacherId.toString() === user?._id?.toString();
+            return isCourseTaughtByTeacher(course, user);
         }
         return false;
     };
@@ -147,6 +169,9 @@ const Courses = () => {
         const yearTag = deriveYearTag(course.code);
         const instructor = course.teacher?.name || 'Faculty Member';
         const email = course.teacher?.email || 'N/A';
+        const gs = course.gradingScheme || DEFAULT_GRADING_SCHEME;
+        const modules = (course.curriculumModules && course.curriculumModules.length > 0) ? course.curriculumModules : DEFAULT_CURRICULUM_MODULES;
+        const refs = (course.references && course.references.length > 0) ? course.references : DEFAULT_REFERENCES;
 
         const content = `================================================================================
                     TECHNOLOGICAL UNIVERSITY (HMAWBI)
@@ -168,33 +193,21 @@ ${course.description || 'Comprehensive curriculum covering theoretical foundatio
 --------------------------------------------------------------------------------
 2. GRADING & ASSESSMENT SCHEME
 --------------------------------------------------------------------------------
-- Final Examination       : 40%
-- Midterm Examination     : 25%
-- Laboratory & Practical  : 20%
-- Quizzes & Assignments   : 15%
+- Final Examination       : ${gs.finalExam ?? 40}%
+- Midterm Examination     : ${gs.midterm ?? 25}%
+- Laboratory & Practical  : ${gs.lab ?? 20}%
+- Quizzes & Assignments   : ${gs.quizzes ?? 15}%
 - Total Score             : 100% (Minimum Passing Score: 50% / Grade C)
 
 --------------------------------------------------------------------------------
 3. 16-WEEK ACADEMIC CURRICULUM
 --------------------------------------------------------------------------------
-[Weeks 1 – 4]   Foundational Theory & Mathematics
-                Core definitions, mathematical modeling, system equations, and initial conditions.
-
-[Weeks 5 – 8]   Intermediate Analysis & Laboratory Design
-                Transfer functions, frequency response, system stability, and simulation labs.
-
-[Weeks 9 – 12]  Advanced Engineering Applications
-                Digital control, sensor integration, state-space representation, and case studies.
-
-[Weeks 13 – 16] Review, Project & Final Assessment
-                System optimization, team project demonstrations, and comprehensive final evaluation.
+${modules.map(m => `[${m.week || 'Module'}]   ${m.title || ''}\n                ${m.description || ''}`).join('\n\n')}
 
 --------------------------------------------------------------------------------
 4. RECOMMENDED REFERENCE MATERIALS
 --------------------------------------------------------------------------------
-- TU Hmawbi Engineering Department Official Curriculum Guide
-- Standard Academic Course Textbook & Lecture Manual
-- IEEE & Digital Simulation Guidelines
+${refs.map(r => `- ${r}`).join('\n')}
 
 ================================================================================
 Generated on: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -374,7 +387,12 @@ TU Hmawbi Smart Campus Management System
     }, [isAdmin, isTeacher]);
 
     const resetForm = () => {
-        setFormData({ ...initialCourseForm });
+        setFormData({
+            ...initialCourseForm,
+            gradingScheme: { ...DEFAULT_GRADING_SCHEME },
+            curriculumModules: DEFAULT_CURRICULUM_MODULES.map(m => ({ ...m })),
+            references: [...DEFAULT_REFERENCES],
+        });
         setModalCourse(null);
         setModalError('');
     };
@@ -390,6 +408,18 @@ TU Hmawbi Smart Campus Management System
                 year: course.year || 1,
                 description: course.description || '',
                 teacher: course.teacher?._id || course.teacher || '',
+                gradingScheme: {
+                    finalExam: course.gradingScheme?.finalExam ?? DEFAULT_GRADING_SCHEME.finalExam,
+                    midterm: course.gradingScheme?.midterm ?? DEFAULT_GRADING_SCHEME.midterm,
+                    lab: course.gradingScheme?.lab ?? DEFAULT_GRADING_SCHEME.lab,
+                    quizzes: course.gradingScheme?.quizzes ?? DEFAULT_GRADING_SCHEME.quizzes,
+                },
+                curriculumModules: (course.curriculumModules && course.curriculumModules.length > 0)
+                    ? course.curriculumModules.map(m => ({ ...m }))
+                    : DEFAULT_CURRICULUM_MODULES.map(m => ({ ...m })),
+                references: (course.references && course.references.length > 0)
+                    ? [...course.references]
+                    : [...DEFAULT_REFERENCES],
             });
         } else {
             resetForm();
@@ -406,6 +436,28 @@ TU Hmawbi Smart Campus Management System
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleGradingChange = (key, val) => {
+        const num = Math.max(0, Math.min(100, Number(val) || 0));
+        setFormData(prev => ({
+            ...prev,
+            gradingScheme: {
+                ...prev.gradingScheme,
+                [key]: num,
+            }
+        }));
+    };
+
+    const handleCurriculumChange = (index, field, val) => {
+        setFormData(prev => {
+            const modules = [...(prev.curriculumModules || DEFAULT_CURRICULUM_MODULES)];
+            modules[index] = {
+                ...modules[index],
+                [field]: val,
+            };
+            return { ...prev, curriculumModules: modules };
+        });
+    };
+
     const handleSaveCourse = async (event) => {
         event.preventDefault();
         if (!canEditCourses || savingCourse) return;
@@ -416,6 +468,9 @@ TU Hmawbi Smart Campus Management System
             year: Number(formData.year) || 1,
             description: formData.description,
             teacher: formData.teacher,
+            gradingScheme: formData.gradingScheme,
+            curriculumModules: formData.curriculumModules,
+            references: formData.references,
         };
 
         if (modalCourse) {
@@ -665,7 +720,7 @@ TU Hmawbi Smart Campus Management System
                             <button className="close-btn" type="button" onClick={closeCourseModal}><X size={18} /></button>
                         </div>
 
-                        <div className="modal-body">
+                        <div className="modal-body" style={{ maxHeight: '68vh', overflowY: 'auto' }}>
                             <div className="form-group">
                                 <label className="form-label">Subject Name</label>
                                 <input
@@ -723,15 +778,115 @@ TU Hmawbi Smart Campus Management System
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Description</label>
+                                <label className="form-label">Course Overview & Description</label>
                                 <textarea
                                     name="description"
                                     className="form-input"
                                     rows={2}
                                     value={formData.description}
                                     onChange={handleFormChange}
+                                    placeholder="Enter course scope, objectives, or laboratory overview..."
                                 />
                             </div>
+
+                            {/* GRADING & ASSESSMENT SCHEME (%) */}
+                            <div className="form-section-title">
+                                <span>Grading & Assessment Scheme</span>
+                                {(() => {
+                                    const sum = (Number(formData.gradingScheme?.finalExam) || 0) +
+                                                (Number(formData.gradingScheme?.midterm) || 0) +
+                                                (Number(formData.gradingScheme?.lab) || 0) +
+                                                (Number(formData.gradingScheme?.quizzes) || 0);
+                                    return (
+                                        <span className={`grading-total-badge ${sum === 100 ? 'grading-total-valid' : 'grading-total-invalid'}`}>
+                                            Total: {sum}% {sum === 100 ? '✓' : '(Target: 100%)'}
+                                        </span>
+                                    );
+                                })()}
+                            </div>
+                            <div className="grading-edit-grid">
+                                <div className="grading-input-group">
+                                    <label>Final Exam (%)</label>
+                                    <div className="grading-input-wrap">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            className="form-input"
+                                            value={formData.gradingScheme?.finalExam ?? 40}
+                                            onChange={(e) => handleGradingChange('finalExam', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grading-input-group">
+                                    <label>Midterm Exam (%)</label>
+                                    <div className="grading-input-wrap">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            className="form-input"
+                                            value={formData.gradingScheme?.midterm ?? 25}
+                                            onChange={(e) => handleGradingChange('midterm', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grading-input-group">
+                                    <label>Lab / Practical (%)</label>
+                                    <div className="grading-input-wrap">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            className="form-input"
+                                            value={formData.gradingScheme?.lab ?? 20}
+                                            onChange={(e) => handleGradingChange('lab', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grading-input-group">
+                                    <label>Quizzes / Assign (%)</label>
+                                    <div className="grading-input-wrap">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            className="form-input"
+                                            value={formData.gradingScheme?.quizzes ?? 15}
+                                            onChange={(e) => handleGradingChange('quizzes', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 16-WEEK ACADEMIC CURRICULUM MODULES */}
+                            <div className="form-section-title">
+                                <span>16-Week Academic Curriculum Outline</span>
+                            </div>
+                            {(formData.curriculumModules || DEFAULT_CURRICULUM_MODULES).map((mod, idx) => (
+                                <div key={idx} className="curriculum-module-edit-card">
+                                    <div className="curriculum-module-header">
+                                        <span className="module-week">{mod.week || `Weeks ${idx * 4 + 1} – ${(idx + 1) * 4}`}</span>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            style={{ flex: 1, padding: '0.4rem 0.65rem', fontSize: '0.88rem' }}
+                                            value={mod.title || ''}
+                                            onChange={(e) => handleCurriculumChange(idx, 'title', e.target.value)}
+                                            placeholder="Module topic title..."
+                                        />
+                                    </div>
+                                    <textarea
+                                        className="form-input"
+                                        rows={2}
+                                        style={{ fontSize: '0.82rem', padding: '0.4rem 0.65rem' }}
+                                        value={mod.description || ''}
+                                        onChange={(e) => handleCurriculumChange(idx, 'description', e.target.value)}
+                                        placeholder="Module content details & learning outcomes..."
+                                    />
+                                </div>
+                            ))}
+
                             {modalError && (
                                 <div className="alert alert-warning mt-4">
                                     {modalError}
@@ -759,97 +914,88 @@ TU Hmawbi Smart Campus Management System
             )}
 
             {/* View Syllabus Modal */}
-            {selectedSyllabus && (
-                <div className="modal-overlay animate-fade-in" onClick={() => setSelectedSyllabus(null)}>
-                    <div className="syllabus-modal glass-panel" onClick={(e) => e.stopPropagation()}>
-                        <div className="syllabus-header">
-                            <div className="syllabus-title-area">
-                                <div className="syllabus-meta-row">
-                                    <span className="course-code-tag">{selectedSyllabus.code}</span>
-                                    <span className="year-badge">{deriveYearTag(selectedSyllabus.code)}</span>
+            {selectedSyllabus && (() => {
+                const gs = selectedSyllabus.gradingScheme || DEFAULT_GRADING_SCHEME;
+                const modules = (selectedSyllabus.curriculumModules && selectedSyllabus.curriculumModules.length > 0)
+                    ? selectedSyllabus.curriculumModules
+                    : DEFAULT_CURRICULUM_MODULES;
+                const refs = (selectedSyllabus.references && selectedSyllabus.references.length > 0)
+                    ? selectedSyllabus.references
+                    : DEFAULT_REFERENCES;
+
+                return (
+                    <div className="modal-overlay animate-fade-in" onClick={() => setSelectedSyllabus(null)}>
+                        <div className="syllabus-modal glass-panel" onClick={(e) => e.stopPropagation()}>
+                            <div className="syllabus-header">
+                                <div className="syllabus-title-area">
+                                    <div className="syllabus-meta-row">
+                                        <span className="course-code-tag">{selectedSyllabus.code}</span>
+                                        <span className="year-badge">{deriveYearTag(selectedSyllabus.code)}</span>
+                                    </div>
+                                    <h2>{selectedSyllabus.name}</h2>
+                                    <p className="subtitle">Instructor: {selectedSyllabus.teacher?.name || 'Faculty Member'} ({selectedSyllabus.teacher?.email || 'TBA'})</p>
                                 </div>
-                                <h2>{selectedSyllabus.name}</h2>
-                                <p className="subtitle">Instructor: {selectedSyllabus.teacher?.name || 'Faculty Member'} ({selectedSyllabus.teacher?.email || 'TBA'})</p>
-                            </div>
-                            <button className="close-panel-btn" onClick={() => setSelectedSyllabus(null)}><X size={18} /></button>
-                        </div>
-
-                        <div className="syllabus-body">
-                            <div className="syllabus-section">
-                                <h4>Course Overview & Description</h4>
-                                <p className="syllabus-desc">
-                                    {selectedSyllabus.description || 'Comprehensive curriculum covering theoretical foundations, analytical problem-solving, and practical laboratory implementations.'}
-                                </p>
+                                <button className="close-panel-btn" onClick={() => setSelectedSyllabus(null)}><X size={18} /></button>
                             </div>
 
-                            <div className="syllabus-section">
-                                <h4>Grading & Assessment Scheme</h4>
-                                <div className="grading-pills-grid">
-                                    <div className="grading-pill"><span className="pill-label">Final Examination</span><span className="pill-val">40%</span></div>
-                                    <div className="grading-pill"><span className="pill-label">Midterm Exam</span><span className="pill-val">25%</span></div>
-                                    <div className="grading-pill"><span className="pill-label">Lab & Practical Work</span><span className="pill-val">20%</span></div>
-                                    <div className="grading-pill"><span className="pill-label">Quizzes & Assignments</span><span className="pill-val">15%</span></div>
+                            <div className="syllabus-body">
+                                <div className="syllabus-section">
+                                    <h4>Course Overview & Description</h4>
+                                    <p className="syllabus-desc">
+                                        {selectedSyllabus.description || 'Comprehensive curriculum covering theoretical foundations, analytical problem-solving, and practical laboratory implementations.'}
+                                    </p>
                                 </div>
-                            </div>
 
-                            <div className="syllabus-section">
-                                <h4>16-Week Academic Curriculum</h4>
-                                <div className="modules-timeline">
-                                    <div className="module-item glass-panel">
-                                        <div className="module-week">Weeks 1 – 4</div>
-                                        <div className="module-info">
-                                            <h5>Foundational Theory & Mathematics</h5>
-                                            <p>Core definitions, mathematical modeling, system equations, and initial conditions.</p>
-                                        </div>
-                                    </div>
-                                    <div className="module-item glass-panel">
-                                        <div className="module-week">Weeks 5 – 8</div>
-                                        <div className="module-info">
-                                            <h5>Intermediate Analysis & Laboratory Design</h5>
-                                            <p>Transfer functions, frequency response, system stability, and simulation labs.</p>
-                                        </div>
-                                    </div>
-                                    <div className="module-item glass-panel">
-                                        <div className="module-week">Weeks 9 – 12</div>
-                                        <div className="module-info">
-                                            <h5>Advanced Engineering Applications</h5>
-                                            <p>Digital control, sensor integration, state-space representation, and case studies.</p>
-                                        </div>
-                                    </div>
-                                    <div className="module-item glass-panel">
-                                        <div className="module-week">Weeks 13 – 16</div>
-                                        <div className="module-info">
-                                            <h5>Review, Project & Final Assessment</h5>
-                                            <p>System optimization, team project demonstrations, and comprehensive final evaluation.</p>
-                                        </div>
+                                <div className="syllabus-section">
+                                    <h4>Grading & Assessment Scheme</h4>
+                                    <div className="grading-pills-grid">
+                                        <div className="grading-pill"><span className="pill-label">Final Examination</span><span className="pill-val">{gs.finalExam ?? 40}%</span></div>
+                                        <div className="grading-pill"><span className="pill-label">Midterm Exam</span><span className="pill-val">{gs.midterm ?? 25}%</span></div>
+                                        <div className="grading-pill"><span className="pill-label">Lab & Practical Work</span><span className="pill-val">{gs.lab ?? 20}%</span></div>
+                                        <div className="grading-pill"><span className="pill-label">Quizzes & Assignments</span><span className="pill-val">{gs.quizzes ?? 15}%</span></div>
                                     </div>
                                 </div>
+
+                                <div className="syllabus-section">
+                                    <h4>16-Week Academic Curriculum</h4>
+                                    <div className="modules-timeline">
+                                        {modules.map((mod, idx) => (
+                                            <div key={idx} className="module-item glass-panel">
+                                                <div className="module-week">{mod.week || `Weeks ${idx * 4 + 1} – ${(idx + 1) * 4}`}</div>
+                                                <div className="module-info">
+                                                    <h5>{mod.title}</h5>
+                                                    <p>{mod.description}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="syllabus-section">
+                                    <h4>Recommended References</h4>
+                                    <ul className="reference-list">
+                                        {refs.map((ref, idx) => (
+                                            <li key={idx}>{ref}</li>
+                                        ))}
+                                    </ul>
+                                </div>
                             </div>
 
-                            <div className="syllabus-section">
-                                <h4>Recommended References</h4>
-                                <ul className="reference-list">
-                                    <li>TU Hmawbi Engineering Department Official Curriculum Guide</li>
-                                    <li>Standard Academic Course Textbook & Lecture Manual</li>
-                                    <li>IEEE & Digital Simulation Guidelines</li>
-                                </ul>
+                            <div className="syllabus-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => setDownloadConfirmCourse(selectedSyllabus)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                >
+                                    <Download size={16} />
+                                    <span>Download Syllabus Document</span>
+                                </button>
+                                <button className="btn btn-secondary-glass" onClick={() => setSelectedSyllabus(null)}>Close</button>
                             </div>
-                        </div>
-
-                        <div className="syllabus-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <button
-                                className="btn btn-primary"
-                                onClick={() => setDownloadConfirmCourse(selectedSyllabus)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                            >
-                                <Download size={16} />
-                                <span>Download Syllabus Document</span>
-                            </button>
-                            <button className="btn btn-secondary-glass" onClick={() => setSelectedSyllabus(null)}>Close</button>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* Download Confirmation & File Details Preview Modal */}
             {downloadConfirmCourse && (

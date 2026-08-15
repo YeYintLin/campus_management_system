@@ -42,6 +42,20 @@ const courseSchema = new mongoose.Schema(
                 ref: 'User', // Refers directly to the student User account
             },
         ],
+        gradingScheme: {
+            finalExam: { type: Number, default: 40 },
+            midterm: { type: Number, default: 25 },
+            lab: { type: Number, default: 20 },
+            quizzes: { type: Number, default: 15 },
+        },
+        curriculumModules: [
+            {
+                week: { type: String },
+                title: { type: String },
+                description: { type: String },
+            },
+        ],
+        references: [{ type: String }],
     },
     { timestamps: true }
 );

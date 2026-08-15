@@ -272,11 +272,9 @@ const createCourse = async (req, res) => {
 };
 
 // @desc    Update course
-// @route   PUT /api/courses/:id
-// @access  Private (Admin, Teacher if their course)
 const updateCourse = async (req, res) => {
     try {
-        const { name, description, teacher, students, year, semester, yearLabel } = req.body;
+        const { name, description, teacher, students, year, semester, yearLabel, gradingScheme, curriculumModules, references } = req.body;
         const course = await Course.findById(req.params.id);
 
         if (!course) {
@@ -284,17 +282,32 @@ const updateCourse = async (req, res) => {
         }
 
         // Authorization: only Admin or assigned Teacher can update
-        if (req.user.role === 'Teacher' && course.teacher.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ message: 'Not authorized to update this course' });
+        const isTeacherUser = req.user.role === 'Teacher';
+        if (isTeacherUser) {
+            const isDirectMatch = course.teacher && course.teacher.toString() === req.user._id.toString();
+            if (!isDirectMatch) {
+                const assignedTeacher = course.teacher ? await User.findById(course.teacher) : null;
+                const stripHonorific = (n = '') => n.replace(/^(daw|u|dr|prof|tr)\.?\s+/i, '').trim().toLowerCase();
+                const userNameClean = stripHonorific(req.user.name);
+                const assignedNameClean = assignedTeacher ? stripHonorific(assignedTeacher.name) : '';
+                if (!userNameClean || userNameClean !== assignedNameClean) {
+                    return res.status(403).json({ message: 'Not authorized to update this course' });
+                }
+            }
         }
 
         course.name = name || course.name;
-        course.description = description || course.description;
+        course.description = description !== undefined ? description : course.description;
         if (year !== undefined) course.year = year;
         if (semester !== undefined) course.semester = semester;
         if (yearLabel !== undefined) course.yearLabel = yearLabel;
-        course.teacher = req.user.role === 'Admin' ? (teacher || course.teacher) : course.teacher;
-        course.students = students || course.students;
+        if (['Admin', 'SuperAdmin', 'academicadmin'].includes(req.user.role)) {
+            course.teacher = teacher || course.teacher;
+        }
+        if (students !== undefined) course.students = students;
+        if (gradingScheme !== undefined) course.gradingScheme = gradingScheme;
+        if (curriculumModules !== undefined) course.curriculumModules = curriculumModules;
+        if (references !== undefined) course.references = references;
 
         const updatedCourse = await course.save();
         res.json(updatedCourse);
