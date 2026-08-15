@@ -139,9 +139,12 @@ const Attendance = () => {
     const [exportConfig, setExportConfig] = useState({
         courseId: '',
         year: '5th Year',
-        month: 'ဇန်နဝါရီ (Jan)',
+        month: 'ဇူလိုင် (Jul)',
         templateType: 'daily',
-        semester: '1'
+        semester: '2',
+        exportType: 'month', // 'month' | 'range'
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0]
     });
     const [exporting, setExporting] = useState(false);
     const [exportError, setExportError] = useState('');
@@ -150,17 +153,25 @@ const Attendance = () => {
         setExporting(true);
         setExportError('');
         try {
-            const { courseId, year, month, templateType, semester } = exportConfig;
+            const { courseId, year, month, templateType, semester, exportType, startDate, endDate } = exportConfig;
             const targetCourse = courseId || (courses[0]?.code || courses[0]?._id || 'McE-52039');
+            const params = { courseId: targetCourse, year, templateType, semester };
+            if (exportType === 'range' && startDate && endDate) {
+                params.startDate = startDate;
+                params.endDate = endDate;
+            } else {
+                params.month = month;
+            }
             const response = await apiClient.get('/attendance/export-excel', {
-                params: { courseId: targetCourse, year, month, templateType, semester },
+                params,
                 responseType: 'blob'
             });
 
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `Roll_Call_${targetCourse}_${templateType}.xlsx`);
+            const filenameSuffix = exportType === 'range' ? `${startDate}_to_${endDate}` : templateType;
+            link.setAttribute('download', `Roll_Call_${targetCourse}_${filenameSuffix}.xlsx`);
             document.body.appendChild(link);
             link.click();
             link.parentNode.removeChild(link);
@@ -1940,56 +1951,102 @@ const Attendance = () => {
                                 </select>
                             </div>
 
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#4ade80', marginBottom: '0.5rem' }}>
-                                    📅 Select Month for Roll Call
-                                    {exportConfig.semester && (
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
-                                            (Semester {exportConfig.semester})
-                                        </span>
-                                    )}
-                                </label>
-                                <select
-                                    value={exportConfig.month}
-                                    onChange={(e) => setExportConfig({ ...exportConfig, month: e.target.value })}
-                                    style={{ 
-                                        width: '100%', 
-                                        padding: '0.85rem 1rem', 
-                                        borderRadius: '10px', 
-                                        background: 'rgba(15, 23, 42, 0.8)', 
-                                        color: '#fff', 
-                                        border: '1.5px solid rgba(34, 197, 94, 0.5)', 
-                                        fontSize: '1rem',
-                                        fontWeight: 500,
-                                        cursor: 'pointer'
-                                    }}
+                            {/* Mode Selector: By Month vs Custom Date Range */}
+                            <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(15, 23, 42, 0.5)', padding: '0.35rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                <button
+                                    className={`year-tag ${exportConfig.exportType === 'month' ? 'active' : ''}`}
+                                    onClick={() => setExportConfig({ ...exportConfig, exportType: 'month' })}
+                                    style={{ flex: 1, fontSize: '0.82rem', padding: '0.45rem', textAlign: 'center', justifyContent: 'center', margin: 0 }}
                                 >
-                                    {(() => {
-                                        const allMonths = [
-                                            { value: 'နိုဝင်ဘာ (Nov)', label: 'နိုဝင်ဘာ (November)' },
-                                            { value: 'ဒီဇင်ဘာ (Dec)', label: 'ဒီဇင်ဘာ (December)' },
-                                            { value: 'ဇန်နဝါရီ (Jan)', label: 'ဇန်နဝါရီ (January)' },
-                                            { value: 'ဖေဖော်ဝါရီ (Feb)', label: 'ဖေဖော်ဝါရီ (February)' },
-                                            { value: 'မတ် (Mar)', label: 'မတ် (March)' },
-                                            { value: 'ဧပြီ (Apr)', label: 'ဧပြီ (April)' },
-                                            { value: 'မေ (May)', label: 'မေ (May)' },
-                                            { value: 'ဇွန် (Jun)', label: 'ဇွန် (June)' },
-                                            { value: 'ဇူလိုင် (Jul)', label: 'ဇူလိုင် (July)' },
-                                            { value: 'သြဂုတ် (Aug)', label: 'သြဂုတ် (August)' },
-                                            { value: 'စက်တင်ဘာ (Sep)', label: 'စက်တင်ဘာ (September)' },
-                                            { value: 'အောက်တိုဘာ (Oct)', label: 'အောက်တိုဘာ (October)' },
-                                        ];
-                                        // Semester 1: Nov-Mar (indices 0-4), Semester 2: May-Oct (indices 6-11)
-                                        const sem = parseInt(exportConfig.semester, 10);
-                                        const sem1Months = allMonths.slice(0, 5); // Nov, Dec, Jan, Feb, Mar
-                                        const sem2Months = allMonths.slice(6);     // May, Jun, Jul, Aug, Sep, Oct
-                                        const filtered = sem === 1 ? sem1Months : sem === 2 ? sem2Months : allMonths;
-                                        return filtered.map(m => (
-                                            <option key={m.value} value={m.value} style={{ background: '#1e293b' }}>{m.label}</option>
-                                        ));
-                                    })()}
-                                </select>
+                                    📅 By Month
+                                </button>
+                                <button
+                                    className={`year-tag ${exportConfig.exportType === 'range' ? 'active' : ''}`}
+                                    onClick={() => setExportConfig({ ...exportConfig, exportType: 'range' })}
+                                    style={{ flex: 1, fontSize: '0.82rem', padding: '0.45rem', textAlign: 'center', justifyContent: 'center', margin: 0 }}
+                                >
+                                    📆 Custom Date Range
+                                </button>
                             </div>
+
+                            {exportConfig.exportType === 'range' ? (
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#4ade80', marginBottom: '0.5rem' }}>
+                                        📆 Select Date Range
+                                    </label>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                        <div>
+                                            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>From (Start Date)</span>
+                                            <input
+                                                type="date"
+                                                value={exportConfig.startDate}
+                                                onChange={(e) => setExportConfig({ ...exportConfig, startDate: e.target.value })}
+                                                style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', background: 'rgba(15, 23, 42, 0.8)', color: '#fff', border: '1.5px solid rgba(34, 197, 94, 0.5)', fontSize: '0.88rem' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>To (End Date)</span>
+                                            <input
+                                                type="date"
+                                                value={exportConfig.endDate}
+                                                onChange={(e) => setExportConfig({ ...exportConfig, endDate: e.target.value })}
+                                                style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', background: 'rgba(15, 23, 42, 0.8)', color: '#fff', border: '1.5px solid rgba(34, 197, 94, 0.5)', fontSize: '0.88rem' }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#4ade80', marginBottom: '0.5rem' }}>
+                                        📅 Select Month for Roll Call
+                                        {exportConfig.semester && (
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                                                (Semester {exportConfig.semester})
+                                            </span>
+                                        )}
+                                    </label>
+                                    <select
+                                        value={exportConfig.month}
+                                        onChange={(e) => setExportConfig({ ...exportConfig, month: e.target.value })}
+                                        style={{ 
+                                            width: '100%', 
+                                            padding: '0.85rem 1rem', 
+                                            borderRadius: '10px', 
+                                            background: 'rgba(15, 23, 42, 0.8)', 
+                                            color: '#fff', 
+                                            border: '1.5px solid rgba(34, 197, 94, 0.5)', 
+                                            fontSize: '1rem',
+                                            fontWeight: 500,
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {(() => {
+                                            const allMonths = [
+                                                { value: 'နိုဝင်ဘာ (Nov)', label: 'နိုဝင်ဘာ (November)' },
+                                                { value: 'ဒီဇင်ဘာ (Dec)', label: 'ဒီဇင်ဘာ (December)' },
+                                                { value: 'ဇန်နဝါရီ (Jan)', label: 'ဇန်နဝါရီ (January)' },
+                                                { value: 'ဖေဖော်ဝါရီ (Feb)', label: 'ဖေဖော်ဝါရီ (February)' },
+                                                { value: 'မတ် (Mar)', label: 'မတ် (March)' },
+                                                { value: 'ဧပြီ (Apr)', label: 'ဧပြီ (April)' },
+                                                { value: 'မေ (May)', label: 'မေ (May)' },
+                                                { value: 'ဇွန် (Jun)', label: 'ဇွန် (June)' },
+                                                { value: 'ဇူလိုင် (Jul)', label: 'ဇူလိုင် (July)' },
+                                                { value: 'သြဂုတ် (Aug)', label: 'သြဂုတ် (August)' },
+                                                { value: 'စက်တင်ဘာ (Sep)', label: 'စက်တင်ဘာ (September)' },
+                                                { value: 'အောက်တိုဘာ (Oct)', label: 'အောက်တိုဘာ (October)' },
+                                            ];
+                                            // Semester 1: Nov-Mar (indices 0-4), Semester 2: May-Oct (indices 6-11)
+                                            const sem = parseInt(exportConfig.semester, 10);
+                                            const sem1Months = allMonths.slice(0, 5); // Nov, Dec, Jan, Feb, Mar
+                                            const sem2Months = allMonths.slice(6);     // May, Jun, Jul, Aug, Sep, Oct
+                                            const filtered = sem === 1 ? sem1Months : sem === 2 ? sem2Months : allMonths;
+                                            return filtered.map(m => (
+                                                <option key={m.value} value={m.value} style={{ background: '#1e293b' }}>{m.label}</option>
+                                            ));
+                                        })()}
+                                    </select>
+                                </div>
+                            )}
 
                             <button
                                 className="btn btn-primary"

@@ -821,7 +821,7 @@ const getAttendanceSummary = async (req, res) => {
 const exportRollCallExcel = async (req, res) => {
     try {
         const ExcelJS = require('exceljs');
-        const { courseId = 'McE-52039', year = '5th Year', month = 'ဇန်နဝါရီ (Jan)', templateType = 'daily', semester = '1' } = req.query;
+        const { courseId = 'McE-52039', year = '5th Year', month = 'ဇန်နဝါရီ (Jan)', templateType = 'daily', semester = '1', startDate, endDate } = req.query;
 
         const yrStr = String(year || req.user?.year || '').toLowerCase();
         const semStr = String(semester || '1').toLowerCase();
@@ -962,8 +962,6 @@ const exportRollCallExcel = async (req, res) => {
                 { _id: '14', rollNo: `${romanYr}-MC-14`, name: 'မောင်ဇေညီညီစိုး' }
             ];
         }
-
-        // Sort students list numerically by roll number
         const deriveRollNo = (student, index) => {
             if (student.rollNo && String(student.rollNo).trim()) {
                 return String(student.rollNo).trim().toUpperCase();
@@ -1012,18 +1010,29 @@ const exportRollCallExcel = async (req, res) => {
         }
         const [acStartYear, acEndYear] = academicYearLabel.split('-').map(s => s.trim());
 
-        // Parse month from Myanmar label to JS month index (0-based)
-        const monthMap = {
-            'ဇန်နဝါရီ': 0, 'ဖေဖော်ဝါရီ': 1, 'မတ်': 2, 'ဧပြီ': 3,
-            'မေ': 4, 'ဇွန်': 5, 'ဇူလိုင်': 6, 'သြဂုတ်': 7,
-            'စက်တင်ဘာ': 8, 'အောက်တိုဘာ': 9, 'နိုဝင်ဘာ': 10, 'ဒီဇင်ဘာ': 11
-        };
-        const monthKey = (month || '').split('(')[0].trim();
-        const monthIdx = monthMap[monthKey] ?? new Date().getMonth();
-        // Academic year: Nov/Dec belong to start year, Jan-Oct belong to end year
-        const calYear = monthIdx >= 10 ? parseInt(acStartYear, 10) : parseInt(acEndYear, 10);
-        const monthStart = new Date(calYear, monthIdx, 1);
-        const monthEnd = new Date(calYear, monthIdx + 1, 0, 23, 59, 59, 999);
+        let monthStart, monthEnd, monthLabelText;
+        if (startDate && endDate) {
+            monthStart = new Date(startDate);
+            monthStart.setHours(0, 0, 0, 0);
+            monthEnd = new Date(endDate);
+            monthEnd.setHours(23, 59, 59, 999);
+            monthLabelText = `(${startDate} မှ ${endDate} ထိ)`;
+        } else {
+            // Parse month from Myanmar label to JS month index (0-based)
+            const monthMap = {
+                'ဇန်နဝါရီ': 0, 'ဖေဖော်ဝါရီ': 1, 'မတ်': 2, 'ဧပြီ': 3,
+                'မေ': 4, 'ဇွန်': 5, 'ဇူလိုင်': 6, 'သြဂုတ်': 7,
+                'စက်တင်ဘာ': 8, 'အောက်တိုဘာ': 9, 'နိုဝင်ဘာ': 10, 'ဒီဇင်ဘာ': 11
+            };
+            const monthKey = (month || '').split('(')[0].trim();
+            const monthIdx = monthMap[monthKey] ?? new Date().getMonth();
+            // Academic year: Nov/Dec belong to start year, Jan-Oct belong to end year
+            const calYear = monthIdx >= 10 ? parseInt(acStartYear, 10) : parseInt(acEndYear, 10);
+            monthStart = new Date(calYear, monthIdx, 1);
+            monthEnd = new Date(calYear, monthIdx + 1, 0, 23, 59, 59, 999);
+            const mLabel = month && String(month).trim() !== '' ? month : 'ဇူလိုင်';
+            monthLabelText = `${mLabel} လ`;
+        }
 
         // Fetch Attendance Records for date mapping
         const attendanceRecords = await Attendance.find({
@@ -1073,10 +1082,36 @@ const exportRollCallExcel = async (req, res) => {
                 { width: 10 }
             ];
 
-            const titleRow = sheet.addRow([`${courseInfo.code}, ${courseInfo.name}\nTutorial Sign`]);
+            const row1 = sheet.addRow(['Technological University ( Hmawbi )']);
+            row1.height = 22.8;
             sheet.mergeCells('A1:H1');
-            titleRow.font = { bold: true, size: 12 };
-            titleRow.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+            sheet.getCell('A1').font = { bold: true, size: 14 };
+            sheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
+
+            const row2 = sheet.addRow([`Attendance Record ( ${acStartYear} - ${acEndYear} )`]);
+            row2.height = 22.8;
+            sheet.mergeCells('A2:H2');
+            sheet.getCell('A2').font = { bold: true, size: 12 };
+            sheet.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' };
+
+            const classCode = `${romanYr} MC`;
+            const row3 = sheet.addRow([classCode, '', '', '', '', '', `ဘာသာရပ် - ${courseInfo.name || courseInfo.code}`]);
+            sheet.mergeCells('A3:C3');
+            sheet.mergeCells('G3:H3');
+            sheet.getCell('A3').font = { bold: true, size: 10 };
+            sheet.getCell('G3').font = { bold: true, size: 10 };
+            sheet.getCell('A3').alignment = { horizontal: 'left', vertical: 'middle' };
+            sheet.getCell('G3').alignment = { horizontal: 'left', vertical: 'middle' };
+
+            const totalMonthlyHours = attendanceRecords.length * hourWeight;
+            const row4 = sheet.addRow([`${toMyanmarDigits(acStartYear)} - ${toMyanmarDigits(acEndYear)} ခုနှစ်၊ ${monthLabelText}`, '', '', '', '', '', `ယခုလတက်ချိန် - ${toMyanmarDigits(totalMonthlyHours)} နာရီ`]);
+            row4.height = 24.75;
+            sheet.mergeCells('A4:C4');
+            sheet.mergeCells('G4:H4');
+            sheet.getCell('A4').font = { size: 10 };
+            sheet.getCell('G4').font = { bold: true, size: 10 };
+            sheet.getCell('A4').alignment = { horizontal: 'left', vertical: 'middle' };
+            sheet.getCell('G4').alignment = { horizontal: 'left', vertical: 'middle' };
 
             const headerRow = sheet.addRow(['No ', 'Roll No ', 'Name', 'Tutorial I', 'Tutorial II', 'Tutorial III', 'Tutorial IV', 'Tutorial V']);
             headerRow.font = { bold: true };
@@ -1146,8 +1181,7 @@ const exportRollCallExcel = async (req, res) => {
             // Row 4: Academic Year/Month & Monthly Total Hours (Height 24.75)
             const conductedSessions = attendanceRecords.length;
             const totalMonthlyHours = conductedSessions > 0 ? conductedSessions * hourWeight : 0;
-            const monthLabel = month && String(month).trim() !== '' ? month : 'ဇန်နဝါရီ';
-            const row4 = sheet.addRow([`${toMyanmarDigits(acStartYear)} - ${toMyanmarDigits(acEndYear)} ခုနှစ်၊ ${monthLabel} လ`, '', '', '', '', '', `ယခုလတက်ချိန် - ${toMyanmarDigits(totalMonthlyHours)} နာရီ`]);
+            const row4 = sheet.addRow([`${toMyanmarDigits(acStartYear)} - ${toMyanmarDigits(acEndYear)} ခုနှစ်၊ ${monthLabelText}`, '', '', '', '', '', `ယခုလတက်ချိန် - ${toMyanmarDigits(totalMonthlyHours)} နာရီ`]);
             row4.height = 24.75;
             sheet.mergeCells('A4:F4');
             sheet.mergeCells('G4:Y4');
