@@ -55,6 +55,14 @@ const isDueDateOverdue = (dateStr) => {
     return new Date(dateStr).getTime() < Date.now();
 };
 
+const getFileDownloadUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const clean = url.startsWith('/') ? url : `/${url}`;
+    const base = import.meta.env.VITE_CORE_API_URL?.replace(/\/api\/?$/, '') || window.location.origin;
+    return `${base}${clean}`;
+};
+
 const Assignments = () => {
     const { user } = useContext(AuthContext);
     const isStudent = user?.role === 'Student';
@@ -462,7 +470,7 @@ const Assignments = () => {
 
                         {activeReviewAssignment.fileUrl && (
                             <a
-                                href={activeReviewAssignment.fileUrl.startsWith('http') ? activeReviewAssignment.fileUrl : `http://165.245.181.251:5001${activeReviewAssignment.fileUrl}`}
+                                href={getFileDownloadUrl(activeReviewAssignment.fileUrl)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="btn btn-secondary"
@@ -572,9 +580,7 @@ const Assignments = () => {
                                 <tbody>
                                     {paginatedRoster.map((st, idx) => {
                                         const isDone = st.status === 'Submitted' || st.status === 'Late';
-                                        const fullFileUrl = st.fileUrl
-                                            ? (st.fileUrl.startsWith('http') ? st.fileUrl : `http://165.245.181.251:5001${st.fileUrl}`)
-                                            : null;
+                                        const fullFileUrl = st.fileUrl ? getFileDownloadUrl(st.fileUrl) : null;
 
                                         return (
                                             <tr key={idx}>
@@ -715,9 +721,7 @@ const Assignments = () => {
                         ) : (
                             currentSubjectAssignments.map(assignment => {
                                 const isOverdue = isDueDateOverdue(assignment.dueDate);
-                                const fullQuestionUrl = assignment.fileUrl
-                                    ? (assignment.fileUrl.startsWith('http') ? assignment.fileUrl : `http://165.245.181.251:5001${assignment.fileUrl}`)
-                                    : null;
+                                const fullQuestionUrl = assignment.fileUrl ? getFileDownloadUrl(assignment.fileUrl) : null;
 
                                 // Student's own submission
                                 const mySubmission = isStudent && assignment.submissions?.find(s => {
@@ -793,7 +797,7 @@ const Assignments = () => {
                                                         </div>
                                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                             <a
-                                                                href={mySubmission.fileUrl.startsWith('http') ? mySubmission.fileUrl : `http://165.245.181.251:5001${mySubmission.fileUrl}`}
+                                                                href={getFileDownloadUrl(mySubmission.fileUrl)}
                                                                 target="_blank"
                                                                 rel="noreferrer"
                                                                 className="btn btn-secondary btn-sm"

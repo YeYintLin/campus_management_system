@@ -101,27 +101,30 @@ const getAllAssignments = async (req, res) => {
         let filter = {};
 
         if (role === 'Teacher') {
-            const myCourses = await Course.find({
-                $or: [
-                    { teacher: userId },
-                    { teacher: req.user.name },
-                    { teacher: req.user.email }
-                ]
-            }).select('_id');
-            const myCourseIds = myCourses.map(c => c._id);
+            const allCourses = await Course.find({});
+            const myCourseIds = allCourses
+                .filter(c => isTeacherAuthorizedForCourse(c, req.user))
+                .map(c => c._id);
             filter.course = req.query.course || { $in: myCourseIds };
         } else if (role === 'Student') {
             const studentYearNorm = req.user.year || '';
-            const flexPattern = studentYearNorm.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&');
             const yearNum = parseInt(studentYearNorm.replace(/[^0-9]/g, ''), 10) || null;
+            const studentDept = (req.user.department || '').toLowerCase().trim();
 
-            const enrolledCourses = await Course.find({
-                $or: [
-                    { students: userId },
-                    ...(flexPattern ? [{ yearLabel: new RegExp(`^${flexPattern}$`, 'i') }] : []),
-                    ...(yearNum ? [{ year: yearNum }] : [])
-                ]
-            }).select('_id');
+            const allCourses = await Course.find({});
+            const enrolledCourses = allCourses.filter(c => {
+                if (Array.isArray(c.students) && c.students.some(s => String(s) === String(userId))) return true;
+                const cYearNum = c.year || parseYearNumber(c.yearLabel);
+                const isYearMatch = yearNum ? cYearNum === yearNum : true;
+                if (!isYearMatch) return false;
+                if (studentDept) {
+                    const cDept = (c.department || deriveDeptFromCode(c.code)).toLowerCase();
+                    if (cDept && !studentDept.includes(cDept) && !cDept.includes(studentDept)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
             const enrolledCourseIds = enrolledCourses.map(c => c._id);
 
             if (req.query.course) {
