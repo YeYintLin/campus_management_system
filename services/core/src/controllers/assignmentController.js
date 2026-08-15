@@ -8,8 +8,9 @@ const path = require('path');
 // Helper: check if teacher is authorized to manage a given course
 const isTeacherAuthorizedForCourse = (course, user) => {
     if (!user) return false;
-    if (user.role === 'Admin' || user.role === 'AcademicAdmin') return true;
-    if (user.role !== 'Teacher') return false;
+    const uRole = (user.role || '').toLowerCase();
+    if (uRole === 'admin' || uRole === 'academicadmin' || uRole === 'superadmin') return true;
+    if (uRole !== 'teacher') return false;
 
     const teacherId = user._id ? String(user._id) : '';
     const teacherName = (user.name || '').toLowerCase().trim();
@@ -44,7 +45,7 @@ const isTeacherAuthorizedForCourse = (course, user) => {
 };
 
 const deriveDeptFromCode = (code = '') => {
-    const clean = String(code).toUpperCase();
+    const clean = String(code || '').toUpperCase();
     if (clean.includes('MCE') || clean.startsWith('MC-') || clean.includes('-MC-')) return 'Mechatronics Engineering';
     if (clean.includes('CIVIL') || clean.startsWith('C-') || clean.includes('-C-')) return 'Civil Engineering';
     if (clean.includes('EP')) return 'Electrical Power Engineering';
@@ -97,21 +98,26 @@ const deriveRollNo = (student, index) => {
 // @access  Private
 const getAllAssignments = async (req, res) => {
     try {
-        const { role, _id: userId } = req.user;
+        const uRole = (req.user?.role || '').toLowerCase();
+        const userId = req.user?._id;
         let filter = {};
 
-        if (role === 'Teacher') {
-            const allCourses = await Course.find({});
+        if (uRole === 'teacher') {
+            const allCourses = await Course.find({}).lean();
             const myCourseIds = allCourses
                 .filter(c => isTeacherAuthorizedForCourse(c, req.user))
                 .map(c => c._id);
-            filter.course = req.query.course || { $in: myCourseIds };
-        } else if (role === 'Student') {
-            const studentYearNorm = req.user.year || '';
+            if (req.query.course) {
+                filter.course = req.query.course;
+            } else {
+                filter.course = { $in: myCourseIds };
+            }
+        } else if (uRole === 'student') {
+            const studentYearNorm = req.user?.year || req.user?.currentYear || '';
             const yearNum = parseInt(studentYearNorm.replace(/[^0-9]/g, ''), 10) || null;
-            const studentDept = (req.user.department || '').toLowerCase().trim();
+            const studentDept = (req.user?.department || '').toLowerCase().trim();
 
-            const allCourses = await Course.find({});
+            const allCourses = await Course.find({}).lean();
             const enrolledCourses = allCourses.filter(c => {
                 if (Array.isArray(c.students) && c.students.some(s => String(s) === String(userId))) return true;
                 const cYearNum = c.year || parseYearNumber(c.yearLabel);
@@ -128,9 +134,7 @@ const getAllAssignments = async (req, res) => {
             const enrolledCourseIds = enrolledCourses.map(c => c._id);
 
             if (req.query.course) {
-                const requestedIdStr = String(req.query.course);
-                const isAllowed = enrolledCourseIds.some(id => String(id) === requestedIdStr);
-                filter.course = isAllowed ? req.query.course : { $in: enrolledCourseIds };
+                filter.course = req.query.course;
             } else {
                 filter.course = { $in: enrolledCourseIds };
             }
@@ -145,6 +149,7 @@ const getAllAssignments = async (req, res) => {
 
         res.json(assignments);
     } catch (error) {
+        console.error('Error in getAllAssignments:', error);
         res.status(500).json({ message: error.message });
     }
 };
