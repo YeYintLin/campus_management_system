@@ -432,14 +432,27 @@ const getDashboardStats = async (req, res) => {
 
         } else {
             // ── Student stats ──
-            let studentYearNum = null;
-            if (req.user.year) {
-                const m = String(req.user.year).match(/\d+/);
+            let studentYearNum = 1;
+            const rawYr = String(req.user.year || '').toUpperCase().trim();
+            if (rawYr.includes('6') || rawYr.includes('VI') || rawYr.includes('SIXTH') || rawYr.includes('FINAL')) {
+                studentYearNum = 6;
+            } else if (rawYr.includes('5') || rawYr.includes('FIFTH') || rawYr.includes('(V)') || rawYr.match(/\bV\b/)) {
+                studentYearNum = 5;
+            } else if (rawYr.includes('4') || rawYr.includes('FOURTH') || rawYr.includes('IV')) {
+                studentYearNum = 4;
+            } else if (rawYr.includes('3') || rawYr.includes('THIRD') || rawYr.includes('III')) {
+                studentYearNum = 3;
+            } else if (rawYr.includes('2') || rawYr.includes('SECOND') || rawYr.includes('II')) {
+                studentYearNum = 2;
+            } else if (rawYr.includes('1') || rawYr.includes('FIRST') || rawYr.includes('I')) {
+                studentYearNum = 1;
+            } else {
+                const m = rawYr.match(/\d+/);
                 if (m) studentYearNum = parseInt(m[0], 10);
-            }
-            if (!studentYearNum) {
-                const studentDoc = await Student.findOne({ user: userId });
-                if (studentDoc?.semester) studentYearNum = Math.ceil(studentDoc.semester / 2);
+                else {
+                    const studentDoc = await Student.findOne({ user: userId });
+                    if (studentDoc?.semester) studentYearNum = Math.ceil(studentDoc.semester / 2);
+                }
             }
             if (!studentYearNum) studentYearNum = 1;
 

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import EmptyState from '../../components/EmptyState';
+import { parseYearNumber } from '../../utils/userYear';
 import './StudentDashboard.css';
 
 // Convert percentage to institutional letter grade (hides raw numerical marks)
@@ -51,8 +52,7 @@ const StudentDashboard = () => {
 
                 if (statsRes.status === 'fulfilled') setStats(statsRes.value.data);
 
-                const studentYearStr = String(user?.year || '1st Year');
-                const userYNum = parseInt(studentYearStr.replace(/\D/g, ''), 10) || 1;
+                const userYNum = parseYearNumber(user?.year);
 
                 if (coursesRes.status === 'fulfilled') {
                     const allC = Array.isArray(coursesRes.value.data) ? coursesRes.value.data : [];
