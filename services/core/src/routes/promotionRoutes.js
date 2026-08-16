@@ -12,8 +12,8 @@ const { protect, admin, requireSystemAdmin } = require('../middleware/authMiddle
 const router = express.Router();
 
 // Admin-only promotion engine endpoints
-router.post('/preview', protect, admin, previewPromotion);
-router.post('/execute', protect, admin, executePromotion);
+router.post('/preview', protect, admin, requireSystemAdmin, previewPromotion);
+router.post('/execute', protect, admin, requireSystemAdmin, executePromotion);
 router.get('/audit-logs', protect, admin, requireSystemAdmin, getPromotionAuditLogs);
 router.get('/runs/:runId', protect, admin, getPromotionRunStatus);
 router.get('/settings', protect, admin, getAcademicSettingsList);
