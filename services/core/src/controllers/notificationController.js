@@ -17,10 +17,57 @@ const getNotifications = async (req, res) => {
         const now = new Date();
         const next7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-        const upcomingSessions = await ScheduledSession.find({
+        const sessionFilter = {
             sessionType: { $in: ['Practical', 'Tutorial', 'Exam'] },
             date: { $gte: now, $lte: next7Days }
-        }).sort({ date: 1 }).limit(15);
+        };
+
+        // Scope to student's specific year and department / major
+        if (req.user && req.user.role === 'Student') {
+            const userYear = req.user.year || '';
+            const userDept = req.user.department || '';
+
+            const yrUpper = String(userYear).toUpperCase();
+            if (yrUpper.includes('6') || yrUpper.includes('VI') || yrUpper.includes('FINAL')) {
+                sessionFilter.year = /^(6|VI|6th|Final)/i;
+            } else if (yrUpper.includes('5') || yrUpper.includes('V')) {
+                sessionFilter.year = /^(5|V|5th)/i;
+            } else if (yrUpper.includes('4') || yrUpper.includes('IV')) {
+                sessionFilter.year = /^(4|IV|4th)/i;
+            } else if (yrUpper.includes('3') || yrUpper.includes('III')) {
+                sessionFilter.year = /^(3|III|3rd)/i;
+            } else if (yrUpper.includes('2') || yrUpper.includes('II')) {
+                sessionFilter.year = /^(2|II|2nd)/i;
+            } else if (yrUpper.includes('1') || yrUpper.includes('I')) {
+                sessionFilter.year = /^(1|I|1st)/i;
+            }
+
+            const deptUpper = String(userDept).toUpperCase();
+            if (deptUpper.includes('MECHA') || deptUpper.includes('MC')) {
+                sessionFilter.major = { $in: ['MC', 'Mechatronics', 'Mechatronics Engineering', 'MCE'] };
+            } else if (deptUpper.includes('CIVIL') || deptUpper.includes('CE')) {
+                sessionFilter.major = { $in: ['CE', 'Civil', 'Civil Engineering'] };
+            } else if (deptUpper.includes('EP') || deptUpper.includes('ELECTRICAL POWER')) {
+                sessionFilter.major = { $in: ['EP', 'Electrical Power', 'Electrical Power Engineering'] };
+            } else if (deptUpper.includes('EC') || deptUpper.includes('ELECTRONIC')) {
+                sessionFilter.major = { $in: ['EC', 'Electronic', 'Electronic Engineering'] };
+            } else if (deptUpper.includes('MP') || deptUpper.includes('MECHANICAL')) {
+                sessionFilter.major = { $in: ['MP', 'Mechanical', 'Mechanical Engineering'] };
+            } else if (deptUpper.includes('IT') || deptUpper.includes('INFORMATION')) {
+                sessionFilter.major = { $in: ['IT', 'Information Technology'] };
+            } else if (deptUpper.includes('CHE') || deptUpper.includes('CHEMICAL')) {
+                sessionFilter.major = { $in: ['ChE', 'Chemical', 'Chemical Engineering'] };
+            }
+        } else if (req.user && req.user.role === 'Teacher') {
+            const userDept = (req.user.department || '').toUpperCase();
+            if (userDept.includes('MECHA') || userDept.includes('MC')) {
+                sessionFilter.major = { $in: ['MC', 'Mechatronics', 'Mechatronics Engineering', 'MCE'] };
+            }
+        }
+
+        const upcomingSessions = await ScheduledSession.find(sessionFilter)
+            .sort({ date: 1 })
+            .limit(15);
 
         const reminderNotifications = upcomingSessions.map(s => {
             const icon = s.sessionType === 'Practical' ? '🔬' : s.sessionType === 'Exam' ? '📝' : '✍️';

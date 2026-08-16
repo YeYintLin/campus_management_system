@@ -43,7 +43,7 @@ const StudentDashboard = () => {
                     apiClient.get('/dashboard/stats'),
                     apiClient.get('/courses'),
                     apiClient.get('/academic-config'),
-                    apiClient.get('/sessions', { params: { sessionType: 'Exam' } }),
+                    apiClient.get('/sessions', { params: { sessionType: 'Exam', year: user?.year } }),
                     apiClient.get('/grades', { params: { student: studentId } }),
                     apiClient.get('/attendance', { params: { student: studentId } }),
                     apiClient.get('/notifications'),
@@ -51,10 +51,11 @@ const StudentDashboard = () => {
 
                 if (statsRes.status === 'fulfilled') setStats(statsRes.value.data);
 
+                const studentYearStr = String(user?.year || '1st Year');
+                const userYNum = parseInt(studentYearStr.replace(/\D/g, ''), 10) || 1;
+
                 if (coursesRes.status === 'fulfilled') {
                     const allC = Array.isArray(coursesRes.value.data) ? coursesRes.value.data : [];
-                    const studentYearStr = String(user?.year || '1st Year');
-                    const userYNum = parseInt(studentYearStr.replace(/\D/g, ''), 10) || 1;
                     
                     let activeSemNum = 1;
                     if (configRes.status === 'fulfilled' && configRes.value.data) {
@@ -90,7 +91,13 @@ const StudentDashboard = () => {
 
                 let examSessionsData = [];
                 if (examsRes.status === 'fulfilled') {
-                    examSessionsData = Array.isArray(examsRes.value.data) ? examsRes.value.data : [];
+                    const rawExams = Array.isArray(examsRes.value.data) ? examsRes.value.data : [];
+                    examSessionsData = rawExams.filter(s => {
+                        const sYr = String(s.year || '').toUpperCase();
+                        if (!sYr) return true;
+                        const sYNum = parseInt(sYr.replace(/\D/g, ''), 10);
+                        return !sYNum || sYNum === userYNum;
+                    });
                     setExams(examSessionsData);
                 }
 
