@@ -1,16 +1,20 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const path = require('path');
+const dns = require('dns');
+
+try { dns.setServers(['8.8.8.8', '1.1.1.1']); } catch (e) {}
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
+dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://mongo:27017/core_db';
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_URI_CORE || 'mongodb://mongo:27017/core_db';
 
-const targetQuery = (process.argv[2] || 'yeyint2702').trim();
+const targetQuery = (process.argv[2] || 'yeyint').trim();
 
 async function purgeUser() {
     try {
-        console.log('Connecting to database...');
+        console.log('Connecting to database:', MONGODB_URI ? MONGODB_URI.replace(/:([^:@]+)@/, ':****@') : 'undefined');
         await mongoose.connect(MONGODB_URI);
         const db = mongoose.connection.db;
 
@@ -25,7 +29,11 @@ async function purgeUser() {
         }).toArray();
 
         if (!users || users.length === 0) {
-            console.log(`No user found matching "${targetQuery}". Database is clean!`);
+            console.log(`No user found matching "${targetQuery}". Let's list all users in DB:`);
+            const allUsers = await db.collection('users').find({}).limit(20).toArray();
+            for (const u of allUsers) {
+                console.log(`- ${u.name} (Email: "${u.email}", Role: ${u.role})`);
+            }
             await mongoose.disconnect();
             process.exit(0);
         }
