@@ -6,7 +6,7 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://mongo:27017/core_db';
 
-const targetEmail = process.argv[2] || 'yeyint2702@gmail.com';
+const targetQuery = (process.argv[2] || 'yeyint2702').trim();
 
 async function purgeUser() {
     try {
@@ -14,56 +14,62 @@ async function purgeUser() {
         await mongoose.connect(MONGODB_URI);
         const db = mongoose.connection.db;
 
-        const normalizedEmail = targetEmail.trim().toLowerCase();
-        const user = await db.collection('users').findOne({ email: normalizedEmail });
+        console.log(`Searching for accounts matching: "${targetQuery}"...`);
+        const queryRegex = new RegExp(targetQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 
-        if (!user) {
-            console.log(`No user found with email: "${normalizedEmail}". Already clean!`);
+        const users = await db.collection('users').find({
+            $or: [
+                { email: queryRegex },
+                { name: queryRegex }
+            ]
+        }).toArray();
+
+        if (!users || users.length === 0) {
+            console.log(`No user found matching "${targetQuery}". Database is clean!`);
             await mongoose.disconnect();
             process.exit(0);
         }
 
-        const userId = user._id;
-        console.log(`Found user: ${user.name} (${user.email}) [ID: ${userId}]`);
-
-        // Find associated student document if any
-        const student = await db.collection('students').findOne({ user: userId });
-        const studentId = student?._id;
-
-        // 1. Delete from users collection
-        const userDel = await db.collection('users').deleteOne({ _id: userId });
-        console.log(`✓ Deleted User document: ${userDel.deletedCount}`);
-
-        // 2. Delete from students collection
-        if (studentId) {
-            const studentDel = await db.collection('students').deleteOne({ _id: studentId });
-            console.log(`✓ Deleted Student document: ${studentDel.deletedCount}`);
-
-            // 3. Delete academic enrollments
-            const enrollDel = await db.collection('academicenrollments').deleteMany({ student: studentId });
-            console.log(`✓ Deleted AcademicEnrollments: ${enrollDel.deletedCount}`);
-
-            // 4. Delete grades
-            const gradeDel = await db.collection('grades').deleteMany({ student: studentId });
-            console.log(`✓ Deleted Grades: ${gradeDel.deletedCount}`);
+        console.log(`Found ${users.length} matching user(s):`);
+        for (const u of users) {
+            console.log(`- ${u.name} (Email: "${u.email}", Role: ${u.role}, ID: ${u._id})`);
         }
 
-        // 5. Delete notifications
-        const notifDel = await db.collection('notifications').deleteMany({ user: userId });
-        console.log(`✓ Deleted Notifications: ${notifDel.deletedCount}`);
+        for (const user of users) {
+            const userId = user._id;
+            console.log(`\nPurging: ${user.name} (${user.email})...`);
 
-        // 6. Delete messages
-        const msgDel = await db.collection('messages').deleteMany({ $or: [{ sender: userId }, { recipient: userId }] });
-        console.log(`✓ Deleted Messages: ${msgDel.deletedCount}`);
+            const student = await db.collection('students').findOne({ user: userId });
+            const studentId = student?._id;
 
-        // 7. Delete audit logs
-        if (studentId) {
-            await db.collection('auditlogs').deleteMany({ $or: [{ performedBy: userId }, { targetStudent: studentId }] });
-        } else {
-            await db.collection('auditlogs').deleteMany({ performedBy: userId });
+            // 1. Delete from users collection
+            const userDel = await db.collection('users').deleteOne({ _id: userId });
+            console.log(`✓ Deleted from users: ${userDel.deletedCount}`);
+
+            // 2. Delete from students collection
+            if (studentId) {
+                const studentDel = await db.collection('students').deleteOne({ _id: studentId });
+                console.log(`✓ Deleted from students: ${studentDel.deletedCount}`);
+
+                // 3. Delete academic enrollments
+                const enrollDel = await db.collection('academicenrollments').deleteMany({ student: studentId });
+                console.log(`✓ Deleted from academicenrollments: ${enrollDel.deletedCount}`);
+
+                // 4. Delete grades
+                const gradeDel = await db.collection('grades').deleteMany({ student: studentId });
+                console.log(`✓ Deleted from grades: ${gradeDel.deletedCount}`);
+            }
+
+            // 5. Delete notifications
+            const notifDel = await db.collection('notifications').deleteMany({ user: userId });
+            console.log(`✓ Deleted notifications: ${notifDel.deletedCount}`);
+
+            // 6. Delete messages
+            const msgDel = await db.collection('messages').deleteMany({ $or: [{ sender: userId }, { recipient: userId }] });
+            console.log(`✓ Deleted messages: ${msgDel.deletedCount}`);
         }
 
-        console.log(`\n🎉 User "${normalizedEmail}" has been completely wiped without a trace!`);
+        console.log(`\n🎉 All matched accounts purged completely without a trace!`);
         await mongoose.disconnect();
         process.exit(0);
     } catch (err) {
