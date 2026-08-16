@@ -46,6 +46,10 @@ services:
       MONGODB_URI: ${MONGODB_URI_CORE:-mongodb://mongo:27017/core_db}
       JWT_SECRET: ${JWT_SECRET:-2580d3dfd4e5ff37ca503b4b9eba71a1cbf716ffffb2d4b72ee65834b230223a401c0cd43914f1041c3106e6053da8b4d36275a79e9cba0c54f440b75534f792}
       ATTENDANCE_SERVICE_URL: http://attendance-service:5003
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-nanakoyuroha@gmail.com}
+      SMTP_PASS: ${SMTP_PASS:-httplqeiwfnpirqi}
     ports:
       - "5002:5002"
     volumes:
