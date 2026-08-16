@@ -18,10 +18,10 @@ const NAV_LINKS = [
     { name: 'AI Assistant', path: '/ai-assistant', icon: <BotMessageSquare size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Messages', path: '/chat', icon: <MessageSquare size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Bug Report', path: '/bug-report', icon: <Bug size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
-    { name: 'AI Config', path: '/admin/ai-settings', icon: <FileEdit size={20} />, roles: ['Admin'] },
+    { name: 'AI Config', path: '/admin/ai-settings', icon: <FileEdit size={20} />, roles: ['Admin'], requireSystemAdmin: true },
     { name: 'Accounts', path: '/admin/accounts', icon: <ShieldCheck size={20} />, roles: ['Admin'] },
     { name: 'Roll Numbers', path: '/admin/assign-roll-numbers', icon: <Hash size={20} />, roles: ['Admin'] },
-    { name: 'Academic', path: '/admin/academic-settings', icon: <Settings size={20} />, roles: ['Admin'] },
+    { name: 'Academic', path: '/admin/academic-settings', icon: <Settings size={20} />, roles: ['Admin'], requireSystemAdmin: true },
 ];
 
 const Navbar = () => {
@@ -35,8 +35,12 @@ const Navbar = () => {
     };
 
     const visibleLinks = useMemo(
-        () => NAV_LINKS.filter((link) => link.roles.includes(user?.role)),
-        [user?.role]
+        () => NAV_LINKS.filter((link) => {
+            if (!link.roles.includes(user?.role)) return false;
+            if (link.requireSystemAdmin && user?.adminType === 'user_management') return false;
+            return true;
+        }),
+        [user?.role, user?.adminType]
     );
 
     const getUserInitial = (name) => (name?.trim()?.charAt(0) || '?').toUpperCase();

@@ -72,9 +72,9 @@ const AIPromptSettings = () => {
         fetchConfig();
     }, []);
 
-    // Redirect or block if not admin (though route is protected)
-    if (user?.role !== 'Admin') {
-        return <div className="p-8 text-center">Unauthorized. Admins only.</div>;
+    // Redirect or block if not admin or if user_management admin
+    if (user?.role !== 'Admin' || user?.adminType === 'user_management') {
+        return <div className="p-8 text-center glass-panel" style={{ margin: '2rem' }}>Unauthorized. System / Technical Admin access required.</div>;
     }
 
     const showToastNotification = (message, type = 'success') => {

@@ -28,6 +28,7 @@ const protect = async (req, res, next) => {
                 _id: decoded.id,
                 id: decoded.id,
                 role: decoded.role,
+                adminType: decoded.adminType || (decoded.role === 'Admin' ? 'system_technical' : undefined),
                 email: decoded.email
             };
 
@@ -59,4 +60,11 @@ const teacher = (req, res, next) => {
     }
 };
 
-module.exports = { protect, admin, teacher };
+const requireSystemAdmin = (req, res, next) => {
+    if (req.user && req.user.adminType === 'user_management') {
+        return res.status(403).json({ message: 'Requires Technical/System Admin access' });
+    }
+    next();
+};
+
+module.exports = { protect, admin, teacher, requireSystemAdmin };

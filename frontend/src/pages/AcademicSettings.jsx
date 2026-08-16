@@ -14,7 +14,7 @@ const clamp = (num, min, max) => Math.max(min, Math.min(max, num));
 const AcademicSettings = () => {
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
-    const isAdmin = user?.role === 'Admin' || user?.role === 'SuperAdmin' || user?.role === 'AcademicAdmin';
+    const isAdmin = (user?.role === 'Admin' || user?.role === 'SuperAdmin' || user?.role === 'AcademicAdmin') && user?.adminType !== 'user_management';
 
     const [activeTab, setActiveTab] = useState('config'); // 'config' | 'promotion' | 'audit'
 
@@ -96,7 +96,7 @@ const AcademicSettings = () => {
     }, [activeTab]);
 
     if (!isAdmin) {
-        return <div className="p-8 text-center glass-panel">Unauthorized. Administrative access required.</div>;
+        return <div className="p-8 text-center glass-panel" style={{ margin: '2rem' }}>Unauthorized. System / Technical Admin access required.</div>;
     }
 
     const addDepartment = () => {

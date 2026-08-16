@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema(
             enum: ['Admin', 'Teacher', 'Student', 'Superadmin', 'Academicadmin'],
             default: 'Student',
         },
+        adminType: {
+            type: String,
+            enum: ['user_management', 'system_technical'],
+            default: 'system_technical',
+        },
         department: {
             type: String,
             trim: true,

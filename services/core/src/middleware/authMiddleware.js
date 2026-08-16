@@ -29,6 +29,7 @@ const protect = async (req, res, next) => {
                 id: decoded.id,
                 name: decoded.name || '',
                 role: decoded.role,
+                adminType: decoded.adminType || (['admin', 'superadmin', 'academicadmin'].includes((decoded.role || '').toLowerCase()) ? 'system_technical' : undefined),
                 email: decoded.email,
                 year: decoded.year,
                 department: decoded.department,
@@ -38,12 +39,13 @@ const protect = async (req, res, next) => {
             if ((!req.user.year || !req.user.name) && req.user.id) {
                 try {
                     const User = require('../models/User');
-                    const userDoc = await User.findById(req.user.id).select('name year department role');
+                    const userDoc = await User.findById(req.user.id).select('name year department role adminType');
                     if (userDoc) {
                         if (!req.user.name) req.user.name = userDoc.name;
                         if (!req.user.year) req.user.year = userDoc.year;
                         if (!req.user.department) req.user.department = userDoc.department;
                         if (!req.user.role) req.user.role = userDoc.role;
+                        if (!req.user.adminType && userDoc.adminType) req.user.adminType = userDoc.adminType;
                     }
                 } catch (dbErr) {
                     console.error('Fallback user lookup error:', dbErr.message);
@@ -90,4 +92,11 @@ const authorize = (...roles) => {
     };
 };
 
-module.exports = { protect, admin, teacher, authorize };
+const requireSystemAdmin = (req, res, next) => {
+    if (req.user && req.user.adminType === 'user_management') {
+        return res.status(403).json({ message: 'Requires Technical/System Admin access' });
+    }
+    next();
+};
+
+module.exports = { protect, admin, teacher, authorize, requireSystemAdmin };

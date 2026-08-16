@@ -11,8 +11,12 @@ const getJwtSecret = () => {
     return secret;
 };
 
-const generateToken = (id, role, email, department, year) => {
-    return jwt.sign({ id, role, email, department, year }, getJwtSecret(), {
+const generateToken = (id, role, email, department, year, adminType) => {
+    const payload = { id, role, email, department, year };
+    if (['Admin', 'Superadmin', 'Academicadmin'].includes(role)) {
+        payload.adminType = adminType || 'system_technical';
+    }
+    return jwt.sign(payload, getJwtSecret(), {
         expiresIn: '30d',
     });
 };
@@ -259,11 +263,12 @@ const loginUser = async (req, res) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            adminType: isAdminRole ? (user.adminType || 'system_technical') : undefined,
             year: user.year,
             department: user.department,
             rollNo: user.rollNo,
             status: user.status,
-            token: generateToken(user._id, user.role, user.email, user.department, user.year),
+            token: generateToken(user._id, user.role, user.email, user.department, user.year, user.adminType),
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -291,7 +296,7 @@ const getUserProfile = async (req, res) => {
 // @access  Private/Admin
 const adminRegisterUser = async (req, res) => {
     try {
-        const { name, email, password, role, department, year } = req.body;
+        const { name, email, password, role, department, year, adminType } = req.body;
         const normalizedEmail = normalizeEmail(email);
 
         if (!name || !normalizedEmail || !password || !role) {
@@ -312,6 +317,7 @@ const adminRegisterUser = async (req, res) => {
             email: normalizedEmail,
             password,
             role,
+            adminType: role === 'Admin' ? (adminType || 'system_technical') : undefined,
             department: dept,
             year: yr,
             isEmailVerified: true,
@@ -337,6 +343,7 @@ const adminRegisterUser = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                adminType: user.adminType,
                 department: user.department,
                 year: user.year,
                 status: user.status
