@@ -14,7 +14,8 @@ const clamp = (num, min, max) => Math.max(min, Math.min(max, num));
 const AcademicSettings = () => {
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
-    const isAdmin = (user?.role === 'Admin' || user?.role === 'SuperAdmin' || user?.role === 'AcademicAdmin') && user?.adminType !== 'user_management';
+    const roleLower = (user?.role || '').toLowerCase();
+    const isAdmin = (roleLower === 'admin' || roleLower === 'superadmin') && user?.adminType !== 'user_management' && roleLower !== 'academicadmin';
 
     const [activeTab, setActiveTab] = useState('config'); // 'config' | 'promotion' | 'audit'
 

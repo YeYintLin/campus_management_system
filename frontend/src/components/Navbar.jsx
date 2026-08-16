@@ -36,8 +36,13 @@ const Navbar = () => {
 
     const visibleLinks = useMemo(
         () => NAV_LINKS.filter((link) => {
-            if (!link.roles.includes(user?.role)) return false;
-            if (link.requireSystemAdmin && user?.adminType === 'user_management') return false;
+            const roleNorm = (user?.role || '').toLowerCase().trim();
+            const isAdminUser = ['admin', 'superadmin', 'academicadmin'].includes(roleNorm);
+            const matchesRole = link.roles.includes(user?.role) || (link.roles.includes('Admin') && isAdminUser);
+            if (!matchesRole) return false;
+
+            const isUserMgmtAdmin = user?.adminType === 'user_management' || roleNorm === 'academicadmin';
+            if (link.requireSystemAdmin && isUserMgmtAdmin) return false;
             return true;
         }),
         [user?.role, user?.adminType]

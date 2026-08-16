@@ -83,6 +83,12 @@ const updateUserRole = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        if (role === 'Academicadmin') {
+            user.adminType = 'user_management';
+        } else if (role === 'Superadmin' || role === 'Admin') {
+            user.adminType = user.adminType || 'system_technical';
+        }
+
         user.role = role;
         await user.save();
 

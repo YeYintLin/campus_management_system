@@ -72,8 +72,10 @@ const AIPromptSettings = () => {
         fetchConfig();
     }, []);
 
-    // Redirect or block if not admin or if user_management admin
-    if (user?.role !== 'Admin' || user?.adminType === 'user_management') {
+    // Redirect or block if not technical admin
+    const roleLower = (user?.role || '').toLowerCase();
+    const isTechAdmin = (roleLower === 'admin' || roleLower === 'superadmin') && user?.adminType !== 'user_management' && roleLower !== 'academicadmin';
+    if (!isTechAdmin) {
         return <div className="p-8 text-center glass-panel" style={{ margin: '2rem' }}>Unauthorized. System / Technical Admin access required.</div>;
     }
 

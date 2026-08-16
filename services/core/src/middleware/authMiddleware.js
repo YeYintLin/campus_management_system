@@ -29,7 +29,7 @@ const protect = async (req, res, next) => {
                 id: decoded.id,
                 name: decoded.name || '',
                 role: decoded.role,
-                adminType: decoded.adminType || (['admin', 'superadmin', 'academicadmin'].includes((decoded.role || '').toLowerCase()) ? 'system_technical' : undefined),
+                adminType: decoded.adminType || ((decoded.role || '').toLowerCase() === 'academicadmin' ? 'user_management' : (['admin', 'superadmin'].includes((decoded.role || '').toLowerCase()) ? 'system_technical' : undefined)),
                 email: decoded.email,
                 year: decoded.year,
                 department: decoded.department,
@@ -93,7 +93,8 @@ const authorize = (...roles) => {
 };
 
 const requireSystemAdmin = (req, res, next) => {
-    if (req.user && req.user.adminType === 'user_management') {
+    const isUserMgmt = req.user?.adminType === 'user_management' || (req.user?.role || '').toLowerCase() === 'academicadmin';
+    if (req.user && isUserMgmt) {
         return res.status(403).json({ message: 'Requires Technical/System Admin access' });
     }
     next();

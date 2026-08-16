@@ -14,7 +14,7 @@ const getJwtSecret = () => {
 const generateToken = (id, role, email, department, year, adminType) => {
     const payload = { id, role, email, department, year };
     if (['Admin', 'Superadmin', 'Academicadmin'].includes(role)) {
-        payload.adminType = adminType || 'system_technical';
+        payload.adminType = adminType || (role === 'Academicadmin' ? 'user_management' : 'system_technical');
     }
     return jwt.sign(payload, getJwtSecret(), {
         expiresIn: '30d',
@@ -263,7 +263,7 @@ const loginUser = async (req, res) => {
             name: user.name,
             email: user.email,
             role: user.role,
-            adminType: isAdminRole ? (user.adminType || 'system_technical') : undefined,
+            adminType: isAdminRole ? (user.adminType || (user.role === 'Academicadmin' ? 'user_management' : 'system_technical')) : undefined,
             year: user.year,
             department: user.department,
             rollNo: user.rollNo,
@@ -317,7 +317,11 @@ const adminRegisterUser = async (req, res) => {
             email: normalizedEmail,
             password,
             role,
-            adminType: role === 'Admin' ? (adminType || 'system_technical') : undefined,
+            adminType: role === 'Academicadmin'
+                ? 'user_management'
+                : (role === 'Admin' || role === 'Superadmin')
+                    ? (adminType || 'system_technical')
+                    : undefined,
             department: dept,
             year: yr,
             isEmailVerified: true,

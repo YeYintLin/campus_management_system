@@ -28,7 +28,7 @@ const protect = async (req, res, next) => {
                 _id: decoded.id,
                 id: decoded.id,
                 role: decoded.role,
-                adminType: decoded.adminType || (decoded.role === 'Admin' ? 'system_technical' : undefined),
+                adminType: decoded.adminType || ((decoded.role || '').toLowerCase() === 'academicadmin' ? 'user_management' : (['admin', 'superadmin'].includes((decoded.role || '').toLowerCase()) ? 'system_technical' : undefined)),
                 email: decoded.email
             };
 
@@ -45,7 +45,8 @@ const protect = async (req, res, next) => {
 };
 
 const admin = (req, res, next) => {
-    if (req.user && req.user.role === 'Admin') {
+    const roleStr = (req.user?.role || '').toLowerCase().trim();
+    if (req.user && (roleStr === 'admin' || roleStr === 'superadmin' || roleStr === 'academicadmin')) {
         next();
     } else {
         res.status(403).json({ message: 'Not authorized as an Admin' });
@@ -53,7 +54,8 @@ const admin = (req, res, next) => {
 };
 
 const teacher = (req, res, next) => {
-    if (req.user && (req.user.role === 'Teacher' || req.user.role === 'Admin')) {
+    const roleStr = (req.user?.role || '').toLowerCase().trim();
+    if (req.user && (roleStr === 'teacher' || roleStr === 'admin' || roleStr === 'superadmin' || roleStr === 'academicadmin')) {
         next();
     } else {
         res.status(403).json({ message: 'Not authorized as a Teacher' });
@@ -61,7 +63,8 @@ const teacher = (req, res, next) => {
 };
 
 const requireSystemAdmin = (req, res, next) => {
-    if (req.user && req.user.adminType === 'user_management') {
+    const isUserMgmt = req.user?.adminType === 'user_management' || (req.user?.role || '').toLowerCase() === 'academicadmin';
+    if (req.user && isUserMgmt) {
         return res.status(403).json({ message: 'Requires Technical/System Admin access' });
     }
     next();
