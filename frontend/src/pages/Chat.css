@@ -466,7 +466,8 @@
    User Picker Modal
    ========================================================================== */
 
-.modal-backdrop {
+.chat-modal-backdrop,
+.chat-container .modal-backdrop {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.65);
@@ -629,7 +630,8 @@
         max-width: 85%;
     }
 
-    .modal-backdrop {
+    .chat-modal-backdrop,
+    .chat-container .modal-backdrop {
         align-items: flex-end;
     }
 
