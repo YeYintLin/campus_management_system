@@ -142,21 +142,55 @@ const StudentDashboard = () => {
         if (studentId) fetchData();
     }, [studentId]);
 
-    // Attendance percentage
+    // Attendance percentage (unpacks nested session records and flat records)
     const attendancePercent = useMemo(() => {
         if (!attendance || attendance.length === 0) return null;
-        const present = attendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
-        return Math.round((present / attendance.length) * 100);
-    }, [attendance]);
+
+        let totalSessions = 0;
+        let presentCount = 0;
+
+        for (const item of attendance) {
+            if (item.status) {
+                totalSessions++;
+                if (item.status === 'Present' || item.status === 'Late') presentCount++;
+            } else if (Array.isArray(item.records)) {
+                for (const r of item.records) {
+                    const sid = (r.student?._id || r.student || r.studentId?._id || r.studentId || '').toString();
+                    if (!sid || sid === studentId?.toString()) {
+                        totalSessions++;
+                        if (r.status === 'Present' || r.status === 'Late') presentCount++;
+                    }
+                }
+            }
+        }
+
+        if (totalSessions === 0) return null;
+        return Math.round((presentCount / totalSessions) * 100);
+    }, [attendance, studentId]);
 
     // Attendance trend (last 7 records)
     const attendanceTrend = useMemo(() => {
         if (!attendance || attendance.length === 0) return [];
-        return attendance.slice(-7).map((a) => ({
+
+        const flatItems = [];
+        for (const item of attendance) {
+            if (item.status) {
+                flatItems.push({ date: item.date, status: item.status });
+            } else if (Array.isArray(item.records)) {
+                for (const r of item.records) {
+                    const sid = (r.student?._id || r.student || r.studentId?._id || r.studentId || '').toString();
+                    if (!sid || sid === studentId?.toString()) {
+                        flatItems.push({ date: item.date, status: r.status });
+                    }
+                }
+            }
+        }
+
+        return flatItems.slice(-7).map((a) => ({
             day: new Date(a.date).toLocaleDateString('en-US', { weekday: 'short' }),
             attendance: a.status === 'Present' ? 100 : a.status === 'Late' ? 75 : 0,
         }));
-    }, [attendance]);
+    }, [attendance, studentId]);
 
     // Upcoming exams — show all exams with future dates, or if none, show most recent ones
     const upcomingExams = useMemo(() => {
