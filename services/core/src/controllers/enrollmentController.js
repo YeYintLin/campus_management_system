@@ -90,6 +90,21 @@ const recalculateAttendance = async (req, res) => {
     }
 };
 
+const Student = require('../models/Student');
+
+// Helper to normalize year string to number (1-6)
+const getYearNumber = (lvl) => {
+    const s = String(lvl || '').toUpperCase().trim();
+    if (s.includes('6') || s.includes('VI') || s.includes('SIXTH') || s.includes('FINAL')) return 6;
+    if (s.includes('5') || s.includes('FIFTH') || s.includes('(V)') || s.match(/\bV\b/)) return 5;
+    if (s.includes('4') || s.includes('FOURTH') || s.includes('IV')) return 4;
+    if (s.includes('3') || s.includes('THIRD') || s.includes('III')) return 3;
+    if (s.includes('2') || s.includes('SECOND') || s.includes('II')) return 2;
+    if (s.includes('1') || s.includes('FIRST') || s.includes('I')) return 1;
+    const m = s.match(/\d+/);
+    return m ? parseInt(m[0], 10) : 5;
+};
+
 // ─────────────────────────────────────────────
 // GET /api/enrollments
 // Paginated & Filtered Enrollments (Admin view)
@@ -103,15 +118,25 @@ const getEnrollments = async (req, res) => {
             unassignedOnly,
             search,
             page = 1,
-            limit = 50,
+            limit = 100,
         } = req.query;
+
+        const cohortNum = yearLevel && yearLevel !== 'All' ? getYearNumber(yearLevel) : null;
+        const yearPattern = cohortNum
+            ? new RegExp(`(${cohortNum}|${cohortNum}th|Fifth|Fourth|Third|Second|First|Final|VI|IV|III|II|I|V)`, 'i')
+            : null;
 
         const filter = {};
         if (academicYear) filter.academicYear = academicYear;
         if (department && department !== 'All') filter.department = new RegExp(`^${department}$`, 'i');
-        if (yearLevel && yearLevel !== 'All') filter.yearLevel = yearLevel;
+        if (yearPattern) {
+            filter.$or = [
+                { yearLevel: yearLevel },
+                { yearLevel: yearPattern }
+            ];
+        }
         if (unassignedOnly === 'true' || unassignedOnly === true) {
-            filter.$or = [{ rollNo: null }, { rollNo: '' }, { rollNo: { $exists: false } }];
+            filter.rollNo = { $in: [null, '', undefined] };
         }
 
         const pageNum = Math.max(1, parseInt(page, 10));
@@ -120,9 +145,56 @@ const getEnrollments = async (req, res) => {
 
         // Query enrollments and populate student user
         let enrollments = await AcademicEnrollment.find(filter)
-            .populate('student', 'name email permanentRegNo currentRollNo currentYear rollNo status department')
+            .populate('student', 'name email permanentRegNo currentRollNo currentYear rollNo status department year')
             .populate('rollNoAssignedBy', 'name email')
-            .sort({ academicYear: -1, department: 1, yearLevel: 1, rollNo: 1 });
+            .sort({ rollNo: 1, name: 1 });
+
+        // If no enrollments exist for this cohort yet, discover from active User / Student records
+        if (!enrollments || enrollments.length === 0) {
+            const userFilter = {
+                role: 'Student',
+                status: { $ne: 'Deactivated' }
+            };
+            if (yearPattern) {
+                userFilter.$or = [
+                    { year: yearPattern },
+                    { currentYear: yearPattern }
+                ];
+            }
+            if (department && department !== 'All') {
+                userFilter.department = new RegExp(`^${department}$`, 'i');
+            }
+            if (unassignedOnly === 'true' || unassignedOnly === true) {
+                userFilter.$and = [
+                    { $or: [{ rollNo: null }, { rollNo: '' }, { rollNo: { $exists: false } }] },
+                    { $or: [{ currentRollNo: null }, { currentRollNo: '' }, { currentRollNo: { $exists: false } }] }
+                ];
+            }
+
+            const matchedUsers = await User.find(userFilter).sort({ rollNo: 1, name: 1 });
+
+            const createdEnrollments = [];
+            for (const u of matchedUsers) {
+                let existing = await AcademicEnrollment.findOne({
+                    student: u._id,
+                    academicYear: academicYear || '2025-2026'
+                });
+                if (!existing) {
+                    existing = await AcademicEnrollment.create({
+                        student: u._id,
+                        academicYear: academicYear || '2025-2026',
+                        yearLevel: yearLevel || u.year || '5th Year',
+                        department: u.department || department || 'Mechatronics Engineering',
+                        rollNo: u.rollNo || u.currentRollNo || null,
+                        status: 'Active',
+                        attendanceRate: 85
+                    });
+                }
+                existing.student = u;
+                createdEnrollments.push(existing);
+            }
+            enrollments = createdEnrollments;
+        }
 
         // Optional search by student name / email / permanentRegNo / rollNo
         if (search && search.trim()) {
@@ -133,7 +205,8 @@ const getEnrollments = async (req, res) => {
                     s?.name?.toLowerCase().includes(query) ||
                     s?.email?.toLowerCase().includes(query) ||
                     s?.permanentRegNo?.toLowerCase().includes(query) ||
-                    e.rollNo?.toLowerCase().includes(query)
+                    e.rollNo?.toLowerCase().includes(query) ||
+                    s?.rollNo?.toLowerCase().includes(query)
                 );
             });
         }
@@ -196,6 +269,23 @@ const assignRollNumbers = async (req, res) => {
                 enrollment = await AcademicEnrollment.findOne({ student: studentId, academicYear });
             }
 
+            // If enrollment didn't exist yet, auto-create it from User record
+            if (!enrollment && studentId) {
+                const sUser = await User.findById(studentId);
+                if (sUser) {
+                    enrollment = await AcademicEnrollment.create({
+                        student: studentId,
+                        academicYear: academicYear || '2025-2026',
+                        yearLevel: sUser.year || sUser.currentYear || '5th Year',
+                        department: department || sUser.department || 'Mechatronics Engineering',
+                        rollNo: cleanRollNo,
+                        status: 'Active',
+                        rollNoAssignedAt: new Date(),
+                        rollNoAssignedBy: adminId,
+                    });
+                }
+            }
+
             if (!enrollment) {
                 results.push({
                     row: rowIndex,
@@ -244,6 +334,12 @@ const assignRollNumbers = async (req, res) => {
                 currentRollNo: cleanRollNo,
                 rollNo: cleanRollNo,
             });
+
+            // Update Student profile record if exists
+            await Student.findOneAndUpdate(
+                { user: enrollment.student },
+                { $set: { enrollmentNumber: cleanRollNo } }
+            );
 
             // Write AuditLog
             await AuditLog.create({
