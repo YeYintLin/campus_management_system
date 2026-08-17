@@ -1000,8 +1000,8 @@ const Assignments = () => {
                 MODAL 1: TEACHER CREATE / EDIT ASSIGNMENT
                ══════════════════════════════════════════════════════════════ */}
             {isModalOpen && (
-                <div className="modal-overlay animate-fade-in" style={{ zIndex: 1100 }}>
-                    <div className="modal glass-panel animate-scale-up" style={{ maxWidth: '580px', width: '90%' }}>
+                <div className="modal-overlay assignment-modal-overlay animate-fade-in" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', zIndex: 99999, padding: '1.5rem' }}>
+                    <div className="modal glass-panel animate-scale-up" style={{ maxWidth: '580px', width: '90%', maxHeight: '90vh', overflowY: 'auto', margin: 'auto', borderRadius: '16px' }}>
                         <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.85rem' }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: '1.25rem' }}>
@@ -1127,8 +1127,8 @@ const Assignments = () => {
                 MODAL 2: STUDENT SOLUTION UPLOAD
                ══════════════════════════════════════════════════════════════ */}
             {submitModalAssignment && (
-                <div className="modal-overlay animate-fade-in" style={{ zIndex: 1100 }}>
-                    <div className="modal glass-panel animate-scale-up" style={{ maxWidth: '500px', width: '90%' }}>
+                <div className="modal-overlay assignment-modal-overlay animate-fade-in" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', zIndex: 99999, padding: '1.5rem' }}>
+                    <div className="modal glass-panel animate-scale-up" style={{ maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto', margin: 'auto', borderRadius: '16px' }}>
                         <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--surface-border)', paddingBottom: '0.85rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                 <div style={{ background: 'rgba(var(--primary-rgb), 0.15)', padding: '0.5rem', borderRadius: '10px', color: 'var(--primary-color)' }}>
