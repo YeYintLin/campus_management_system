@@ -802,16 +802,7 @@ const Attendance = () => {
                 // If student has NO year AND NO dept info (test/gmail accounts), exclude them
                 if (!sYear && !sDept) return false;
 
-                // Semester check: if course has semester defined and student profile has semester
-                const studentAbsSem = studentSemesterMap[sId] ?? (typeof student.semester === 'number' ? student.semester : null);
-                if (courseSem && typeof studentAbsSem === 'number' && studentAbsSem > 0) {
-                    const studentSemInYear = studentAbsSem % 2 === 0 ? 2 : 1;
-                    const studentYearNum = Math.ceil(studentAbsSem / 2);
-                    if (studentYearNum === courseYearNum && studentSemInYear !== courseSem) {
-                        return false;
-                    }
-                }
-
+                // In TU curriculum, all students enrolled in the same year cohort take the courses together
                 return yearOk && deptOk;
             };
 
