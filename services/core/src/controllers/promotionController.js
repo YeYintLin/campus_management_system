@@ -29,6 +29,39 @@ const getNextYearLevel = (currentLevel) => {
     return labels[nextNum] || `${nextNum}th Year`;
 };
 
+// Extract true year number (1-6) from Student and User documents
+const extractStudentYearNum = (studentDoc, userDoc) => {
+    const rawYr = String(userDoc?.year || userDoc?.currentYear || '').toUpperCase();
+    if (rawYr.includes('6') || rawYr.includes('VI') || rawYr.includes('SIXTH') || rawYr.includes('FINAL')) return 6;
+    if (rawYr.includes('5') || rawYr.includes('FIFTH') || rawYr.includes('(V)') || rawYr.match(/\bV\b/)) return 5;
+    if (rawYr.includes('4') || rawYr.includes('FOURTH') || rawYr.includes('IV')) return 4;
+    if (rawYr.includes('3') || rawYr.includes('THIRD') || rawYr.includes('III')) return 3;
+    if (rawYr.includes('2') || rawYr.includes('SECOND') || rawYr.includes('II')) return 2;
+    if (rawYr.includes('1') || rawYr.includes('FIRST') || rawYr.includes('I')) return 1;
+
+    const roll = String(studentDoc?.enrollmentNumber || userDoc?.rollNo || userDoc?.currentRollNo || '').toUpperCase();
+    if (roll.startsWith('VI-') || roll.startsWith('6-')) return 6;
+    if (roll.startsWith('V-') || roll.startsWith('5-')) return 5;
+    if (roll.startsWith('IV-') || roll.startsWith('4-')) return 4;
+    if (roll.startsWith('III-') || roll.startsWith('3-')) return 3;
+    if (roll.startsWith('II-') || roll.startsWith('2-')) return 2;
+    if (roll.startsWith('I-') || roll.startsWith('1-')) return 1;
+
+    if (studentDoc?.semester) {
+        return Math.min(6, Math.max(1, Math.ceil(Number(studentDoc.semester) / 2)));
+    }
+
+    const email = String(userDoc?.email || '').toLowerCase();
+    if (email.startsWith('vimc') || email.startsWith('6mc') || email.startsWith('vi.')) return 6;
+    if (email.startsWith('vmc') || email.startsWith('5mc') || email.startsWith('v.')) return 5;
+    if (email.startsWith('ivmc') || email.startsWith('4mc') || email.startsWith('iv.')) return 4;
+    if (email.startsWith('iiimc') || email.startsWith('3mc') || email.startsWith('iii.')) return 3;
+    if (email.startsWith('iimc') || email.startsWith('2mc') || email.startsWith('ii.')) return 2;
+    if (email.startsWith('imc') || email.startsWith('1mc') || email.startsWith('i.')) return 1;
+
+    return 1;
+};
+
 // ─────────────────────────────────────────────
 // POST /api/promotions/preview
 // ─────────────────────────────────────────────
@@ -59,8 +92,6 @@ const previewPromotion = async (req, res) => {
             department || null,
             75
         );
-
-        const yearPattern = new RegExp(`(${cohortNum}|${cohortNum}th|Fifth|Fourth|Third|Second|First|Final|VI|IV|III|II|I|V)`, 'i');
 
         // 1. Try finding from AcademicEnrollment
         const enrollFilter = {
@@ -110,23 +141,32 @@ const previewPromotion = async (req, res) => {
                 };
             });
         } else {
-            // 2. Fallback: Query Users and Students collections directly
-            const userFilter = {
-                role: 'Student',
-                $or: [
-                    { year: { $regex: `${cohortNum}|Fifth|Final|VI|V`, $options: 'i' } },
-                    { currentYear: { $regex: `${cohortNum}|Fifth|Final|VI|V`, $options: 'i' } }
-                ]
-            };
-            if (department && department !== 'All') {
-                userFilter.department = new RegExp(`^${department}$`, 'i');
-            }
+            // 2. Fallback: Query all students from Student model populated with User
+            const allStudents = await Student.find().populate('user', 'name email permanentRegNo currentRollNo currentYear rollNo status department year');
 
-            const matchedUsers = await User.find(userFilter).sort({ rollNo: 1, name: 1 });
+            const matchedStudents = allStudents.filter(s => {
+                const u = s.user;
+                if (!u || u.status === 'Deactivated') return false;
+
+                // Department match
+                if (department && department !== 'All') {
+                    const deptStr = String(s.department || u.department || '').toLowerCase();
+                    const filterDept = String(department).toLowerCase();
+                    if (!deptStr.includes(filterDept.split(' ')[0])) return false;
+                }
+
+                // Year level match
+                const sYr = extractStudentYearNum(s, u);
+                if (sYr !== cohortNum) return false;
+
+                return true;
+            });
+
             const isFinalYear = cohortNum >= 6;
 
-            students = matchedUsers.map(s => {
-                const rate = 88; // Default qualified attendance for active cohort
+            students = matchedStudents.map(s => {
+                const u = s.user;
+                const rate = 88; // Default qualified attendance
                 const isQualified = rate >= threshold;
 
                 let suggestedAction = 'Promote';
@@ -138,12 +178,12 @@ const previewPromotion = async (req, res) => {
 
                 return {
                     enrollmentId: null,
-                    studentId: s._id,
-                    name: s.name,
-                    email: s.email,
-                    permanentRegNo: s.permanentRegNo || 'N/A',
-                    currentRollNo: s.rollNo || s.currentRollNo || 'Not yet assigned',
-                    department: s.department || 'Mechatronics Engineering',
+                    studentId: u._id,
+                    name: u.name,
+                    email: u.email,
+                    permanentRegNo: u.permanentRegNo || 'N/A',
+                    currentRollNo: s.enrollmentNumber || u.rollNo || u.currentRollNo || 'Not yet assigned',
+                    department: s.department || u.department || 'Mechatronics Engineering',
                     attendanceRate: rate,
                     isQualified,
                     threshold,
@@ -151,6 +191,40 @@ const previewPromotion = async (req, res) => {
                     targetYearLevel: suggestedAction === 'Promote' ? getNextYearLevel(cohortYearLevel) : cohortYearLevel,
                 };
             });
+
+            // Also check standalone User records if any
+            if (students.length < 5) {
+                const standaloneUsers = await User.find({
+                    role: 'Student',
+                    status: { $ne: 'Deactivated' }
+                });
+
+                for (const u of standaloneUsers) {
+                    const uYr = extractStudentYearNum(null, u);
+                    if (uYr === cohortNum && !students.some(st => st.studentId?.toString() === u._id.toString())) {
+                        const rate = 88;
+                        const isQualified = rate >= threshold;
+                        let suggestedAction = 'Promote';
+                        if (!isQualified) suggestedAction = 'HoldBack';
+                        else if (isFinalYear) suggestedAction = 'Graduate';
+
+                        students.push({
+                            enrollmentId: null,
+                            studentId: u._id,
+                            name: u.name,
+                            email: u.email,
+                            permanentRegNo: u.permanentRegNo || 'N/A',
+                            currentRollNo: u.rollNo || u.currentRollNo || 'Not yet assigned',
+                            department: u.department || 'Mechatronics Engineering',
+                            attendanceRate: rate,
+                            isQualified,
+                            threshold,
+                            suggestedAction,
+                            targetYearLevel: suggestedAction === 'Promote' ? getNextYearLevel(cohortYearLevel) : cohortYearLevel,
+                        });
+                    }
+                }
+            }
         }
 
         res.json({
