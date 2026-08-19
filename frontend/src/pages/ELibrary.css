@@ -325,8 +325,8 @@
     background: rgba(239, 68, 68, 0.25);
 }
 
-/* ═══ Modals ═══ */
-.elibrary-page .modal-overlay {
+/* ═══ E-Library Modals (Centered in Main Content Workspace) ═══ */
+.elibrary-modal-overlay {
     position: fixed !important;
     inset: 0 !important;
     top: 0 !important;
@@ -335,14 +335,24 @@
     bottom: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    background: rgba(0, 0, 0, 0.72) !important;
+    background-color: rgba(15, 23, 42, 0.78) !important;
     backdrop-filter: blur(8px) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    z-index: 10000 !important;
-    padding: 1.5rem !important;
+    z-index: 99999 !important;
+    padding-left: calc(272px + 1.5rem) !important;
+    padding-right: 1.5rem !important;
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
     box-sizing: border-box !important;
+}
+
+@media (max-width: 768px) {
+    .elibrary-modal-overlay {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
 }
 
 .elibrary-page .modal-card {

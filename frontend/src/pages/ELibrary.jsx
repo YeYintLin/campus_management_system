@@ -433,32 +433,15 @@ const ELibrary = () => {
             {/* Details Modal */}
             {activePreviewItem && typeof document !== 'undefined' && createPortal(
                 <div
-                    className="modal-overlay animate-fade-in"
+                    className="elibrary-modal-overlay animate-fade-in"
                     onClick={() => setActivePreviewItem(null)}
-                    style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        width: '100vw',
-                        height: '100vh',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'rgba(15, 23, 42, 0.78)',
-                        backdropFilter: 'blur(8px)',
-                        zIndex: 99999,
-                        padding: '1.5rem',
-                        boxSizing: 'border-box'
-                    }}
                 >
                     <div
                         className="modal-card elibrary-details-modal animate-scale-up glass-panel"
                         onClick={e => e.stopPropagation()}
                         style={{
                             maxWidth: '620px',
-                            width: '90%',
+                            width: '100%',
                             maxHeight: '88vh',
                             overflowY: 'auto',
                             margin: 'auto',
@@ -521,32 +504,15 @@ const ELibrary = () => {
             {/* Upload Modal (Teachers & Admins Only) */}
             {isUploadModalOpen && canUploadOrDelete && typeof document !== 'undefined' && createPortal(
                 <div
-                    className="modal-overlay animate-fade-in"
+                    className="elibrary-modal-overlay animate-fade-in"
                     onClick={() => setIsUploadModalOpen(false)}
-                    style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        width: '100vw',
-                        height: '100vh',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'rgba(15, 23, 42, 0.78)',
-                        backdropFilter: 'blur(8px)',
-                        zIndex: 99999,
-                        padding: '1.5rem',
-                        boxSizing: 'border-box'
-                    }}
                 >
                     <div
                         className="modal-card elibrary-upload-modal animate-scale-up glass-panel"
                         onClick={e => e.stopPropagation()}
                         style={{
                             maxWidth: '620px',
-                            width: '90%',
+                            width: '100%',
                             maxHeight: '88vh',
                             overflowY: 'auto',
                             margin: 'auto',
