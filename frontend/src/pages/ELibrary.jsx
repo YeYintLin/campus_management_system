@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/apiClient';
 import {
@@ -430,7 +431,7 @@ const ELibrary = () => {
             )}
 
             {/* Details Modal */}
-            {activePreviewItem && (
+            {activePreviewItem && typeof document !== 'undefined' && createPortal(
                 <div
                     className="modal-overlay animate-fade-in"
                     onClick={() => setActivePreviewItem(null)}
@@ -513,11 +514,12 @@ const ELibrary = () => {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Upload Modal (Teachers & Admins Only) */}
-            {isUploadModalOpen && canUploadOrDelete && (
+            {isUploadModalOpen && canUploadOrDelete && typeof document !== 'undefined' && createPortal(
                 <div
                     className="modal-overlay animate-fade-in"
                     onClick={() => setIsUploadModalOpen(false)}
@@ -674,7 +676,8 @@ const ELibrary = () => {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
