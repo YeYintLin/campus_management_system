@@ -405,7 +405,7 @@ const Attendance = () => {
         }
     };
 
-    // Teacher/Admin manually starts a 20-second live session
+    // Teacher/Admin manually starts a 30-second live session
     const handleStartLiveSession = async (course) => {
         setStartingSession(true);
         try {
@@ -414,10 +414,10 @@ const Attendance = () => {
                 courseName: course.title || course.name || course.code,
                 department: course.department || user?.department || 'Mechatronics Engineering',
                 year: course.year || course.yearLabel || '',
-                durationSeconds: 20
+                durationSeconds: 30
             });
             setActiveSession(data);
-            setMessage(`⚡ 20-Second Live session started for ${course.name || course.code}! Code: ${data.code}. Students have 20 seconds to submit!`);
+            setMessage(`⚡ 30-Second Live session started for ${course.name || course.code}! Code: ${data.code}. Students have 30 seconds to submit!`);
         } catch (err) {
             console.error('Failed to start live session:', err);
             setMessage('Failed to start live session');
@@ -1618,7 +1618,7 @@ const Attendance = () => {
                                     }}
                                 >
                                     <Zap size={16} />
-                                    <span>Start 20-Sec Live Session</span>
+                                    <span>Start 30-Sec Live Session</span>
                                 </button>
                             </div>
                         ))
