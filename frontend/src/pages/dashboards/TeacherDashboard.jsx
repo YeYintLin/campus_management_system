@@ -50,7 +50,7 @@ const TeacherDashboard = () => {
                             return !isNaN(d.getTime()) && d >= now;
                         })
                         .sort((a, b) => new Date(a.date) - new Date(b.date));
-                    setUpcomingExams(futureExams.length > 0 ? futureExams.slice(0, 5) : examSessionsData.slice(0, 3));
+                    setUpcomingExams(futureExams.slice(0, 5));
                 }
 
                 // Combine backend notifications with client-generated exam reminders

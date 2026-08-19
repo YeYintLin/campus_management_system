@@ -192,7 +192,7 @@ const StudentDashboard = () => {
         }));
     }, [attendance, studentId]);
 
-    // Upcoming exams — show all exams with future dates, or if none, show most recent ones
+    // Upcoming exams — show strictly future exams (date >= today)
     const upcomingExams = useMemo(() => {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
@@ -202,10 +202,6 @@ const StudentDashboard = () => {
                 return !isNaN(examDate.getTime()) && examDate >= now;
             })
             .sort((a, b) => new Date(a.date) - new Date(b.date));
-        // If no future exams found, just show latest ones so count isn't always 0
-        if (futureExams.length === 0 && exams.length > 0) {
-            return exams.slice(0, 3);
-        }
         return futureExams.slice(0, 5);
     }, [exams]);
 
