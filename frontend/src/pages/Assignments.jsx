@@ -63,6 +63,43 @@ const getFileDownloadUrl = (url) => {
     return `${base}${clean}`;
 };
 
+const isCourseTaughtByTeacher = (course, user) => {
+    if (!user) return false;
+    const userTeacherId = user._id ? String(user._id) : (user.id ? String(user.id) : '');
+    const userTeacherName = (user.name || '').toLowerCase().trim();
+    const userTeacherEmail = (user.email || '').toLowerCase().trim();
+
+    const cTeacher = course.teacher;
+    if (!cTeacher) return false;
+
+    let cId = '';
+    let cName = '';
+    let cEmail = '';
+
+    if (typeof cTeacher === 'object' && cTeacher !== null) {
+        cId = cTeacher._id ? String(cTeacher._id) : (cTeacher.id ? String(cTeacher.id) : '');
+        cName = (cTeacher.name || '').toLowerCase().trim();
+        cEmail = (cTeacher.email || '').toLowerCase().trim();
+    } else if (typeof cTeacher === 'string') {
+        cName = cTeacher.toLowerCase().trim();
+        if (cTeacher.includes('@')) cEmail = cTeacher.toLowerCase().trim();
+        else cId = cTeacher;
+    }
+
+    if (userTeacherId && cId && userTeacherId === cId) return true;
+    if (userTeacherEmail && cEmail && userTeacherEmail === cEmail) return true;
+
+    // Strip honorifics (Daw, U, Prof, Dr) for resilient matching
+    const cleanUser = userTeacherName.replace(/\b(daw|u|prof|dr|mr|mrs|ms|tr)\b/gi, '').trim();
+    const cleanCourse = cName.replace(/\b(daw|u|prof|dr|mr|mrs|ms|tr)\b/gi, '').trim();
+
+    if (cleanUser.length >= 3 && cleanCourse.length >= 3) {
+        if (cleanCourse.includes(cleanUser) || cleanUser.includes(cleanCourse)) return true;
+    }
+
+    return false;
+};
+
 const Assignments = () => {
     const { user } = useContext(AuthContext);
     const isStudent = user?.role === 'Student';
@@ -140,33 +177,15 @@ const Assignments = () => {
     // Filter courses matching role, year, and semester
     const filteredCourses = useMemo(() => {
         return courses.filter(c => {
-            // Role scoping for Teachers
-            if (isTeacher) {
-                const teacherId = user?._id ? String(user._id) : (user?.id ? String(user.id) : '');
-                const teacherEmail = (user?.email || '').toLowerCase().trim();
-                const teacherName = (user?.name || '').toLowerCase().trim();
-                const cleanTeacher = teacherName.replace(/\b(daw|u|prof|dr|mr|mrs|ms|tr)\b/gi, '').trim();
+            // Role scoping for Teachers: strictly show only courses taught by this teacher
+            if (isTeacher && !isCourseTaughtByTeacher(c, user)) {
+                return false;
+            }
 
-                const cTeacher = c.teacher;
-                if (cTeacher) {
-                    let match = false;
-                    if (typeof cTeacher === 'object') {
-                        const cId = cTeacher._id ? String(cTeacher._id) : String(cTeacher);
-                        const cEmail = (cTeacher.email || '').toLowerCase().trim();
-                        const cName = (cTeacher.name || '').toLowerCase().trim();
-                        const cleanC = cName.replace(/\b(daw|u|prof|dr|mr|mrs|ms|tr)\b/gi, '').trim();
-
-                        if (teacherId && cId && teacherId === cId) match = true;
-                        if (teacherEmail && cEmail && teacherEmail === cEmail) match = true;
-                        if (cleanTeacher && cleanC && (cleanC.includes(cleanTeacher) || cleanTeacher.includes(cleanC))) match = true;
-                    } else if (typeof cTeacher === 'string') {
-                        const cStr = cTeacher.toLowerCase().trim();
-                        const cleanC = cStr.replace(/\b(daw|u|prof|dr|mr|mrs|ms|tr)\b/gi, '').trim();
-                        if (cStr === teacherId || cStr === teacherEmail) match = true;
-                        if (cleanTeacher && cleanC && (cleanC.includes(cleanTeacher) || cleanTeacher.includes(cleanC))) match = true;
-                    }
-                    if (!match) return false;
-                }
+            // Role scoping for Students: show only courses for student's year
+            if (isStudent && studentYear) {
+                const cYear = c.yearLabel ? normalizeYear(c.yearLabel) : `${c.year || 1}${c.year === 1 ? 'st' : c.year === 2 ? 'nd' : c.year === 3 ? 'rd' : 'th'} Year`;
+                if (cYear !== studentYear) return false;
             }
 
             // Year filter
@@ -185,7 +204,7 @@ const Assignments = () => {
 
             return yearMatch && semMatch && searchMatch;
         });
-    }, [courses, isTeacher, user, selectedYear, selectedSemester, searchTerm]);
+    }, [courses, isTeacher, isStudent, studentYear, user, selectedYear, selectedSemester, searchTerm]);
 
     // Assignments grouped by course (matched by ID, course code, or name)
     const assignmentsByCourse = useMemo(() => {
@@ -424,8 +443,22 @@ const Assignments = () => {
         setIsModalOpen(true);
     };
 
+    const teacherYears = useMemo(() => {
+        if (!isTeacher) return [];
+        const yrs = new Set();
+        courses.forEach(c => {
+            if (isCourseTaughtByTeacher(c, user)) {
+                const y = c.yearLabel ? normalizeYear(c.yearLabel) : `${c.year || 1}${c.year === 1 ? 'st' : c.year === 2 ? 'nd' : c.year === 3 ? 'rd' : 'th'} Year`;
+                if (y) yrs.add(y);
+            }
+        });
+        return Array.from(yrs).sort();
+    }, [courses, isTeacher, user]);
+
     const yearsList = isStudent
         ? [studentYear]
+        : isTeacher
+        ? (teacherYears.length > 0 ? ['All', ...teacherYears] : ['All'])
         : ['All', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
 
     return (
