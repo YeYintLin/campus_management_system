@@ -5,8 +5,9 @@ const Semester = require('../models/Semester');
 const TimetableFile = require('../models/TimetableFile');
 const { parseTUHmawbiExcel } = require('../utils/excelParser');
 const { parseTimetableBuffer } = require('../utils/parseTimetable');
+const { parseTUHmawbiExamPdf } = require('../utils/pdfParser');
 
-// @desc    Batch import Excel file for Timetable / Practical / Tutorial / Exam
+// @desc    Batch import Excel or PDF file for Timetable / Practical / Tutorial / Exam
 // @route   POST /api/sessions/batch-import
 // @access  Private (Admin, Teacher)
 const batchImportSessions = async (req, res) => {
@@ -26,10 +27,28 @@ const batchImportSessions = async (req, res) => {
         let headerError = null;
 
         if ((!parsedSessions || parsedSessions.length === 0) && req.file) {
-            const resParsed = parseTUHmawbiExcel(req.file.buffer, sessionType);
-            parsedMatrix = resParsed.parsedMatrix;
-            parsedSessions = resParsed.parsedSessions;
-            headerError = resParsed.headerError;
+            const isPdf = req.file.mimetype === 'application/pdf' || String(req.file.originalname || '').toLowerCase().endsWith('.pdf');
+            if (isPdf) {
+                const pdfRes = await parseTUHmawbiExamPdf(req.file.buffer);
+                parsedSessions = pdfRes.sessions.map(s => ({
+                    ...s,
+                    courseCode: s.courseCode || 'TBD',
+                    courseName: s.courseName || 'Unscheduled Exam Slot',
+                    title: s.title || 'Unscheduled Exam Slot',
+                    year: s.year || year,
+                    semester: s.semester || semester,
+                    major: s.major || major,
+                    sessionType: 'Exam',
+                    examType: s.examType || 'Mid-Term',
+                    place: s.place || '3/112 (B)',
+                    status: s.isComplete ? 'Published' : 'Draft'
+                }));
+            } else {
+                const resParsed = parseTUHmawbiExcel(req.file.buffer, sessionType);
+                parsedMatrix = resParsed.parsedMatrix;
+                parsedSessions = resParsed.parsedSessions;
+                headerError = resParsed.headerError;
+            }
         }
 
         if (!req.file && (!parsedSessions || parsedSessions.length === 0)) {
@@ -349,16 +368,31 @@ const getSessions = async (req, res) => {
     }
 };
 
-// @desc    Preview Excel import before committing
+// @desc    Preview Excel or PDF import before committing
 // @route   POST /api/sessions/preview-import
 // @access  Private (Admin, Teacher)
 const previewImportSessions = async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ message: 'Please upload an Excel file (.xlsx or .xls).' });
+            return res.status(400).json({ message: 'Please upload an Excel file (.xlsx or .xls) or Exam PDF (.pdf).' });
         }
 
         const { sessionType = 'Practical' } = req.body;
+        const isPdf = req.file.mimetype === 'application/pdf' || String(req.file.originalname || '').toLowerCase().endsWith('.pdf');
+
+        if (isPdf) {
+            const pdfRes = await parseTUHmawbiExamPdf(req.file.buffer);
+            return res.json({
+                success: true,
+                count: pdfRes.totalRows,
+                scheduledCount: pdfRes.scheduledCount,
+                unscheduledCount: pdfRes.unscheduledCount,
+                metadata: pdfRes.metadata,
+                sessions: pdfRes.sessions,
+                sessionType: 'Exam'
+            });
+        }
+
         const { parsedMatrix, parsedSessions, headerError } = parseTUHmawbiExcel(req.file.buffer, sessionType);
 
         if (headerError && sessionType === 'Academic') {
@@ -375,7 +409,7 @@ const previewImportSessions = async (req, res) => {
         });
     } catch (error) {
         console.error('Preview Import Error:', error.message);
-        return res.status(400).json({ message: error.message || 'Failed to preview Excel file.' });
+        return res.status(400).json({ message: error.message || 'Failed to preview uploaded file.' });
     }
 };
 

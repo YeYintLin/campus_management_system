@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { Calendar, Clock, MapPin, Edit3, Save, X, Plus, Book, Monitor, Users, MessageSquare, Upload, FileSpreadsheet, Download, CheckCircle, AlertCircle, Coffee, History, RotateCcw, ShieldAlert, User, Search, Filter, ShieldCheck, Tag, Sparkles, Layers, ArrowUpDown, CheckCircle2, Eye, Trash2, RefreshCw } from 'lucide-react';
 import { getNormalizedUserYear, normalizeYear, parseYearNumber } from '../utils/userYear';
 import { exportAcademicMatrixExcel, exportDateScheduleExcel, exportExamScheduleExcel } from '../utils/excelExporter';
+import AcademicPlanView from '../components/AcademicPlanView';
 import './TimeTable.css';
 
 // Safe date parser to completely prevent RangeError: invalid date
@@ -575,11 +576,11 @@ const PracticalScheduleView = ({
                                         <tr>
                                             <th className="session-col-year">Year</th>
                                             <th className="session-col-code">Course Code</th>
-                                            <th className="session-col-topic">{selectedCategory === 'Tutorial' ? 'Tutorial / Problem Topic' : 'Practical / Experiment Topic'}</th>
-                                            <th className="session-col-batch">Batch</th>
+                                            <th className="session-col-topic">{selectedCategory === 'Exam' ? 'Exam Subject / Paper' : selectedCategory === 'Tutorial' ? 'Tutorial / Problem Topic' : 'Practical / Experiment Topic'}</th>
+                                            <th className="session-col-batch">{selectedCategory === 'Exam' ? 'Type' : 'Batch'}</th>
                                             <th className="session-col-time">Time</th>
-                                            <th className="session-col-room">{selectedCategory === 'Tutorial' ? 'Classroom / Location' : 'Lab Room / Location'}</th>
-                                            <th className="session-col-teacher">Instructor</th>
+                                            <th className="session-col-room">{selectedCategory === 'Exam' ? 'Exam Hall / Room' : selectedCategory === 'Tutorial' ? 'Classroom / Location' : 'Lab Room / Location'}</th>
+                                            <th className="session-col-teacher">{selectedCategory === 'Exam' ? 'Invigilator / Dept' : 'Instructor'}</th>
                                             <th className="session-col-status">Status</th>
                                         </tr>
                                     </thead>
@@ -642,12 +643,12 @@ const PracticalScheduleView = ({
                             <tr>
                                 <th className="session-col-year">Year</th>
                                 <th className="session-col-code">Course Code</th>
-                                <th className="session-col-topic">{selectedCategory === 'Tutorial' ? 'Tutorial / Problem Topic' : 'Practical / Experiment Topic'}</th>
-                                <th className="session-col-batch">Batch</th>
+                                <th className="session-col-topic">{selectedCategory === 'Exam' ? 'Exam Subject / Paper' : selectedCategory === 'Tutorial' ? 'Tutorial / Problem Topic' : 'Practical / Experiment Topic'}</th>
+                                <th className="session-col-batch">{selectedCategory === 'Exam' ? 'Type' : 'Batch'}</th>
                                 <th className="session-col-date">Date</th>
                                 <th className="session-col-time">Time</th>
-                                <th className="session-col-room">{selectedCategory === 'Tutorial' ? 'Classroom / Location' : 'Lab Room / Location'}</th>
-                                <th className="session-col-teacher">Instructor</th>
+                                <th className="session-col-room">{selectedCategory === 'Exam' ? 'Exam Hall / Room' : selectedCategory === 'Tutorial' ? 'Classroom / Location' : 'Lab Room / Location'}</th>
+                                <th className="session-col-teacher">{selectedCategory === 'Exam' ? 'Invigilator / Dept' : 'Instructor'}</th>
                                 <th className="session-col-status">Status</th>
                             </tr>
                         </thead>
@@ -945,7 +946,8 @@ const TimeTable = () => {
         { id: 'Academic', label: '📖 Academic Timetable', desc: 'Weekly 6-Period Lecture Matrix' },
         { id: 'Practical', label: '🔬 Practical Timetable', desc: 'Date-based Experiment Sessions' },
         { id: 'Tutorial', label: '✍️ Tutorial Timetable', desc: 'Date-based Recitation Sessions' },
-        { id: 'Exam', label: '📝 Exam Schedule', desc: 'Mid-Term & Final Examination Dates' }
+        { id: 'Exam', label: '📝 Exam Schedule', desc: 'Mid-Term & Final Examination Dates' },
+        { id: 'Plan', label: '📅 Academic Plan', desc: 'Official University Term & Milestone Schedule' }
     ];
 
     const parseYearNum = (yearStr) => {
@@ -1153,7 +1155,29 @@ const TimeTable = () => {
         formData.append('sessionType', selectedCategory);
 
         try {
-            if (selectedCategory !== 'Academic') {
+            const isPdf = file.type === 'application/pdf' || String(file.name || '').toLowerCase().endsWith('.pdf');
+
+            if (isPdf && selectedCategory === 'Exam') {
+                const pdfForm = new FormData();
+                pdfForm.append('file', file);
+                pdfForm.append('sessionType', 'Exam');
+                const { data } = await apiClient.post('/sessions/preview-import', pdfForm, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+
+                if (data.success && Array.isArray(data.sessions) && data.sessions.length > 0) {
+                    setPreviewData({
+                        sessions: data.sessions,
+                        count: data.sessions.length,
+                        file,
+                        fileName: file.name,
+                        sessionType: 'Exam'
+                    });
+                    setIsPreviewModalOpen(true);
+                } else {
+                    throw new Error('No valid exam sessions found in the uploaded PDF.');
+                }
+            } else if (selectedCategory !== 'Academic') {
                 // Parse locally in browser with XLSX — instant, zero 404 network failure risk
                 const parsedSessions = await parseClientPracticalExcel(file, selectedCategory, selectedYear, selectedSemester);
 
@@ -1184,7 +1208,7 @@ const TimeTable = () => {
             }
         } catch (err) {
             console.error('Import failed error object:', err);
-            const detailedMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to parse Excel file.';
+            const detailedMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to parse file.';
             setImportError(detailedMsg);
         } finally {
             setImporting(false);
@@ -1327,7 +1351,7 @@ const TimeTable = () => {
                 type="file"
                 ref={fileInputRef}
                 style={{ display: 'none' }}
-                accept=".xlsx, .xls"
+                accept={selectedCategory === 'Exam' ? '.xlsx, .xls, .pdf' : '.xlsx, .xls'}
                 onChange={handleExcelUpload}
             />
 
@@ -1337,7 +1361,7 @@ const TimeTable = () => {
                     <p className="subtitle">Manage and track your weekly academic schedule</p>
                 </div>
                 <div className="header-actions">
-                    {canManageTimetable && (
+                    {canManageTimetable && selectedCategory !== 'Plan' && (
                         <>
                             {selectedCategory !== 'Academic' && (
                                 <button className="btn btn-secondary" onClick={handleCleanupCorrupted} disabled={cleaningCorrupted} title="Purge Corrupted Records" style={{ color: '#f87171', borderColor: 'rgba(239,68,68,0.3)' }}>
@@ -1355,7 +1379,7 @@ const TimeTable = () => {
                             </button>
                             <button className="btn btn-primary" onClick={handleFileUploadClick} disabled={importing}>
                                 <Upload size={18} />
-                                {importing ? 'Parsing...' : `Import ${selectedCategory} Excel`}
+                                {importing ? 'Parsing...' : selectedCategory === 'Exam' ? 'Import Exam Schedule (.pdf / .xlsx)' : `Import ${selectedCategory} Excel`}
                             </button>
                         </>
                     )}
@@ -1404,37 +1428,41 @@ const TimeTable = () => {
                 ))}
             </div>
 
-            {/* Academic Year Pills */}
-            <div className="year-filter-bar glass-panel">
-                {years.map(year => (
-                    <button key={year} className={`year-tag ${selectedYear === year ? 'active' : ''}`} onClick={() => setSelectedYear(year)}>
-                        {year}
-                    </button>
-                ))}
-            </div>
+            {selectedCategory !== 'Plan' && (
+                <>
+                    {/* Academic Year Pills */}
+                    <div className="year-filter-bar glass-panel">
+                        {years.map(year => (
+                            <button key={year} className={`year-tag ${selectedYear === year ? 'active' : ''}`} onClick={() => setSelectedYear(year)}>
+                                {year}
+                            </button>
+                        ))}
+                    </div>
 
-            {/* Semester & Major Filters */}
-            <div className="year-filter-bar semester-filter-bar glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    {availableSemesters.map(sem => (
-                        <button key={sem} className={`year-tag ${selectedSemester === sem ? 'active' : ''}`} onClick={() => setSelectedSemester(sem)}>
-                            {sem}
-                        </button>
-                    ))}
-                </div>
+                    {/* Semester & Major Filters */}
+                    <div className="year-filter-bar semester-filter-bar glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            {availableSemesters.map(sem => (
+                                <button key={sem} className={`year-tag ${selectedSemester === sem ? 'active' : ''}`} onClick={() => setSelectedSemester(sem)}>
+                                    {sem}
+                                </button>
+                            ))}
+                        </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Dept:</span>
-                    <select
-                        className="form-input"
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', background: 'var(--control-bg)', color: 'var(--text-primary)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
-                        value={selectedMajor}
-                        onChange={e => setSelectedMajor(e.target.value)}
-                    >
-                        {majors.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                </div>
-            </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Dept:</span>
+                            <select
+                                className="form-input"
+                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', background: 'var(--control-bg)', color: 'var(--text-primary)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                                value={selectedMajor}
+                                onChange={e => setSelectedMajor(e.target.value)}
+                            >
+                                {majors.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </>
+            )}
 
             {/* Class Section Info Bar */}
             <div className="class-section-info glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', padding: '0.6rem 1rem', borderRadius: '12px' }}>
@@ -1534,6 +1562,8 @@ const TimeTable = () => {
                             </table>
                         </div>
                         )
+                    ) : selectedCategory === 'Plan' ? (
+                        <AcademicPlanView canManageTimetable={canManageTimetable} />
                     ) : (
                         <PracticalScheduleView
                             sessions={dateSessions}
@@ -1553,7 +1583,9 @@ const TimeTable = () => {
 
             {/* MOBILE TIMELINE CARD VIEW (Active on phones <= 768px) */}
             <div className="mobile-schedule-container">
-                {selectedCategory === 'Academic' ? (
+                {selectedCategory === 'Plan' ? (
+                    <AcademicPlanView canManageTimetable={canManageTimetable} />
+                ) : selectedCategory === 'Academic' ? (
                     <div>
                         {/* Mobile Day Selector Bar */}
                         <div className="year-filter-bar glass-panel" style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1621,7 +1653,7 @@ const TimeTable = () => {
                         </div>
                     </div>
                 ) : (
-                    /* Mobile Practical view */
+                    /* Mobile Practical / Tutorial / Exam view */
                     <PracticalScheduleView
                         sessions={dateSessions}
                         selectedYear={selectedYear}
