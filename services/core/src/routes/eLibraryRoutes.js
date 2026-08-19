@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
-const { protect, requireSystemAdmin } = require('../middleware/authMiddleware');
+const { protect, teacher, requireSystemAdmin } = require('../middleware/authMiddleware');
 const {
     getLibraryItems,
     getLibraryItemById,
@@ -11,6 +11,7 @@ const {
     uploadLibraryItem,
     updateLibraryItem,
     deleteLibraryItem,
+    getLibraryLogs,
     PRIVATE_STORAGE_DIR
 } = require('../controllers/eLibraryController');
 
@@ -60,6 +61,7 @@ const handleUpload = (req, res, next) => {
 
 // All routes require authentication
 router.get('/', protect, getLibraryItems);
+router.get('/logs', protect, teacher, getLibraryLogs);
 router.get('/:id', protect, getLibraryItemById);
 router.get('/:id/download', protect, downloadLibraryItem);
 router.post('/upload', protect, handleUpload, uploadLibraryItem);

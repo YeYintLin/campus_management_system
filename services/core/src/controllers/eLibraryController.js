@@ -1,4 +1,5 @@
 const ELibraryItem = require('../models/ELibraryItem');
+const ELibraryLog = require('../models/ELibraryLog');
 const User = require('../models/User');
 const path = require('path');
 const fs = require('fs');
@@ -198,6 +199,26 @@ const downloadLibraryItem = async (req, res) => {
         // Increment download count atomically
         await ELibraryItem.findByIdAndUpdate(req.params.id, { $inc: { downloadsCount: 1 } });
 
+        // Record immutable download audit log asynchronously
+        try {
+            await ELibraryLog.create({
+                itemId: item._id,
+                itemTitle: item.title,
+                fileName: item.originalFileName || item.storedFileName,
+                fileSize: item.fileSize || 0,
+                action: 'download',
+                userId: req.user._id,
+                userName: req.user.name || 'Student / Faculty User',
+                userEmail: req.user.email || '',
+                userRole: req.user.role || 'Student',
+                userDepartment: req.user.department || 'Mechatronics Engineering',
+                userYear: req.user.year || '',
+                ipAddress: req.ip || req.headers['x-forwarded-for'] || ''
+            });
+        } catch (logErr) {
+            console.error('Failed to create ELibrary download log:', logErr.message);
+        }
+
         // Stream file securely with sanitized filename
         res.download(filePath, item.originalFileName);
     } catch (error) {
@@ -274,6 +295,26 @@ const uploadLibraryItem = async (req, res) => {
             tags: parsedTags
         });
 
+        // Record immutable upload audit log asynchronously
+        try {
+            await ELibraryLog.create({
+                itemId: newItem._id,
+                itemTitle: newItem.title,
+                fileName: safeOriginalName,
+                fileSize: req.file.size,
+                action: 'upload',
+                userId: req.user._id,
+                userName: req.user.name || 'Faculty Member',
+                userEmail: req.user.email || '',
+                userRole: req.user.role || 'Teacher',
+                userDepartment: req.user.department || 'Mechatronics Engineering',
+                userYear: req.user.year || '',
+                ipAddress: req.ip || req.headers['x-forwarded-for'] || ''
+            });
+        } catch (logErr) {
+            console.error('Failed to create ELibrary upload log:', logErr.message);
+        }
+
         res.status(201).json({
             message: 'E-Library material uploaded successfully!',
             item: newItem
@@ -349,6 +390,26 @@ const updateLibraryItem = async (req, res) => {
 
         await item.save();
 
+        // Record immutable edit audit log asynchronously
+        try {
+            await ELibraryLog.create({
+                itemId: item._id,
+                itemTitle: item.title,
+                fileName: item.originalFileName || item.storedFileName,
+                fileSize: item.fileSize || 0,
+                action: 'edit',
+                userId: req.user._id,
+                userName: req.user.name || 'Technical Administrator',
+                userEmail: req.user.email || '',
+                userRole: req.user.role || 'Admin',
+                userDepartment: req.user.department || 'Mechatronics Engineering',
+                userYear: '',
+                ipAddress: req.ip || req.headers['x-forwarded-for'] || ''
+            });
+        } catch (logErr) {
+            console.error('Failed to create ELibrary edit log:', logErr.message);
+        }
+
         res.json({
             message: 'E-Library resource updated successfully!',
             item
@@ -383,9 +444,103 @@ const deleteLibraryItem = async (req, res) => {
 
         await ELibraryItem.findByIdAndDelete(req.params.id);
 
+        // Record immutable delete audit log asynchronously
+        try {
+            await ELibraryLog.create({
+                itemId: item._id,
+                itemTitle: item.title,
+                fileName: item.originalFileName || item.storedFileName,
+                fileSize: item.fileSize || 0,
+                action: 'delete',
+                userId: req.user._id,
+                userName: req.user.name || 'Technical Administrator',
+                userEmail: req.user.email || '',
+                userRole: req.user.role || 'Admin',
+                userDepartment: req.user.department || 'Mechatronics Engineering',
+                userYear: '',
+                ipAddress: req.ip || req.headers['x-forwarded-for'] || ''
+            });
+        } catch (logErr) {
+            console.error('Failed to create ELibrary delete log:', logErr.message);
+        }
+
         res.json({ message: 'E-Library resource removed successfully by Technical Administrator.' });
     } catch (error) {
         console.error('deleteLibraryItem error:', error.message);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get E-Library audit activity logs (Teachers & Admins Only)
+// @route   GET /api/elibrary/logs
+// @access  Private (Teacher, Admin, Superadmin Only)
+const getLibraryLogs = async (req, res) => {
+    try {
+        const userRole = (req.user?.role || '').toLowerCase().trim();
+        const isAllowed = ['teacher', 'admin', 'superadmin', 'academicadmin'].includes(userRole);
+        if (!isAllowed) {
+            return res.status(403).json({
+                message: 'Forbidden: E-Library activity logs are restricted to Teachers and Administrators only.'
+            });
+        }
+
+        const { action, role, search } = req.query;
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 20));
+        const skip = (page - 1) * limit;
+
+        const filter = {};
+
+        if (action && action !== 'all') {
+            filter.action = action.toLowerCase();
+        }
+
+        if (role && role !== 'all') {
+            filter.userRole = new RegExp(`^${role.trim()}$`, 'i');
+        }
+
+        if (search && search.trim()) {
+            const regex = new RegExp(search.trim(), 'i');
+            filter.$or = [
+                { userName: regex },
+                { userEmail: regex },
+                { itemTitle: regex },
+                { fileName: regex },
+                { userYear: regex }
+            ];
+        }
+
+        const [logs, total, totalDownloads, totalUploads, totalEdits, totalDeletes] = await Promise.all([
+            ELibraryLog.find(filter)
+                .sort({ timestamp: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate('itemId', 'title category courseCode yearLevel')
+                .lean(),
+            ELibraryLog.countDocuments(filter),
+            ELibraryLog.countDocuments({ action: 'download' }),
+            ELibraryLog.countDocuments({ action: 'upload' }),
+            ELibraryLog.countDocuments({ action: 'edit' }),
+            ELibraryLog.countDocuments({ action: 'delete' })
+        ]);
+
+        res.json({
+            success: true,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit) || 1,
+            stats: {
+                totalDownloads,
+                totalUploads,
+                totalEdits,
+                totalDeletes,
+                totalActivities: totalDownloads + totalUploads + totalEdits + totalDeletes
+            },
+            logs
+        });
+    } catch (error) {
+        console.error('getLibraryLogs error:', error.message);
         res.status(500).json({ message: error.message });
     }
 };
@@ -397,9 +552,11 @@ module.exports = {
     uploadLibraryItem,
     updateLibraryItem,
     deleteLibraryItem,
+    getLibraryLogs,
     isMechatronicsMember,
     isMechatronicsTeacherOrAdmin,
     isTechnicalAdmin,
     validateFileMagicBytes,
     PRIVATE_STORAGE_DIR
 };
+

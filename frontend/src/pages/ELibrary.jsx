@@ -26,7 +26,16 @@ import {
     SlidersHorizontal,
     Layers,
     FileCode,
-    FileType
+    FileType,
+    History,
+    ScrollText,
+    ChevronLeft,
+    ChevronRight,
+    UserCheck,
+    FileUp,
+    FileDown,
+    FileEdit,
+    Shield
 } from 'lucide-react';
 import './ELibrary.css';
 
@@ -97,11 +106,32 @@ const ELibrary = () => {
     const [editError, setEditError] = useState('');
     const [editSuccess, setEditSuccess] = useState('');
 
+    // Activity Logs Modal State (Teachers & Admins Only)
+    const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+    const [logs, setLogs] = useState([]);
+    const [logsLoading, setLogsLoading] = useState(false);
+    const [logsError, setLogsError] = useState('');
+    const [logsPage, setLogsPage] = useState(1);
+    const [logsTotalPages, setLogsTotalPages] = useState(1);
+    const [logsTotal, setLogsTotal] = useState(0);
+    const [logsStats, setLogsStats] = useState({
+        totalDownloads: 0,
+        totalUploads: 0,
+        totalEdits: 0,
+        totalDeletes: 0,
+        totalActivities: 0
+    });
+    const [logsActionFilter, setLogsActionFilter] = useState('all');
+    const [logsRoleFilter, setLogsRoleFilter] = useState('all');
+    const [logsSearch, setLogsSearch] = useState('');
+    const [debouncedLogsSearch, setDebouncedLogsSearch] = useState('');
+
     // Preview / View Modal
     const [activePreviewItem, setActivePreviewItem] = useState(null);
 
     const userRole = (user?.role || '').toLowerCase().trim();
     const isTeacher = userRole === 'teacher';
+    const isAdmin = ['admin', 'superadmin', 'academicadmin'].includes(userRole);
 
     const isTechnicalAdmin = useMemo(() => {
         if (!user) return false;
@@ -113,6 +143,7 @@ const ELibrary = () => {
 
     const canUpload = isTeacher || isTechnicalAdmin;
     const canEditOrDelete = isTechnicalAdmin; // Only Technical Admin can fully edit and delete!
+    const canViewLogs = isTeacher || isAdmin; // Teachers and Admins can view audit logs
 
     const isMechatronicsMember = useMemo(() => {
         if (!user) return false;
@@ -135,6 +166,50 @@ const ELibrary = () => {
             fetchLibraryItems();
         }
     }, [selectedCategory, selectedYear, sortBy, isMechatronicsMember]);
+
+    // Debounce search input for activity logs
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedLogsSearch(logsSearch);
+            setLogsPage(1);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [logsSearch]);
+
+    // Fetch activity logs when modal is opened or filters change
+    useEffect(() => {
+        if (isLogsModalOpen && canViewLogs) {
+            fetchLogs();
+        }
+    }, [isLogsModalOpen, logsPage, logsActionFilter, logsRoleFilter, debouncedLogsSearch]);
+
+    const fetchLogs = async () => {
+        try {
+            setLogsLoading(true);
+            setLogsError('');
+            const params = {
+                page: logsPage,
+                limit: 15,
+                action: logsActionFilter !== 'all' ? logsActionFilter : undefined,
+                role: logsRoleFilter !== 'all' ? logsRoleFilter : undefined,
+                search: debouncedLogsSearch.trim() || undefined
+            };
+            const { data } = await apiClient.get('/elibrary/logs', { params });
+            if (data.success) {
+                setLogs(Array.isArray(data.logs) ? data.logs : []);
+                setLogsTotalPages(data.totalPages || 1);
+                setLogsTotal(data.total || 0);
+                if (data.stats) {
+                    setLogsStats(data.stats);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch ELibrary logs:', err);
+            setLogsError(err.response?.data?.message || 'Failed to load activity logs.');
+        } finally {
+            setLogsLoading(false);
+        }
+    };
 
     const fetchLibraryItems = async () => {
         try {
@@ -304,6 +379,22 @@ const ELibrary = () => {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     };
 
+    const formatTimeAgo = (dateStr) => {
+        if (!dateStr) return '';
+        const dt = new Date(dateStr);
+        if (isNaN(dt.getTime())) return '';
+        const now = new Date();
+        const diffMs = now - dt;
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
     // Non-Mechatronics Access Guard
     if (!isMechatronicsMember) {
         return (
@@ -333,17 +424,27 @@ const ELibrary = () => {
                     </div>
                 </div>
 
-                {canUpload && (
-                    <div className="header-right">
+                <div className="header-right" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {canViewLogs && (
+                        <button
+                            className="btn btn-secondary activity-logs-trigger-btn"
+                            onClick={() => { setIsLogsModalOpen(true); setLogsPage(1); }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(99,102,241,0.15)', borderColor: 'rgba(99,102,241,0.4)', color: '#a5b4fc' }}
+                        >
+                            <History size={17} />
+                            <span>Activity Logs</span>
+                        </button>
+                    )}
+                    {canUpload && (
                         <button
                             className="btn btn-primary upload-trigger-btn"
                             onClick={() => setIsUploadModalOpen(true)}
                         >
                             <Plus size={18} />
-                            Upload New Material
+                            <span>Upload New Material</span>
                         </button>
-                    </div>
-                )}
+                    )}
+                </div>
             </header>
 
             {/* Search and Sort Toolbar */}
@@ -882,6 +983,320 @@ const ELibrary = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* 4. ACTIVITY LOGS MODAL (TEACHERS & ADMINS ONLY) */}
+            {isLogsModalOpen && canViewLogs && createPortal(
+                <div className="modal-overlay elibrary-modal-overlay" onClick={() => setIsLogsModalOpen(false)}>
+                    <div
+                        className="modal-content elibrary-modal-card logs-modal-card"
+                        onClick={e => e.stopPropagation()}
+                        style={{ maxWidth: '1050px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: '1.5rem' }}
+                    >
+                        <div className="modal-header" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ background: 'rgba(99,102,241,0.15)', padding: '0.6rem', borderRadius: '10px', color: '#818cf8' }}>
+                                    <History size={24} />
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                                        E-Library Activity & Audit Logs
+                                    </h3>
+                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                                        Official audit trail of learning material uploads by teachers and downloads by students
+                                    </p>
+                                </div>
+                            </div>
+                            <button className="modal-close-btn" onClick={() => setIsLogsModalOpen(false)}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Top Stats Counters */}
+                        <div className="logs-stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div className="glass-panel" style={{ padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Activities</div>
+                                <div style={{ fontSize: '1.4rem', fontWeight: '700', color: '#818cf8', marginTop: '0.2rem' }}>
+                                    {logsStats.totalActivities || logsTotal}
+                                </div>
+                            </div>
+                            <div className="glass-panel" style={{ padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid rgba(34,197,94,0.2)', background: 'rgba(34,197,94,0.04)' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Downloads</div>
+                                <div style={{ fontSize: '1.4rem', fontWeight: '700', color: '#4ade80', marginTop: '0.2rem' }}>
+                                    {logsStats.totalDownloads || 0}
+                                </div>
+                            </div>
+                            <div className="glass-panel" style={{ padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid rgba(168,85,247,0.2)', background: 'rgba(168,85,247,0.04)' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Uploads</div>
+                                <div style={{ fontSize: '1.4rem', fontWeight: '700', color: '#c084fc', marginTop: '0.2rem' }}>
+                                    {logsStats.totalUploads || 0}
+                                </div>
+                            </div>
+                            <div className="glass-panel" style={{ padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.04)' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Edits & Deletions</div>
+                                <div style={{ fontSize: '1.4rem', fontWeight: '700', color: '#fbbf24', marginTop: '0.2rem' }}>
+                                    {(logsStats.totalEdits || 0) + (logsStats.totalDeletes || 0)}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Filter Bar & Search */}
+                        <div className="logs-filter-toolbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
+                                {/* Action Filter Tabs */}
+                                <div className="logs-action-tabs" style={{ display: 'flex', gap: '0.4rem', background: 'rgba(255,255,255,0.03)', padding: '0.25rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                    {[
+                                        { id: 'all', label: 'All Activities' },
+                                        { id: 'download', label: '📥 Downloads' },
+                                        { id: 'upload', label: '📤 Uploads' },
+                                        { id: 'edit', label: '✏️ Edits' },
+                                        { id: 'delete', label: '🗑️ Deletions' }
+                                    ].map(tab => (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            className={`logs-tab-btn ${logsActionFilter === tab.id ? 'active' : ''}`}
+                                            onClick={() => { setLogsActionFilter(tab.id); setLogsPage(1); }}
+                                            style={{
+                                                padding: '0.35rem 0.75rem',
+                                                fontSize: '0.78rem',
+                                                fontWeight: '600',
+                                                borderRadius: '6px',
+                                                border: 'none',
+                                                background: logsActionFilter === tab.id ? 'var(--primary-color)' : 'transparent',
+                                                color: logsActionFilter === tab.id ? '#fff' : 'var(--text-secondary)',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s ease'
+                                            }}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Role Filter Dropdown */}
+                                <select
+                                    value={logsRoleFilter}
+                                    onChange={e => { setLogsRoleFilter(e.target.value); setLogsPage(1); }}
+                                    className="form-input"
+                                    style={{ width: 'auto', minWidth: '150px', padding: '0.35rem 0.75rem', fontSize: '0.8rem', height: 'auto' }}
+                                >
+                                    <option value="all">All User Roles</option>
+                                    <option value="Student">Students Only</option>
+                                    <option value="Teacher">Teachers Only</option>
+                                    <option value="Admin">Admins Only</option>
+                                </select>
+                            </div>
+
+                            {/* Search Box */}
+                            <div style={{ position: 'relative', width: '100%' }}>
+                                <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                <input
+                                    type="text"
+                                    placeholder="Search student name, email, roll number, or book title..."
+                                    value={logsSearch}
+                                    onChange={e => setLogsSearch(e.target.value)}
+                                    className="form-input"
+                                    style={{ paddingLeft: '2.5rem', width: '100%', fontSize: '0.85rem' }}
+                                />
+                                {logsSearch && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setLogsSearch('')}
+                                        style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Logs Table Area */}
+                        <div className="logs-table-wrapper" style={{ overflowY: 'auto', flex: 1, minHeight: '300px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.15)' }}>
+                            {logsLoading ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '260px', color: 'var(--text-muted)', gap: '0.75rem' }}>
+                                    <div className="spinner" style={{ width: '28px', height: '28px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                                    <span style={{ fontSize: '0.85rem' }}>Loading activity records...</span>
+                                </div>
+                            ) : logsError ? (
+                                <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>
+                                    <AlertCircle size={32} style={{ marginBottom: '0.5rem' }} />
+                                    <p>{logsError}</p>
+                                </div>
+                            ) : logs.length === 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '260px', color: 'var(--text-muted)', gap: '0.5rem', padding: '2rem' }}>
+                                    <ScrollText size={40} style={{ opacity: 0.4 }} />
+                                    <h4 style={{ margin: '0.5rem 0 0', color: 'var(--text-secondary)' }}>No Activity Logs Found</h4>
+                                    <p style={{ margin: 0, fontSize: '0.82rem' }}>No uploads or downloads match the selected filter criteria.</p>
+                                </div>
+                            ) : (
+                                <table className="logs-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                                    <thead>
+                                        <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            <th style={{ padding: '0.75rem 1rem' }}>User / Member</th>
+                                            <th style={{ padding: '0.75rem 1rem' }}>Action</th>
+                                            <th style={{ padding: '0.75rem 1rem' }}>Material / Resource</th>
+                                            <th style={{ padding: '0.75rem 1rem' }}>File Size</th>
+                                            <th style={{ padding: '0.75rem 1rem' }}>Timestamp</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {logs.map((l, idx) => {
+                                            const roleLower = (l.userRole || '').toLowerCase();
+                                            const isStudentRole = roleLower.includes('student');
+                                            const isTeacherRole = roleLower.includes('teacher');
+                                            const isAdminRole = roleLower.includes('admin');
+
+                                            let actionBadgeStyle = { background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' };
+                                            let actionIcon = <FileText size={13} />;
+                                            let actionText = 'Viewed';
+
+                                            if (l.action === 'download') {
+                                                actionBadgeStyle = { background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)' };
+                                                actionIcon = <FileDown size={13} />;
+                                                actionText = 'Downloaded';
+                                            } else if (l.action === 'upload') {
+                                                actionBadgeStyle = { background: 'rgba(168,85,247,0.15)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.3)' };
+                                                actionIcon = <FileUp size={13} />;
+                                                actionText = 'Uploaded';
+                                            } else if (l.action === 'edit') {
+                                                actionBadgeStyle = { background: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.3)' };
+                                                actionIcon = <FileEdit size={13} />;
+                                                actionText = 'Edited';
+                                            } else if (l.action === 'delete') {
+                                                actionBadgeStyle = { background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' };
+                                                actionIcon = <Trash2 size={13} />;
+                                                actionText = 'Deleted';
+                                            }
+
+                                            return (
+                                                <tr key={l._id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.1s ease' }}>
+                                                    {/* User Info */}
+                                                    <td style={{ padding: '0.75rem 1rem' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                                            <div style={{
+                                                                width: '32px',
+                                                                height: '32px',
+                                                                borderRadius: '50%',
+                                                                background: isStudentRole ? 'linear-gradient(135deg, #0284c7, #0369a1)' : isTeacherRole ? 'linear-gradient(135deg, #7c3aed, #6d28d9)' : 'linear-gradient(135deg, #e11d48, #be123c)',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                color: '#fff',
+                                                                fontWeight: '700',
+                                                                fontSize: '0.8rem',
+                                                                flexShrink: 0
+                                                            }}>
+                                                                {(l.userName || 'U').charAt(0).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{l.userName}</div>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.15rem' }}>
+                                                                    <span style={{
+                                                                        fontSize: '0.72rem',
+                                                                        padding: '0.1rem 0.45rem',
+                                                                        borderRadius: '4px',
+                                                                        background: isStudentRole ? 'rgba(2,132,199,0.15)' : isTeacherRole ? 'rgba(124,58,237,0.15)' : 'rgba(225,29,72,0.15)',
+                                                                        color: isStudentRole ? '#38bdf8' : isTeacherRole ? '#c084fc' : '#fb7185',
+                                                                        fontWeight: '600'
+                                                                    }}>
+                                                                        {l.userRole}{l.userYear ? ` • ${l.userYear}` : ''}
+                                                                    </span>
+                                                                    {l.userEmail && (
+                                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                                            {l.userEmail}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Action Badge */}
+                                                    <td style={{ padding: '0.75rem 1rem' }}>
+                                                        <span style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.35rem',
+                                                            padding: '0.25rem 0.6rem',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: '600',
+                                                            ...actionBadgeStyle
+                                                        }}>
+                                                            {actionIcon}
+                                                            {actionText}
+                                                        </span>
+                                                    </td>
+
+                                                    {/* Resource Title */}
+                                                    <td style={{ padding: '0.75rem 1rem' }}>
+                                                        <div style={{ fontWeight: '600', color: 'var(--text-primary)', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.itemTitle}>
+                                                            {l.itemTitle}
+                                                        </div>
+                                                        {l.fileName && (
+                                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace', marginTop: '0.1rem' }}>
+                                                                {l.fileName}
+                                                            </div>
+                                                        )}
+                                                    </td>
+
+                                                    {/* File Size */}
+                                                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: '0.82rem', fontFamily: 'monospace' }}>
+                                                        {l.fileSize ? formatFileSize(l.fileSize) : '—'}
+                                                    </td>
+
+                                                    {/* Timestamp */}
+                                                    <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>
+                                                        <div style={{ color: 'var(--text-primary)', fontSize: '0.82rem', fontWeight: '500' }}>
+                                                            {formatTimeAgo(l.timestamp)}
+                                                        </div>
+                                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginTop: '0.1rem' }}>
+                                                            {new Date(l.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        {/* Pagination Footer */}
+                        <div className="logs-pagination-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                            <div>
+                                Showing <strong style={{ color: 'var(--text-primary)' }}>{logs.length > 0 ? (logsPage - 1) * 15 + 1 : 0}</strong> to <strong style={{ color: 'var(--text-primary)' }}>{Math.min(logsPage * 15, logsTotal)}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{logsTotal}</strong> activity records
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm"
+                                    disabled={logsPage <= 1 || logsLoading}
+                                    onClick={() => setLogsPage(p => Math.max(1, p - 1))}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.75rem' }}
+                                >
+                                    <ChevronLeft size={15} />
+                                    Prev
+                                </button>
+                                <span style={{ padding: '0.35rem 0.6rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+                                    Page {logsPage} of {logsTotalPages}
+                                </span>
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm"
+                                    disabled={logsPage >= logsTotalPages || logsLoading}
+                                    onClick={() => setLogsPage(p => Math.min(logsTotalPages, p + 1))}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.75rem' }}
+                                >
+                                    Next
+                                    <ChevronRight size={15} />
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>,
                 document.body
