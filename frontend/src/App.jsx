@@ -17,6 +17,7 @@ const Teachers = lazy(() => import('./pages/Teachers'));
 const TeacherProfile = lazy(() => import('./pages/TeacherProfile'));
 const Exams = lazy(() => import('./pages/Exams'));
 const TimeTable = lazy(() => import('./pages/TimeTable'));
+const ELibrary = lazy(() => import('./pages/ELibrary'));
 const Files = lazy(() => import('./pages/Files'));
 const Assignments = lazy(() => import('./pages/Assignments'));
 const AIPromptSettings = lazy(() => import('./pages/AIPromptSettings'));
@@ -49,6 +50,7 @@ function App() {
             <Route path="/students" element={<Students />} />
             <Route path="/students/:studentId" element={<StudentProfile />} />
             <Route path="/courses" element={<Courses />} />
+            <Route path="/elibrary" element={<ELibrary />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/grades" element={<Grades />} />
             <Route path="/ai-assistant" element={<AIAssistant />} />

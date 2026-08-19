@@ -1,0 +1,425 @@
+.elibrary-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding-bottom: 2.5rem;
+}
+
+.elibrary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 1.75rem;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(15, 23, 42, 0.65) 100%);
+    border: 1px solid var(--surface-border);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.elibrary-icon-badge {
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.dept-badge-pill {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #60a5fa;
+    margin-bottom: 0.2rem;
+}
+
+.elibrary-header h1 {
+    margin: 0;
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.elibrary-header .subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+}
+
+/* Toolbar */
+.elibrary-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    border-radius: 14px;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.search-box-form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--control-bg, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--surface-border);
+    border-radius: 10px;
+    padding: 0.25rem 0.5rem 0.25rem 0.85rem;
+    flex: 1;
+    max-width: 580px;
+}
+
+.search-icon {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.search-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    width: 100%;
+}
+
+.search-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.sort-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sort-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.sort-select {
+    background: var(--control-bg, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--surface-border);
+    color: var(--text-primary);
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+}
+
+/* Category Pills */
+.category-filter-bar {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.6rem 1rem;
+    border-radius: 12px;
+}
+
+.cat-pill {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    padding: 0.45rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.cat-pill:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.cat-pill.active {
+    background: rgba(59, 130, 246, 0.18);
+    border-color: #3b82f6;
+    color: #93c5fd;
+    font-weight: 600;
+}
+
+/* Grid Layout */
+.library-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 1.25rem;
+}
+
+.book-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid var(--surface-border);
+    background: var(--surface-color);
+}
+
+.book-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.book-thumbnail-container {
+    height: 160px;
+    position: relative;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.9) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.book-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.book-placeholder-cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: #60a5fa;
+}
+
+.file-type-badge {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+}
+
+.category-tag {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+    background: rgba(15, 23, 42, 0.85);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.book-card-body {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.course-code-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #38bdf8;
+}
+
+.book-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.book-author {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.book-description {
+    margin: 0.25rem 0 0;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.book-meta-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: auto;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.year-pill-mini {
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.book-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.25rem 1.25rem;
+}
+
+.preview-btn {
+    flex: 1;
+}
+
+.download-btn {
+    flex: 1.2;
+}
+
+.btn-danger-icon {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 8px;
+    padding: 0.45rem 0.6rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-danger-icon:hover {
+    background: rgba(239, 68, 68, 0.25);
+}
+
+/* Modals */
+.elibrary-upload-modal,
+.elibrary-details-modal {
+    max-width: 620px;
+    width: 100%;
+}
+
+.modal-form-body {
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.form-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.form-input-file {
+    padding: 0.5rem;
+    background: var(--control-bg, rgba(255, 255, 255, 0.04));
+    border: 1px dashed var(--surface-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.details-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    font-size: 0.88rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    border: 1px solid var(--surface-border);
+}
+
+.tag-badge {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+}
+
+/* Access Denied */
+.elibrary-access-denied {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 2rem;
+    border-radius: 16px;
+    gap: 1rem;
+    max-width: 600px;
+    margin: 2rem auto;
+}
+
+.lock-icon {
+    color: #ef4444;
+    padding: 1rem;
+    background: rgba(239, 68, 68, 0.12);
+    border-radius: 50%;
+}
+
+.dept-tag {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.library-loading,
+.library-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem;
+    gap: 1rem;
+    text-align: center;
+    color: var(--text-muted);
+}

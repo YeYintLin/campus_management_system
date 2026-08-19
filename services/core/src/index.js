@@ -47,6 +47,7 @@ const enrollmentRoutes = require('./routes/enrollmentRoutes');
 const academicRecordRoutes = require('./routes/academicRecordRoutes');
 const promotionRoutes = require('./routes/promotionRoutes');
 const academicPlanRoutes = require('./routes/academicPlanRoutes');
+const eLibraryRoutes = require('./routes/eLibraryRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
@@ -69,6 +70,7 @@ app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/records', academicRecordRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/academic-plan', academicPlanRoutes);
+app.use('/api/elibrary', eLibraryRoutes);
 
 // Healthcheck endpoint (used by Docker/Kubernetes probes)
 app.get('/health', (req, res) => {

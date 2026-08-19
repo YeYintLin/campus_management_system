@@ -1,13 +1,14 @@
 import { useContext, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { LayoutDashboard, Users, BookOpen, Clock, FileSpreadsheet, LogOut, BotMessageSquare, GraduationCap, FileEdit, CalendarDays, FolderSearch, ShieldCheck, Settings, FileText, MessageSquare, Bug, Hash } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, Clock, FileSpreadsheet, LogOut, BotMessageSquare, GraduationCap, FileEdit, CalendarDays, FolderSearch, ShieldCheck, Settings, FileText, MessageSquare, Bug, Hash, Library } from 'lucide-react';
 import './Navbar.css';
 
 const NAV_LINKS = [
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Timetable', path: '/time-table', icon: <CalendarDays size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Subjects', path: '/courses', icon: <BookOpen size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
+    { name: 'E-Library', path: '/elibrary', icon: <Library size={20} />, roles: ['Admin', 'Teacher', 'Student'], requireMechatronics: true },
     { name: 'Attendance', path: '/attendance', icon: <Clock size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Teachers', path: '/teachers', icon: <GraduationCap size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
     { name: 'Students', path: '/students', icon: <Users size={20} />, roles: ['Admin', 'Teacher', 'Student'] },
@@ -43,9 +44,18 @@ const Navbar = () => {
 
             const isUserMgmtAdmin = user?.adminType === 'user_management' || roleNorm === 'academicadmin';
             if (link.requireSystemAdmin && isUserMgmtAdmin) return false;
+
+            if (link.requireMechatronics && !isAdminUser) {
+                const dept = (user?.department || '').toLowerCase().trim();
+                const email = (user?.email || '').toLowerCase().trim();
+                const isMc = dept.includes('mechatronics') || dept === 'mc' || dept === 'mce' ||
+                             email.includes('.mc.') || email.includes('.mce.') || email.startsWith('vimc') || email.startsWith('vmc') || email.startsWith('mc');
+                if (!isMc) return false;
+            }
+
             return true;
         }),
-        [user?.role, user?.adminType]
+        [user?.role, user?.adminType, user?.department, user?.email]
     );
 
     const getUserInitial = (name) => (name?.trim()?.charAt(0) || '?').toUpperCase();
