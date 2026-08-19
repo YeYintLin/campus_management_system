@@ -355,8 +355,9 @@ const PracticalScheduleView = ({
             let cleanTopic = rawTitle;
 
             const isTutorial = selectedCategory === 'Tutorial';
-            const defaultCode = isTutorial ? 'McE-52039' : 'MC-31011 (Lab)';
-            const defaultTopic = isTutorial ? 'Tutorial Problem Solving & Discussion' : 'Practical Lab Experiment & Testing';
+            const isExam = selectedCategory === 'Exam';
+            const defaultCode = isExam ? 'McE-51018' : isTutorial ? 'McE-52039' : 'MC-31011 (Lab)';
+            const defaultTopic = isExam ? 'Exam Examination Session' : isTutorial ? 'Tutorial Problem Solving & Discussion' : 'Practical Lab Experiment & Testing';
 
             if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(cleanCode) || /^GROUP/i.test(cleanCode) || /TO\s*\d{1,2}:\d{2}/i.test(cleanCode) || cleanCode.length < 2) {
                 cleanCode = defaultCode;
@@ -372,7 +373,7 @@ const PracticalScheduleView = ({
             instructorsSet.add(teacherName);
             if (cleanCode) subjectsSet.add(cleanCode);
 
-            let placeName = s.place || classSectionInfo?.majorRoom || (isTutorial ? 'Classroom 3/212-A' : 'Mechatronics Lab 3/212-A');
+            let placeName = s.place || classSectionInfo?.majorRoom || (isExam ? 'Exam Hall 3/112 (B)' : isTutorial ? 'Classroom 3/212-A' : 'Mechatronics Lab 3/212-A');
 
             // Deduplicate
             const dateKey = rowDate ? rowDate.split('T')[0] : 'undated';
@@ -1224,15 +1225,27 @@ const TimeTable = () => {
         setImportSuccess('');
 
         try {
+            let targetYear = selectedYear;
+            let targetSemester = selectedSemester;
+            let targetCategory = previewData.sessionType || selectedCategory;
+
             if (previewData.sessions && previewData.sessions.length > 0) {
+                targetYear = previewData.sessions[0]?.year || selectedYear;
+                targetSemester = previewData.sessions[0]?.semester || selectedSemester;
+
                 const { data } = await apiClient.post('/sessions/batch-import', {
                     sessions: previewData.sessions,
-                    year: selectedYear,
-                    semester: selectedSemester,
+                    year: targetYear,
+                    semester: targetSemester,
                     major: selectedMajor,
-                    category: previewData.sessionType || selectedCategory,
-                    sessionType: previewData.sessionType || selectedCategory
+                    category: targetCategory,
+                    sessionType: targetCategory
                 });
+
+                setSelectedYear(targetYear);
+                setSelectedSemester(targetSemester);
+                setSelectedCategory(targetCategory);
+
                 setImportSuccess(data.message || `Successfully imported ${previewData.sessions.length} sessions!`);
             } else {
                 const formData = new FormData();
@@ -1240,8 +1253,8 @@ const TimeTable = () => {
                 formData.append('year', selectedYear);
                 formData.append('semester', selectedSemester);
                 formData.append('major', selectedMajor);
-                formData.append('category', previewData.sessionType || selectedCategory);
-                formData.append('sessionType', previewData.sessionType || selectedCategory);
+                formData.append('category', targetCategory);
+                formData.append('sessionType', targetCategory);
 
                 const { data } = await apiClient.post('/sessions/batch-import', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
