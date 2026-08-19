@@ -1145,7 +1145,7 @@ const exportRollCallExcel = async (req, res) => {
                 { width: 4.44 },   // Col A: Serial (စဉ်)
                 { width: 13.55 },  // Col B: Roll No (ခုံအမှတ်)
                 { width: 26.33 },  // Col C: Name (အမည်)
-                ...Array(19).fill({ width: 2.11 }), // Cols D-V: 19 Period columns
+                ...Array(19).fill({ width: 4.5 }),  // Cols D-V: 19 Period columns (d/m/yy date headers)
                 { width: 3.44 },   // Col W: Attended (တက်ချိန်ပေါင်း)
                 { width: 3.89 },   // Col X: Absent (ပျက်ချိန်ပေါင်း)
                 { width: 3.89 }    // Col Y: Pct (ရာခိုင်နှုန်း)
@@ -1193,8 +1193,15 @@ const exportRollCallExcel = async (req, res) => {
             for (let p = 0; p < 19; p++) {
                 if (p < conductedSessions) {
                     const rec = attendanceRecords[p];
-                    const dayNum = rec?.date ? new Date(rec.date).getDate() : (p + 1);
-                    periodHeaders.push(toMyanmarDigits(dayNum));
+                    if (rec?.date) {
+                        const d = new Date(rec.date);
+                        const day = d.getDate();
+                        const mon = d.getMonth() + 1;
+                        const yr = d.getFullYear() % 100; // 2-digit year
+                        periodHeaders.push(`${day}/${mon}/${yr}`);
+                    } else {
+                        periodHeaders.push(String(p + 1));
+                    }
                 } else {
                     periodHeaders.push('');
                 }
@@ -1208,7 +1215,10 @@ const exportRollCallExcel = async (req, res) => {
                 const cell = tableHeader.getCell(col);
                 cell.border = thinBorder;
                 cell.font = { bold: true, size: 9 };
-                if (col >= 23) {
+                if (col >= 4 && col <= 22) {
+                    // Date columns: rotate 90° so d/m/yy fits in narrow columns
+                    cell.alignment = { textRotation: 90, vertical: 'middle', horizontal: 'center', wrapText: true };
+                } else if (col >= 23) {
                     cell.alignment = { textRotation: 90, vertical: 'middle', horizontal: 'center', wrapText: true };
                 } else {
                     cell.alignment = { vertical: 'middle', horizontal: 'center' };
