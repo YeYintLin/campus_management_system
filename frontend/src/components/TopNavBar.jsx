@@ -145,7 +145,7 @@ const TopNavBar = () => {
                     {(user?.name?.trim()?.charAt(0) || 'U').toUpperCase()}
                 </div>
                 <div className="topbar-left">
-                    <span className="topbar-brand">TU Hmawbi CMS</span>
+                    <span className="topbar-brand" title="Smart Department Academic Process Automation Platform">Smart Department Platform</span>
                     <h2>{pageTitle}</h2>
                 </div>
             </div>

@@ -75,7 +75,17 @@ const Navbar = () => {
     return (
         <nav className="sidebar glass-panel">
             <div className="sidebar-header">
-                <h2 className="logo-text">TU Hmawbi CMS</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--primary-color)' }}>
+                        TU HMAWBI
+                    </span>
+                    <h2 className="logo-text" style={{ fontSize: '1.02rem', lineHeight: '1.25', fontWeight: '800', margin: 0 }} title="Smart Department Academic Process Automation Platform">
+                        Smart Department
+                    </h2>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.2px' }}>
+                        Academic Automation Platform
+                    </span>
+                </div>
             </div>
 
             <div

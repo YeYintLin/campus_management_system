@@ -211,7 +211,7 @@ ${refs.map(r => `- ${r}`).join('\n')}
 
 ================================================================================
 Generated on: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-TU Hmawbi Smart Campus Management System
+TU Hmawbi Smart Department Academic Process Automation Platform
 ================================================================================
 `;
 

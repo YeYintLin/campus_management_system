@@ -72,7 +72,7 @@ const PWAInstallPrompt = () => {
                         <RefreshCw size={18} className="spin" />
                         <div>
                             <h4>System Update Available</h4>
-                            <p>A new version of Campus CMS has been deployed.</p>
+                            <p>A new version of Smart Department Platform has been deployed.</p>
                         </div>
                     </div>
                     <button type="button" className="toast-action-btn" onClick={handleRefresh}>
@@ -87,7 +87,7 @@ const PWAInstallPrompt = () => {
                     <div className="toast-content">
                         <Download size={20} className="text-primary" />
                         <div>
-                            <h4>Install Campus App</h4>
+                            <h4>Install Smart Department App</h4>
                             <p>Add to home screen for fast offline access</p>
                         </div>
                     </div>

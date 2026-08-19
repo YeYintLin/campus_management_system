@@ -53,7 +53,7 @@ const Register = () => {
             <div className="auth-card glass-panel" style={{ maxWidth: '520px' }}>
                 <div className="auth-header">
                     <h2>Create Account</h2>
-                    <p>Join the Campus Management System</p>
+                    <p>Join the Smart Department Academic Automation Platform</p>
                 </div>
 
                 {errorMsg && <div className="auth-error">{errorMsg}</div>}

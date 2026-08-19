@@ -1,7 +1,7 @@
 {
-  "short_name": "Campus CMS",
-  "name": "TU Hmawbi Smart Campus",
-  "description": "Smart Campus Management & Automated Attendance System",
+  "short_name": "Smart Dept Platform",
+  "name": "Smart Department Academic Process Automation Platform",
+  "description": "TU Hmawbi Smart Department Academic Process Automation Platform",
   "icons": [
     {
       "src": "favicon.ico",
