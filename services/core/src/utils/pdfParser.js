@@ -49,7 +49,12 @@ function timeToMinutes(timeStr) {
  * Extracts text from PDF buffer using pdf-parse (handles v1 function and v2 PDFParse class)
  */
 async function extractRawPdfText(dataBuffer) {
-    const pdfModule = require('pdf-parse');
+    let pdfModule;
+    try {
+        pdfModule = require('pdf-parse');
+    } catch (e) {
+        throw new Error('PDF parsing library is not installed in the Docker container. Please run: docker compose up -d --build core-service');
+    }
     if (typeof pdfModule === 'function') {
         const res = await pdfModule(dataBuffer);
         return res.text || '';
@@ -59,7 +64,7 @@ async function extractRawPdfText(dataBuffer) {
         const res = await parser.getText();
         return res.text || '';
     }
-    throw new Error('Unsupported pdf-parse module version');
+    throw new Error('Unsupported pdf-parse module version installed on server');
 }
 
 /**
