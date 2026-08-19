@@ -181,9 +181,10 @@ const StudentProfile = () => {
 
     const displayName = student.user?.name || student.enrollmentNumber || 'Student';
     const userId = student.user?._id || student._id;
-    const yearLabel = getNormalizedUserYear(student.user || student) || semesterToYearLabel(student.semester);
-    const semesterInYear = Number(student.semester) % 2 === 0 ? 2 : 1;
-    const status = student.status || 'Active';
+    const yearLabel = getNormalizedUserYear(student.user ? { ...student.user, enrollmentNumber: student.enrollmentNumber, semester: student.semester } : student) || semesterToYearLabel(student.semester);
+    const rawSem = student.semester ?? student.user?.semester;
+    const semesterInYear = (rawSem !== undefined && rawSem !== null && Number(rawSem) % 2 === 0) ? 2 : 1;
+    const status = student.status || student.user?.status || 'Active';
 
     return (
         <div className="student-profile-page animate-fade-in">

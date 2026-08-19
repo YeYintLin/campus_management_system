@@ -2,7 +2,7 @@ const Student = require('../models/Student');
 const User = require('../models/User');
 const Course = require('../models/Course');
 
-const STUDENT_USER_FIELDS = 'name email role status department';
+const STUDENT_USER_FIELDS = 'name email role status department year academicYear rollNo';
 
 // @desc    Get all students (role-scoped)
 // @route   GET /api/students
