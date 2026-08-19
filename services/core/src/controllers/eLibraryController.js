@@ -22,13 +22,22 @@ function isMechatronicsMember(user) {
 
     // Check user.department strictly from server-side user session
     const dept = (user.department || '').toLowerCase().trim();
-    if (dept.includes('mechatronics') || dept === 'mc' || dept === 'mce') return true;
+    if (dept.includes('mechatronic') || dept === 'mc' || dept === 'mce') return true;
 
     // Email prefix check for TU Hmawbi domain format
     const email = (user.email || '').toLowerCase().trim();
     if (email.includes('.mc.') || email.includes('.mce.') || email.startsWith('vimc') || email.startsWith('vmc') || email.startsWith('mc')) {
         return true;
     }
+
+    // For teachers at TU Hmawbi: allow faculty unless explicitly registered under a different faculty (Civil, Architecture, etc.)
+    if (role === 'teacher') {
+        const isOtherDept = dept.includes('civil') || dept.includes('arch') || dept.includes('ep') || dept.includes('ec') || dept.includes('it') || (dept.includes('mechanical') && !dept.includes('mechatronic'));
+        if (!isOtherDept) {
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -51,25 +60,32 @@ function isMechatronicsTeacherOrAdmin(user) {
  * Validates file magic bytes (file signature) to prevent spoofed Content-Type uploads
  */
 function validateFileMagicBytes(filePath, extension) {
-    const ext = extension.toLowerCase().replace('.', '');
-    const buffer = Buffer.alloc(8);
-    const fd = fs.openSync(filePath, 'r');
-    fs.readSync(fd, buffer, 0, 8, 0);
-    fs.closeSync(fd);
+    try {
+        const ext = extension.toLowerCase().replace('.', '');
+        const buffer = Buffer.alloc(16);
+        const fd = fs.openSync(filePath, 'r');
+        const bytesRead = fs.readSync(fd, buffer, 0, 16, 0);
+        fs.closeSync(fd);
 
-    // PDF magic bytes: %PDF- (0x25 0x50 0x44 0x46 0x2D)
-    if (ext === 'pdf') {
-        const isPdf = buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46 && buffer[4] === 0x2D;
-        return isPdf;
+        if (bytesRead < 4) return false;
+
+        // PDF magic bytes: %PDF- (0x25 0x50 0x44 0x46)
+        if (ext === 'pdf') {
+            const isPdf = buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46;
+            return isPdf;
+        }
+
+        // EPUB, DOCX, PPTX, ZIP magic bytes: PK (0x50 0x4B)
+        if (['epub', 'docx', 'pptx', 'zip'].includes(ext)) {
+            const isZipBased = buffer[0] === 0x50 && buffer[1] === 0x4B;
+            return isZipBased;
+        }
+
+        return false;
+    } catch (err) {
+        console.error('validateFileMagicBytes error:', err.message);
+        return false;
     }
-
-    // EPUB, DOCX, PPTX, ZIP magic bytes: PK\x03\x04 (0x50 0x4B 0x03 0x04)
-    if (['epub', 'docx', 'pptx', 'zip'].includes(ext)) {
-        const isZipBased = buffer[0] === 0x50 && buffer[1] === 0x4B && buffer[2] === 0x03 && buffer[3] === 0x04;
-        return isZipBased;
-    }
-
-    return false;
 }
 
 // @desc    Get Mechatronics E-Library items (Search & Filter)

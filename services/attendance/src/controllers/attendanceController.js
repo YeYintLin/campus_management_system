@@ -1033,10 +1033,51 @@ const exportRollCallExcel = async (req, res) => {
         }
 
         // Fetch Attendance Records for date mapping
-        const attendanceRecords = await Attendance.find({
+        let attendanceRecords = await Attendance.find({
             courseId: new RegExp(`^${courseId.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&')}$`, 'i'),
             date: { $gte: monthStart, $lte: monthEnd }
         }).sort({ date: 1 });
+
+        // Timetable Day Accuracy Check: Fetch scheduled weekdays for this course from Core Service
+        const scheduledDays = new Set();
+        try {
+            const ttRes = await axios.get(`${CORE_SERVICE_URL}/api/timetable`, {
+                params: {
+                    year: courseInfo.year || year,
+                    semester: semester || (semStr === '2' ? 'Semester 2' : 'Semester 1')
+                },
+                headers: {
+                    Authorization: token,
+                    'x-internal-service-token': INTERNAL_SERVICE_SECRET
+                },
+                timeout: 4000
+            }).catch(() => null);
+
+            if (ttRes?.data?.slots && Array.isArray(ttRes.data.slots)) {
+                const cleanTargetCode = String(courseId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                ttRes.data.slots.forEach(slot => {
+                    const slotCode = String(slot.courseCode || slot.code || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                    if (slotCode && (slotCode === cleanTargetCode || slotCode.includes(cleanTargetCode) || cleanTargetCode.includes(slotCode))) {
+                        if (slot.day) {
+                            scheduledDays.add(slot.day.trim().toLowerCase());
+                        }
+                    }
+                });
+            }
+        } catch (ttErr) {
+            console.error('Failed to verify timetable scheduled days for export:', ttErr.message);
+        }
+
+        // If timetable defines specific scheduled days for this course, filter out sessions on unscheduled weekdays
+        if (scheduledDays.size > 0) {
+            const WEEKDAY_MAP = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            attendanceRecords = attendanceRecords.filter(rec => {
+                if (!rec.date) return false;
+                const d = new Date(rec.date);
+                const dayName = WEEKDAY_MAP[d.getDay()];
+                return scheduledDays.has(dayName);
+            });
+        }
 
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Campus Management System (CMS)';

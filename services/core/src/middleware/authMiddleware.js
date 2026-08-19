@@ -35,8 +35,8 @@ const protect = async (req, res, next) => {
                 department: decoded.department,
             };
 
-            // Stale Session Mitigation: If year or name claim is missing in older JWT tokens, look up from DB
-            if ((!req.user.year || !req.user.name) && req.user.id) {
+            // Stale Session Mitigation: If year, name, or department claim is missing in older JWT tokens, look up from DB
+            if ((!req.user.year || !req.user.name || !req.user.department) && req.user.id) {
                 try {
                     const User = require('../models/User');
                     const userDoc = await User.findById(req.user.id).select('name year department role adminType');

@@ -32,7 +32,7 @@ const fileFilter = (req, file, cb) => {
     if (allowed.includes(ext)) {
         cb(null, true);
     } else {
-        cb(new Error(`Invalid file type .${ext}. Only ${allowed.join(', ')} are allowed.`), false);
+        cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', `Invalid file type .${ext}. Only ${allowed.join(', ')} are allowed.`));
     }
 };
 
@@ -42,11 +42,26 @@ const upload = multer({
     fileFilter
 });
 
+// Multer error-handling wrapper
+const handleUpload = (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ message: 'File too large. Maximum allowed size is 100MB.' });
+            }
+            return res.status(400).json({ message: err.message || `Upload error: ${err.code}` });
+        } else if (err) {
+            return res.status(400).json({ message: err.message || 'File upload failed.' });
+        }
+        next();
+    });
+};
+
 // All routes require authentication
 router.get('/', protect, getLibraryItems);
 router.get('/:id', protect, getLibraryItemById);
 router.get('/:id/download', protect, downloadLibraryItem);
-router.post('/upload', protect, upload.single('file'), uploadLibraryItem);
+router.post('/upload', protect, handleUpload, uploadLibraryItem);
 router.delete('/:id', protect, deleteLibraryItem);
 
 module.exports = router;
