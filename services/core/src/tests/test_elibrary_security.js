@@ -179,21 +179,27 @@ async function runSecurityTestSuite() {
     console.log('✅ TEST 5 PASSED: Role and admin scoping verified with 100% precision.');
 
     // ─────────────────────────────────────────────
-    // TEST 6: Standard Functional Logic (Task 6)
+    // TEST 6: Technical Admin CRUD Enforcement (Task 6)
     // ─────────────────────────────────────────────
-    console.log('\n[TEST 6] Ownership and Teacher Delete Validation...');
-    const teacherA = { _id: '6a72e9cac3bd62a7972b2b4d', role: 'Teacher', department: 'Mechatronics Engineering' };
-    const teacherB = { _id: '6a72e9cac3bd62a7972b2b99', role: 'Teacher', department: 'Mechatronics Engineering' };
-    const dummyItemUploadedByA = { _id: 'item123', uploadedBy: '6a72e9cac3bd62a7972b2b4d' };
+    console.log('\n[TEST 6] Technical Admin Exclusive Edit & Delete Validation...');
+    const { isTechnicalAdmin } = require('../controllers/eLibraryController');
 
-    const isTeacherAOwner = String(dummyItemUploadedByA.uploadedBy) === String(teacherA._id);
-    const isTeacherBOwner = String(dummyItemUploadedByA.uploadedBy) === String(teacherB._id);
+    const technicalAdmin = { _id: '6a72e9cac3bd62a7972b2b4d', role: 'Admin', adminType: 'system_technical', department: 'Administration' };
+    const superAdmin = { _id: '6a72e9cac3bd62a7972b2b4e', role: 'Superadmin', department: 'Administration' };
+    const userMgmtAdmin = { _id: '6a72e9cac3bd62a7972b2b50', role: 'Academicadmin', adminType: 'user_management', department: 'Administration' };
+    const normalTeacher = { _id: '6a72e9cac3bd62a7972b2b60', role: 'Teacher', department: 'Mechatronics Engineering' };
+    const normalStudent = { _id: '6a72e9cac3bd62a7972b2b70', role: 'Student', department: 'Mechatronics Engineering' };
 
-    assert.strictEqual(isTeacherAOwner, true, 'Uploader Teacher A can delete their own item');
-    assert.strictEqual(isTeacherBOwner, false, 'Teacher B CANNOT delete Teacher A item');
-    console.log('  ✓ Teacher A can manage/delete their own uploads');
-    console.log('  ✓ Teacher B blocked from deleting Teacher A uploads (403)');
-    console.log('✅ TEST 6 PASSED: Ownership restrictions verified.');
+    assert.strictEqual(isTechnicalAdmin(technicalAdmin), true, 'Technical Admin MUST have full CRUD permission');
+    assert.strictEqual(isTechnicalAdmin(superAdmin), true, 'Superadmin MUST have full CRUD permission');
+    assert.strictEqual(isTechnicalAdmin(userMgmtAdmin), false, 'User Management / Academic Admin MUST be blocked from edit & delete');
+    assert.strictEqual(isTechnicalAdmin(normalTeacher), false, 'Teachers MUST be blocked from edit & delete (only Technical Admin allowed)');
+    assert.strictEqual(isTechnicalAdmin(normalStudent), false, 'Students MUST be blocked from edit & delete');
+
+    console.log('  ✓ Technical Admin and Superadmin granted full CRUD privileges');
+    console.log('  ✓ User Management Admin blocked from edit and delete (403)');
+    console.log('  ✓ Teachers and Students strictly restricted from edit and delete (403)');
+    console.log('✅ TEST 6 PASSED: Technical Admin exclusivity verified with 100% precision.');
 
     console.log('\n🎉 ALL 6 SECURITY & FUNCTIONAL TEST SUITES PASSED (100% SUCCESS)!');
 }

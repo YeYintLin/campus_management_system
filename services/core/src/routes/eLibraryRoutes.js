@@ -3,12 +3,13 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, requireSystemAdmin } = require('../middleware/authMiddleware');
 const {
     getLibraryItems,
     getLibraryItemById,
     downloadLibraryItem,
     uploadLibraryItem,
+    updateLibraryItem,
     deleteLibraryItem,
     PRIVATE_STORAGE_DIR
 } = require('../controllers/eLibraryController');
@@ -62,6 +63,7 @@ router.get('/', protect, getLibraryItems);
 router.get('/:id', protect, getLibraryItemById);
 router.get('/:id/download', protect, downloadLibraryItem);
 router.post('/upload', protect, handleUpload, uploadLibraryItem);
-router.delete('/:id', protect, deleteLibraryItem);
+router.put('/:id', protect, requireSystemAdmin, updateLibraryItem);
+router.delete('/:id', protect, requireSystemAdmin, deleteLibraryItem);
 
 module.exports = router;

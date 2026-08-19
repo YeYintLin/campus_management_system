@@ -9,6 +9,7 @@ import {
     Eye,
     Plus,
     Trash2,
+    Pencil,
     Filter,
     FileText,
     Sparkles,
@@ -62,7 +63,7 @@ const ELibrary = () => {
     const [selectedYear, setSelectedYear] = useState('All Years');
     const [sortBy, setSortBy] = useState('latest');
 
-    // Upload Modal State (Teachers & Admins Only)
+    // Upload Modal State (Teachers & Admins)
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState('');
@@ -80,25 +81,54 @@ const ELibrary = () => {
         file: null
     });
 
+    // Edit Modal State (Technical Admin Only)
+    const [editingItem, setEditingItem] = useState(null);
+    const [editForm, setEditForm] = useState({
+        title: '',
+        author: '',
+        category: 'Textbook',
+        yearLevel: 'All Years',
+        courseCode: '',
+        courseName: '',
+        description: '',
+        tags: ''
+    });
+    const [editLoading, setEditLoading] = useState(false);
+    const [editError, setEditError] = useState('');
+    const [editSuccess, setEditSuccess] = useState('');
+
     // Preview / View Modal
     const [activePreviewItem, setActivePreviewItem] = useState(null);
 
     const userRole = (user?.role || '').toLowerCase().trim();
-    const isAdmin = ['admin', 'superadmin', 'academicadmin'].includes(userRole);
     const isTeacher = userRole === 'teacher';
-    const canUploadOrDelete = isAdmin || isTeacher;
+
+    const isTechnicalAdmin = useMemo(() => {
+        if (!user) return false;
+        const role = (user.role || '').toLowerCase().trim();
+        const adminType = (user.adminType || '').toLowerCase().trim();
+        if (role === 'academicadmin' || adminType === 'user_management') return false;
+        return ['admin', 'superadmin'].includes(role) || adminType === 'system_technical';
+    }, [user]);
+
+    const canUpload = isTeacher || isTechnicalAdmin;
+    const canEditOrDelete = isTechnicalAdmin; // Only Technical Admin can fully edit and delete!
 
     const isMechatronicsMember = useMemo(() => {
         if (!user) return false;
-        if (isAdmin) return true;
+        if (isTechnicalAdmin) return true;
         const dept = (user.department || '').toLowerCase().trim();
-        if (dept.includes('mechatronics') || dept === 'mc' || dept === 'mce') return true;
+        if (dept.includes('mechatronic') || dept === 'mc' || dept === 'mce') return true;
         const email = (user.email || '').toLowerCase().trim();
         if (email.includes('.mc.') || email.includes('.mce.') || email.startsWith('vimc') || email.startsWith('vmc') || email.startsWith('mc')) {
             return true;
         }
+        if (isTeacher) {
+            const isOtherDept = dept.includes('civil') || dept.includes('arch') || dept.includes('ep') || dept.includes('ec') || dept.includes('it') || (dept.includes('mechanical') && !dept.includes('mechatronic'));
+            if (!isOtherDept) return true;
+        }
         return false;
-    }, [user, isAdmin]);
+    }, [user, isTechnicalAdmin, isTeacher]);
 
     useEffect(() => {
         if (isMechatronicsMember) {
@@ -155,12 +185,59 @@ const ELibrary = () => {
         }
     };
 
+    const openEditModal = (item) => {
+        setEditingItem(item);
+        setEditForm({
+            title: item.title || '',
+            author: item.author || '',
+            category: item.category || 'Textbook',
+            yearLevel: item.yearLevel || 'All Years',
+            courseCode: item.courseCode || '',
+            courseName: item.courseName || '',
+            description: item.description || '',
+            tags: Array.isArray(item.tags) ? item.tags.join(', ') : (item.tags || '')
+        });
+        setEditError('');
+        setEditSuccess('');
+    };
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        if (!editingItem) return;
+        try {
+            setEditLoading(true);
+            setEditError('');
+            const { data } = await apiClient.put(`/elibrary/${editingItem._id}`, editForm);
+            setEditSuccess('Resource metadata updated successfully!');
+            setItems(prev => prev.map(it => it._id === editingItem._id ? data.item : it));
+            if (activePreviewItem?._id === editingItem._id) {
+                setActivePreviewItem(data.item);
+            }
+            setTimeout(() => {
+                setEditingItem(null);
+                setEditSuccess('');
+            }, 1000);
+        } catch (err) {
+            console.error('Update failed:', err);
+            setEditError(err.response?.data?.message || 'Failed to update resource metadata.');
+        } finally {
+            setEditLoading(false);
+        }
+    };
+
     const handleDelete = async (itemId, title) => {
+        if (!isTechnicalAdmin) {
+            alert('Forbidden: Only Technical System Administrators can delete E-Library resources.');
+            return;
+        }
         if (!window.confirm(`Are you sure you want to remove "${title}" from the E-Library?`)) return;
 
         try {
             await apiClient.delete(`/elibrary/${itemId}`);
             setItems(prev => prev.filter(it => it._id !== itemId));
+            if (activePreviewItem?._id === itemId) {
+                setActivePreviewItem(null);
+            }
         } catch (err) {
             console.error('Delete error:', err);
             alert(err.response?.data?.message || 'Failed to delete library item.');
@@ -256,7 +333,7 @@ const ELibrary = () => {
                     </div>
                 </div>
 
-                {canUploadOrDelete && (
+                {canUpload && (
                     <div className="header-right">
                         <button
                             className="btn btn-primary upload-trigger-btn"
@@ -415,14 +492,23 @@ const ELibrary = () => {
                                     <Download size={15} />
                                     Download
                                 </button>
-                                {canUploadOrDelete && (isAdmin || String(item.uploadedBy) === String(user?._id)) && (
-                                    <button
-                                        className="btn btn-danger-icon"
-                                        onClick={() => handleDelete(item._id, item.title)}
-                                        title="Delete Resource"
-                                    >
-                                        <Trash2 size={15} />
-                                    </button>
+                                {isTechnicalAdmin && (
+                                    <>
+                                        <button
+                                            className="btn btn-secondary-icon"
+                                            onClick={() => openEditModal(item)}
+                                            title="Edit Resource (Technical Admin Only)"
+                                        >
+                                            <Pencil size={15} />
+                                        </button>
+                                        <button
+                                            className="btn btn-danger-icon"
+                                            onClick={() => handleDelete(item._id, item.title)}
+                                            title="Delete Resource (Technical Admin Only)"
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -487,15 +573,170 @@ const ELibrary = () => {
                                 </div>
                             )}
                         </div>
-                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                            <button className="btn btn-secondary" onClick={() => setActivePreviewItem(null)}>
-                                Close
-                            </button>
-                            <button className="btn btn-primary" onClick={() => handleDownload(activePreviewItem)}>
-                                <Download size={16} />
-                                Download ({formatFileSize(activePreviewItem.fileSize)})
+                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                            <div>
+                                {isTechnicalAdmin && (
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button className="btn btn-secondary btn-sm" onClick={() => { const it = activePreviewItem; setActivePreviewItem(null); openEditModal(it); }}>
+                                            <Pencil size={14} /> Edit
+                                        </button>
+                                        <button className="btn btn-danger-icon" onClick={() => handleDelete(activePreviewItem._id, activePreviewItem.title)} title="Delete Resource">
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                <button className="btn btn-secondary" onClick={() => setActivePreviewItem(null)}>
+                                    Close
+                                </button>
+                                <button className="btn btn-primary" onClick={() => handleDownload(activePreviewItem)}>
+                                    <Download size={16} />
+                                    Download ({formatFileSize(activePreviewItem.fileSize)})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Edit Modal (Technical Admin Only) */}
+            {editingItem && isTechnicalAdmin && typeof document !== 'undefined' && createPortal(
+                <div
+                    className="elibrary-modal-overlay animate-fade-in"
+                    onClick={() => setEditingItem(null)}
+                >
+                    <div
+                        className="modal-card elibrary-upload-modal animate-scale-up glass-panel"
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            maxWidth: '620px',
+                            width: '100%',
+                            maxHeight: '88vh',
+                            overflowY: 'auto',
+                            margin: 'auto',
+                            borderRadius: '16px',
+                            background: 'var(--surface-color, #0f172a)',
+                            border: '1px solid var(--surface-border, rgba(255, 255, 255, 0.1))',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
+                        }}
+                    >
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', padding: '1.25rem 1.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <Pencil size={20} className="text-primary" />
+                                <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Edit Learning Material</h3>
+                            </div>
+                            <button className="icon-btn" onClick={() => setEditingItem(null)}>
+                                <X size={20} />
                             </button>
                         </div>
+
+                        {editSuccess && (
+                            <div className="alert alert-success" style={{ margin: '1rem 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <CheckCircle2 size={18} />
+                                <span>{editSuccess}</span>
+                            </div>
+                        )}
+
+                        {editError && (
+                            <div className="alert alert-danger" style={{ margin: '1rem 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <AlertCircle size={18} />
+                                <span>{editError}</span>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleEditSubmit} className="modal-form-body">
+                            <div className="form-group">
+                                <label>Book / Material Title *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={editForm.title}
+                                    onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                                    className="form-input"
+                                />
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label>Author / Publisher</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.author}
+                                        onChange={e => setEditForm({ ...editForm, author: e.target.value })}
+                                        className="form-input"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Category *</label>
+                                    <select
+                                        value={editForm.category}
+                                        onChange={e => setEditForm({ ...editForm, category: e.target.value })}
+                                        className="form-input"
+                                    >
+                                        {CATEGORIES.filter(c => c !== 'All').map(c => (
+                                            <option key={c} value={c}>{c}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label>Target Year Level *</label>
+                                    <select
+                                        value={editForm.yearLevel}
+                                        onChange={e => setEditForm({ ...editForm, yearLevel: e.target.value })}
+                                        className="form-input"
+                                    >
+                                        {YEAR_LEVELS.map(y => (
+                                            <option key={y} value={y}>{y}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label>Course Code (Optional)</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.courseCode}
+                                        onChange={e => setEditForm({ ...editForm, courseCode: e.target.value })}
+                                        className="form-input"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Description / Overview</label>
+                                <textarea
+                                    rows={3}
+                                    value={editForm.description}
+                                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                                    className="form-input"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Tags (Comma separated)</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Robotics, Kinematics, Control"
+                                    value={editForm.tags}
+                                    onChange={e => setEditForm({ ...editForm, tags: e.target.value })}
+                                    className="form-input"
+                                />
+                            </div>
+
+                            <div className="modal-footer" style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                                <button type="button" className="btn btn-secondary" onClick={() => setEditingItem(null)}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary" disabled={editLoading}>
+                                    <CheckCircle2 size={16} />
+                                    {editLoading ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>,
                 document.body

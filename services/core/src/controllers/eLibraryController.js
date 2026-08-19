@@ -287,14 +287,30 @@ const uploadLibraryItem = async (req, res) => {
     }
 };
 
-// @desc    Delete E-Library item
-// @route   DELETE /api/elibrary/:id
-// @access  Private (Uploader Teacher, Admin)
-const deleteLibraryItem = async (req, res) => {
+/**
+ * Validates whether user is a Technical/System Admin (excludes user_management / academicadmin).
+ */
+function isTechnicalAdmin(user) {
+    if (!user) return false;
+    const role = (user.role || '').toLowerCase().trim();
+    const adminType = (user.adminType || '').toLowerCase().trim();
+    if (role === 'academicadmin' || adminType === 'user_management') {
+        return false;
+    }
+    if (['admin', 'superadmin'].includes(role) || adminType === 'system_technical') {
+        return true;
+    }
+    return false;
+}
+
+// @desc    Update E-Library material metadata (Technical Admin Only)
+// @route   PUT /api/elibrary/:id
+// @access  Private (Technical Admin Only)
+const updateLibraryItem = async (req, res) => {
     try {
-        if (!isMechatronicsTeacherOrAdmin(req.user)) {
+        if (!isTechnicalAdmin(req.user)) {
             return res.status(403).json({
-                message: 'Forbidden: Only Mechatronics Teachers and Administrators can delete E-Library resources.'
+                message: 'Forbidden: Only Technical System Administrators can edit E-Library resources.'
             });
         }
 
@@ -303,12 +319,60 @@ const deleteLibraryItem = async (req, res) => {
             return res.status(404).json({ message: 'E-Library item not found' });
         }
 
-        const role = (req.user.role || '').toLowerCase();
-        const isAdmin = ['admin', 'superadmin', 'academicadmin'].includes(role);
-        const isOwner = String(item.uploadedBy) === String(req.user._id);
+        const {
+            title,
+            author,
+            category,
+            yearLevel,
+            courseCode,
+            courseName,
+            description,
+            tags,
+            coverImage
+        } = req.body;
 
-        if (!isAdmin && !isOwner) {
-            return res.status(403).json({ message: 'Forbidden: You can only delete resources that you personally uploaded.' });
+        if (title !== undefined) item.title = title.trim();
+        if (author !== undefined) item.author = author.trim();
+        if (category !== undefined) item.category = category;
+        if (yearLevel !== undefined) item.yearLevel = yearLevel;
+        if (courseCode !== undefined) item.courseCode = courseCode.trim().toUpperCase();
+        if (courseName !== undefined) item.courseName = courseName.trim();
+        if (description !== undefined) item.description = description.trim();
+        if (coverImage !== undefined) item.coverImage = coverImage;
+        if (tags !== undefined) {
+            if (Array.isArray(tags)) item.tags = tags;
+            else if (typeof tags === 'string') item.tags = tags.split(',').map(t => t.trim()).filter(Boolean);
+        }
+
+        // Ensure department remains strictly Mechatronics Engineering
+        item.department = 'Mechatronics Engineering';
+
+        await item.save();
+
+        res.json({
+            message: 'E-Library resource updated successfully!',
+            item
+        });
+    } catch (error) {
+        console.error('updateLibraryItem error:', error.message);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Delete E-Library item (Technical Admin Only)
+// @route   DELETE /api/elibrary/:id
+// @access  Private (Technical Admin Only)
+const deleteLibraryItem = async (req, res) => {
+    try {
+        if (!isTechnicalAdmin(req.user)) {
+            return res.status(403).json({
+                message: 'Forbidden: Only Technical System Administrators can delete E-Library resources.'
+            });
+        }
+
+        const item = await ELibraryItem.findById(req.params.id);
+        if (!item) {
+            return res.status(404).json({ message: 'E-Library item not found' });
         }
 
         // Delete physical file from storage
@@ -319,7 +383,7 @@ const deleteLibraryItem = async (req, res) => {
 
         await ELibraryItem.findByIdAndDelete(req.params.id);
 
-        res.json({ message: 'E-Library resource removed successfully.' });
+        res.json({ message: 'E-Library resource removed successfully by Technical Administrator.' });
     } catch (error) {
         console.error('deleteLibraryItem error:', error.message);
         res.status(500).json({ message: error.message });
@@ -331,9 +395,11 @@ module.exports = {
     getLibraryItemById,
     downloadLibraryItem,
     uploadLibraryItem,
+    updateLibraryItem,
     deleteLibraryItem,
     isMechatronicsMember,
     isMechatronicsTeacherOrAdmin,
+    isTechnicalAdmin,
     validateFileMagicBytes,
     PRIVATE_STORAGE_DIR
 };
