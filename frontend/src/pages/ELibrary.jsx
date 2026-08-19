@@ -431,12 +431,46 @@ const ELibrary = () => {
 
             {/* Details Modal */}
             {activePreviewItem && (
-                <div className="modal-overlay" onClick={() => setActivePreviewItem(null)}>
-                    <div className="modal-card elibrary-details-modal animate-scale-up" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
+                <div
+                    className="modal-overlay animate-fade-in"
+                    onClick={() => setActivePreviewItem(null)}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        width: '100vw',
+                        height: '100vh',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'rgba(15, 23, 42, 0.78)',
+                        backdropFilter: 'blur(8px)',
+                        zIndex: 99999,
+                        padding: '1.5rem',
+                        boxSizing: 'border-box'
+                    }}
+                >
+                    <div
+                        className="modal-card elibrary-details-modal animate-scale-up glass-panel"
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            maxWidth: '620px',
+                            width: '90%',
+                            maxHeight: '88vh',
+                            overflowY: 'auto',
+                            margin: 'auto',
+                            borderRadius: '16px',
+                            background: 'var(--surface-color, #0f172a)',
+                            border: '1px solid var(--surface-border, rgba(255, 255, 255, 0.1))',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
+                        }}
+                    >
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', padding: '1.25rem 1.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                 <BookOpen size={20} className="text-primary" />
-                                <h3>{activePreviewItem.title}</h3>
+                                <h3 style={{ margin: 0, fontSize: '1.15rem' }}>{activePreviewItem.title}</h3>
                             </div>
                             <button className="icon-btn" onClick={() => setActivePreviewItem(null)}>
                                 <X size={20} />
@@ -469,7 +503,7 @@ const ELibrary = () => {
                                 </div>
                             )}
                         </div>
-                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
                             <button className="btn btn-secondary" onClick={() => setActivePreviewItem(null)}>
                                 Close
                             </button>
@@ -484,12 +518,46 @@ const ELibrary = () => {
 
             {/* Upload Modal (Teachers & Admins Only) */}
             {isUploadModalOpen && canUploadOrDelete && (
-                <div className="modal-overlay" onClick={() => setIsUploadModalOpen(false)}>
-                    <div className="modal-card elibrary-upload-modal animate-scale-up" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
+                <div
+                    className="modal-overlay animate-fade-in"
+                    onClick={() => setIsUploadModalOpen(false)}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        width: '100vw',
+                        height: '100vh',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'rgba(15, 23, 42, 0.78)',
+                        backdropFilter: 'blur(8px)',
+                        zIndex: 99999,
+                        padding: '1.5rem',
+                        boxSizing: 'border-box'
+                    }}
+                >
+                    <div
+                        className="modal-card elibrary-upload-modal animate-scale-up glass-panel"
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            maxWidth: '620px',
+                            width: '90%',
+                            maxHeight: '88vh',
+                            overflowY: 'auto',
+                            margin: 'auto',
+                            borderRadius: '16px',
+                            background: 'var(--surface-color, #0f172a)',
+                            border: '1px solid var(--surface-border, rgba(255, 255, 255, 0.1))',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
+                        }}
+                    >
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', padding: '1.25rem 1.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                 <Upload size={20} className="text-primary" />
-                                <h3>Upload Learning Material</h3>
+                                <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Upload Learning Material</h3>
                             </div>
                             <button className="icon-btn" onClick={() => setIsUploadModalOpen(false)}>
                                 <X size={20} />
