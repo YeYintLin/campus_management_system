@@ -53,18 +53,24 @@ async function extractRawPdfText(dataBuffer) {
     try {
         pdfModule = require('pdf-parse');
     } catch (e) {
-        throw new Error('PDF parsing library is not installed in the Docker container. Please run: docker compose up -d --build core-service');
+        console.error('require(pdf-parse) failed:', e.message);
+        throw new Error(`PDF parsing library not found (${e.message}). Please run: docker compose build --no-cache core-service && docker compose up -d core-service`);
     }
-    if (typeof pdfModule === 'function') {
-        const res = await pdfModule(dataBuffer);
-        return res.text || '';
+    try {
+        if (typeof pdfModule === 'function') {
+            const res = await pdfModule(dataBuffer);
+            return res.text || '';
+        }
+        if (pdfModule.PDFParse) {
+            const parser = new pdfModule.PDFParse({ data: dataBuffer });
+            const res = await parser.getText();
+            return res.text || '';
+        }
+        throw new Error('Unsupported pdf-parse module format on server');
+    } catch (err) {
+        console.error('PDF text extraction execution failed:', err);
+        throw new Error(`PDF text extraction failed: ${err.message}`);
     }
-    if (pdfModule.PDFParse) {
-        const parser = new pdfModule.PDFParse({ data: dataBuffer });
-        const res = await parser.getText();
-        return res.text || '';
-    }
-    throw new Error('Unsupported pdf-parse module version installed on server');
 }
 
 /**
