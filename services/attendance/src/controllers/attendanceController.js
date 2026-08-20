@@ -1014,7 +1014,7 @@ const exportRollCallExcel = async (req, res) => {
             monthStart.setHours(0, 0, 0, 0);
             monthEnd = new Date(endDate);
             monthEnd.setHours(23, 59, 59, 999);
-            monthLabelText = `(${startDate} မှ ${endDate} ထိ)`;
+            monthLabelText = startDate === endDate ? `(${startDate})` : `(${startDate} မှ ${endDate} ထိ)`;
         } else {
             // Parse month from Myanmar label to JS month index (0-based)
             const monthMap = {
@@ -1032,52 +1032,11 @@ const exportRollCallExcel = async (req, res) => {
             monthLabelText = `${mLabel} လ`;
         }
 
-        // Fetch Attendance Records for date mapping
+        // Fetch Attendance Records for date mapping - includes all sessions recorded for this course in the period
         let attendanceRecords = await Attendance.find({
             courseId: new RegExp(`^${courseId.replace(/[-[\]{}()*+?.,\\^$|#]/g, '\\$&')}$`, 'i'),
             date: { $gte: monthStart, $lte: monthEnd }
         }).sort({ date: 1 });
-
-        // Timetable Day Accuracy Check: Fetch scheduled weekdays for this course from Core Service
-        const scheduledDays = new Set();
-        try {
-            const ttRes = await axios.get(`${CORE_SERVICE_URL}/api/timetable`, {
-                params: {
-                    year: courseInfo.year || year,
-                    semester: semester || (semStr === '2' ? 'Semester 2' : 'Semester 1')
-                },
-                headers: {
-                    Authorization: token,
-                    'x-internal-service-token': INTERNAL_SERVICE_SECRET
-                },
-                timeout: 4000
-            }).catch(() => null);
-
-            if (ttRes?.data?.slots && Array.isArray(ttRes.data.slots)) {
-                const cleanTargetCode = String(courseId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-                ttRes.data.slots.forEach(slot => {
-                    const slotCode = String(slot.courseCode || slot.code || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-                    if (slotCode && (slotCode === cleanTargetCode || slotCode.includes(cleanTargetCode) || cleanTargetCode.includes(slotCode))) {
-                        if (slot.day) {
-                            scheduledDays.add(slot.day.trim().toLowerCase());
-                        }
-                    }
-                });
-            }
-        } catch (ttErr) {
-            console.error('Failed to verify timetable scheduled days for export:', ttErr.message);
-        }
-
-        // If timetable defines specific scheduled days for this course, filter out sessions on unscheduled weekdays
-        if (scheduledDays.size > 0) {
-            const WEEKDAY_MAP = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            attendanceRecords = attendanceRecords.filter(rec => {
-                if (!rec.date) return false;
-                const d = new Date(rec.date);
-                const dayName = WEEKDAY_MAP[d.getDay()];
-                return scheduledDays.has(dayName);
-            });
-        }
 
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Campus Management System (CMS)';
@@ -1287,13 +1246,29 @@ const exportRollCallExcel = async (req, res) => {
                     if (isRealStudent && p < conductedSessions) {
                         const rec = attendanceRecords[p];
                         if (rec && Array.isArray(rec.records)) {
-                            const studentRec = rec.records.find(r =>
-                                String(r.studentId) === String(st._id) ||
-                                String(r.studentId) === String(st.user?._id) ||
-                                String(r.studentId) === String(i + 1) ||
-                                (rollStr && String(r.studentId).toUpperCase() === rollStr.toUpperCase()) ||
-                                (st.rollNo && String(r.studentId).toUpperCase() === String(st.rollNo).toUpperCase())
-                            );
+                            const studentRec = rec.records.find(r => {
+                                if (!r) return false;
+                                const rSid = String(r.studentId || r.student?._id || r.student || '').trim().toLowerCase();
+                                const stId = String(st._id || '').trim().toLowerCase();
+                                const stUserId = String(st.user?._id || st.userId || '').trim().toLowerCase();
+                                const stEmail = String(st.email || '').trim().toLowerCase();
+                                const rEmail = String(r.studentEmail || r.email || '').trim().toLowerCase();
+                                const rName = String(r.studentName || r.name || '').trim().toLowerCase();
+                                const stName = String(st.name || '').trim().toLowerCase();
+                                const rollMatch = rollStr && rSid === rollStr.toLowerCase();
+                                const stRollMatch = st.rollNo && rSid === String(st.rollNo).toLowerCase();
+                                const indexMatch = rSid === String(i + 1);
+
+                                return (
+                                    (stId && rSid === stId) ||
+                                    (stUserId && rSid === stUserId) ||
+                                    rollMatch ||
+                                    stRollMatch ||
+                                    indexMatch ||
+                                    (stEmail && rEmail && stEmail === rEmail) ||
+                                    (stName && rName && stName === rName)
+                                );
+                            });
                             const isPresent = studentRec && studentRec.status === 'Present';
                             if (isPresent) studentPresentSessions++;
                             rowValues.push(isPresent ? '✓' : '');
