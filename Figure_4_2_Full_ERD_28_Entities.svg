@@ -1,0 +1,576 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2240 1440" width="100%" height="100%" style="background-color: #ffffff;">
+  <defs>
+    <!-- Crow's Foot Marker for 1:N / 0:N -->
+    <marker id="crows-foot" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 6 L 0 11 M 10 6 L 0 6" fill="none" stroke="#0f172a" stroke-width="1.4" />
+    </marker>
+    <!-- One-Bar Marker for 1:1 -->
+    <marker id="one-bar" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 4 1 L 4 11 M 8 1 L 8 11" fill="none" stroke="#0f172a" stroke-width="1.4" />
+    </marker>
+  </defs>
+
+  <style>
+    .cluster-box { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.2; stroke-dasharray: 6,4; rx: 10px; }
+    .cluster-title { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; font-weight: 800; fill: #475569; letter-spacing: 0.5px; }
+    .entity-header { fill: #f1f5f9; stroke: #0f172a; stroke-width: 1.4; }
+    .entity-body { fill: #ffffff; stroke: #0f172a; stroke-width: 1.4; }
+    .entity-title { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11.5px; font-weight: 700; fill: #0f172a; text-anchor: middle; }
+    .f-key { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5px; font-weight: 700; fill: #334155; }
+    .f-type { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5px; fill: #64748b; }
+    .f-name { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5px; fill: #0f172a; }
+    .rel-line { stroke: #0f172a; stroke-width: 1.3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .rel-label-bg { fill: #ffffff; stroke: #94a3b8; stroke-width: 0.9; rx: 4px; }
+    .rel-label { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9px; font-weight: 700; fill: #0f172a; text-anchor: middle; dominant-baseline: middle; }
+  </style>
+
+  <!-- ======================================================== -->
+  <!-- CLUSTER BACKGROUNDS                                      -->
+  <!-- ======================================================== -->
+  <!-- 1. Core Identity & Governance -->
+  <rect x="30" y="30" width="460" height="750" class="cluster-box" />
+  <text x="45" y="58" class="cluster-title">CORE IDENTITY &amp; GOVERNANCE CLUSTER</text>
+
+  <!-- 2. Student Registry & Enrollment -->
+  <rect x="520" y="30" width="480" height="750" class="cluster-box" />
+  <text x="535" y="58" class="cluster-title">STUDENT REGISTRY &amp; ENROLLMENT CLUSTER</text>
+
+  <!-- 3. Academic Courses, Grading & Staffing -->
+  <rect x="1030" y="30" width="530" height="750" class="cluster-box" />
+  <text x="1045" y="58" class="cluster-title">ACADEMIC COURSES, GRADING &amp; STAFFING CLUSTER</text>
+
+  <!-- 4. Timetable, Sessions & Exam -->
+  <rect x="1590" y="30" width="620" height="750" class="cluster-box" />
+  <text x="1605" y="58" class="cluster-title">TIMETABLE, SESSIONS &amp; EXAM CLUSTER</text>
+
+  <!-- 5. Attendance Service & QR Sessions -->
+  <rect x="30" y="810" width="650" height="600" class="cluster-box" />
+  <text x="45" y="836" class="cluster-title">ATTENDANCE SERVICE &amp; QR SESSIONS CLUSTER</text>
+
+  <!-- 6. Collaboration, Assignments & Incidents -->
+  <rect x="710" y="810" width="720" height="600" class="cluster-box" />
+  <text x="725" y="836" class="cluster-title">COLLABORATION, ASSIGNMENTS &amp; INCIDENTS CLUSTER</text>
+
+  <!-- 7. Resource Repository & AI Intelligence -->
+  <rect x="1460" y="810" width="750" height="600" class="cluster-box" />
+  <text x="1475" y="836" class="cluster-title">RESOURCE REPOSITORY &amp; AI INTELLIGENCE CLUSTER</text>
+
+
+  <!-- ======================================================== -->
+  <!-- CLUSTER 1: CORE IDENTITY & GOVERNANCE                   -->
+  <!-- ======================================================== -->
+
+  <!-- 1. USER ENTITY -->
+  <g transform="translate(60, 75)">
+    <rect x="0" y="0" width="220" height="26" class="entity-header" />
+    <rect x="0" y="26" width="220" height="240" class="entity-body" />
+    <text x="110" y="18" class="entity-title">USER</text>
+    <g transform="translate(10, 44)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="28" y="18" class="f-type">String</text><text x="90" y="18" class="f-name">name</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">email</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">password</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">String</text><text x="90" y="72" class="f-name">role (Admin|Teacher|Student)</text>
+      <text x="0" y="90" class="f-key" style="fill:#2563eb;">NEW</text><text x="28" y="90" class="f-type">String</text><text x="90" y="90" class="f-name" style="font-weight:700;">adminType (mgmt|tech)</text>
+      <text x="0" y="108" class="f-key"></text><text x="28" y="108" class="f-type">String</text><text x="90" y="108" class="f-name">department</text>
+      <text x="0" y="126" class="f-key"></text><text x="28" y="126" class="f-type">String</text><text x="90" y="126" class="f-name">yearLevel</text>
+      <text x="0" y="144" class="f-key"></text><text x="28" y="144" class="f-type">String</text><text x="90" y="144" class="f-name">status (Active|Pending)</text>
+      <text x="0" y="162" class="f-key"></text><text x="28" y="162" class="f-type">Boolean</text><text x="90" y="162" class="f-name">isEmailVerified</text>
+      <text x="0" y="180" class="f-key"></text><text x="28" y="180" class="f-type">Boolean</text><text x="90" y="180" class="f-name">isApproved</text>
+      <text x="0" y="198" class="f-key"></text><text x="28" y="198" class="f-type">Date</text><text x="90" y="198" class="f-name">createdAt / updatedAt</text>
+    </g>
+  </g>
+
+  <!-- 2. AUDIT LOG -->
+  <g transform="translate(60, 390)">
+    <rect x="0" y="0" width="200" height="24" class="entity-header" />
+    <rect x="0" y="24" width="200" height="150" class="entity-body" />
+    <text x="100" y="16" class="entity-title">AUDIT_LOG</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="25" y="0" class="f-type">ObjectId</text><text x="80" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="25" y="18" class="f-type">String</text><text x="80" y="18" class="f-name">action</text>
+      <text x="0" y="36" class="f-key">FK</text><text x="25" y="36" class="f-type">ObjectId</text><text x="80" y="36" class="f-name">performedBy → User</text>
+      <text x="0" y="54" class="f-key">FK</text><text x="25" y="54" class="f-type">ObjectId</text><text x="80" y="54" class="f-name">targetStudent → Student</text>
+      <text x="0" y="72" class="f-key"></text><text x="25" y="72" class="f-type">String</text><text x="80" y="72" class="f-name">academicYear</text>
+      <text x="0" y="90" class="f-key"></text><text x="25" y="90" class="f-type">Object</text><text x="80" y="90" class="f-name">details</text>
+      <text x="0" y="108" class="f-key"></text><text x="25" y="108" class="f-type">Date</text><text x="80" y="108" class="f-name">createdAt</text>
+    </g>
+  </g>
+
+  <!-- 3. ACADEMIC SETTINGS -->
+  <g transform="translate(280, 390)">
+    <rect x="0" y="0" width="190" height="24" class="entity-header" />
+    <rect x="0" y="24" width="190" height="150" class="entity-body" />
+    <text x="95" y="16" class="entity-title">ACADEMIC_SETTINGS</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="25" y="0" class="f-type">ObjectId</text><text x="80" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="25" y="18" class="f-type">String</text><text x="80" y="18" class="f-name">key</text>
+      <text x="0" y="36" class="f-key"></text><text x="25" y="36" class="f-type">Mixed</text><text x="80" y="36" class="f-name">value</text>
+      <text x="0" y="54" class="f-key"></text><text x="25" y="54" class="f-type">String</text><text x="80" y="54" class="f-name">department</text>
+      <text x="0" y="72" class="f-key">FK</text><text x="25" y="72" class="f-type">ObjectId</text><text x="80" y="72" class="f-name">updatedBy → User</text>
+      <text x="0" y="90" class="f-key"></text><text x="25" y="90" class="f-type">Date</text><text x="80" y="90" class="f-name">updatedAt</text>
+    </g>
+  </g>
+
+  <!-- 4. ACADEMIC CONFIG -->
+  <g transform="translate(60, 595)">
+    <rect x="0" y="0" width="200" height="24" class="entity-header" />
+    <rect x="0" y="24" width="200" height="130" class="entity-body" />
+    <text x="100" y="16" class="entity-title">ACADEMIC_CONFIG</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="25" y="0" class="f-type">ObjectId</text><text x="80" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="25" y="18" class="f-type">Number</text><text x="80" y="18" class="f-name">maxYear</text>
+      <text x="0" y="36" class="f-key"></text><text x="25" y="36" class="f-type">Array</text><text x="80" y="36" class="f-name">departments</text>
+      <text x="0" y="54" class="f-key"></text><text x="25" y="54" class="f-type">String</text><text x="80" y="54" class="f-name">currentAcademicYear</text>
+      <text x="0" y="72" class="f-key"></text><text x="25" y="72" class="f-type">String</text><text x="80" y="72" class="f-name">activeTerm</text>
+      <text x="0" y="90" class="f-key"></text><text x="25" y="90" class="f-type">Date</text><text x="80" y="90" class="f-name">updatedAt</text>
+    </g>
+  </g>
+
+
+  <!-- ======================================================== -->
+  <!-- CLUSTER 2: STUDENT REGISTRY & ENROLLMENT                 -->
+  <!-- ======================================================== -->
+
+  <!-- 5. STUDENT ENTITY -->
+  <g transform="translate(550, 75)">
+    <rect x="0" y="0" width="220" height="24" class="entity-header" />
+    <rect x="0" y="24" width="220" height="180" class="entity-body" />
+    <text x="110" y="16" class="entity-title">STUDENT</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="25" y="0" class="f-type">ObjectId</text><text x="80" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key">FK</text><text x="25" y="18" class="f-type">ObjectId</text><text x="80" y="18" class="f-name">user → User</text>
+      <text x="0" y="36" class="f-key"></text><text x="25" y="36" class="f-type">String</text><text x="80" y="36" class="f-name">enrollmentNumber</text>
+      <text x="0" y="54" class="f-key"></text><text x="25" y="54" class="f-type">String</text><text x="80" y="54" class="f-name">department</text>
+      <text x="0" y="72" class="f-key"></text><text x="25" y="72" class="f-type">String</text><text x="80" y="72" class="f-name">semester</text>
+      <text x="0" y="90" class="f-key"></text><text x="25" y="90" class="f-type">String</text><text x="80" y="90" class="f-name">contactNumber</text>
+      <text x="0" y="108" class="f-key"></text><text x="25" y="108" class="f-type">String</text><text x="80" y="108" class="f-name">status</text>
+      <text x="0" y="126" class="f-key"></text><text x="25" y="126" class="f-type">Array</text><text x="80" y="126" class="f-name">documents</text>
+      <text x="0" y="144" class="f-key"></text><text x="25" y="144" class="f-type">Date</text><text x="80" y="144" class="f-name">createdAt</text>
+    </g>
+  </g>
+
+  <!-- 6. ACADEMIC ENROLLMENT -->
+  <g transform="translate(550, 325)">
+    <rect x="0" y="0" width="220" height="24" class="entity-header" />
+    <rect x="0" y="24" width="220" height="170" class="entity-body" />
+    <text x="110" y="16" class="entity-title">ACADEMIC_ENROLLMENT</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="25" y="0" class="f-type">ObjectId</text><text x="80" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key">FK</text><text x="25" y="18" class="f-type">ObjectId</text><text x="80" y="18" class="f-name">student → Student</text>
+      <text x="0" y="36" class="f-key"></text><text x="25" y="36" class="f-type">String</text><text x="80" y="36" class="f-name">academicYear</text>
+      <text x="0" y="54" class="f-key"></text><text x="25" y="54" class="f-type">String</text><text x="80" y="54" class="f-name">yearLevel</text>
+      <text x="0" y="72" class="f-key"></text><text x="25" y="72" class="f-type">String</text><text x="80" y="72" class="f-name">department</text>
+      <text x="0" y="90" class="f-key"></text><text x="25" y="90" class="f-type">String</text><text x="80" y="90" class="f-name">rollNo</text>
+      <text x="0" y="108" class="f-key"></text><text x="25" y="108" class="f-type">Date</text><text x="80" y="108" class="f-name">rollNoAssignedAt</text>
+      <text x="0" y="126" class="f-key"></text><text x="25" y="126" class="f-type">Number</text><text x="80" y="126" class="f-name">attendanceRate</text>
+      <text x="0" y="144" class="f-key"></text><text x="25" y="144" class="f-type">String</text><text x="80" y="144" class="f-name">status (Active|Passed)</text>
+    </g>
+  </g>
+
+  <!-- 7. PROMOTION JOB -->
+  <g transform="translate(550, 565)">
+    <rect x="0" y="0" width="220" height="24" class="entity-header" />
+    <rect x="0" y="24" width="220" height="150" class="entity-body" />
+    <text x="110" y="16" class="entity-title">PROMOTION_JOB</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="25" y="0" class="f-type">ObjectId</text><text x="80" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="25" y="18" class="f-type">String</text><text x="80" y="18" class="f-name">runId</text>
+      <text x="0" y="36" class="f-key">FK</text><text x="25" y="36" class="f-type">ObjectId</text><text x="80" y="36" class="f-name">student → Student</text>
+      <text x="0" y="54" class="f-key">FK</text><text x="25" y="54" class="f-type">ObjectId</text><text x="80" y="54" class="f-name">fromEnrollmentId</text>
+      <text x="0" y="72" class="f-key">FK</text><text x="25" y="72" class="f-type">ObjectId</text><text x="80" y="72" class="f-name">toEnrollmentId</text>
+      <text x="0" y="90" class="f-key"></text><text x="25" y="90" class="f-type">String</text><text x="80" y="90" class="f-name">action (Promote|Retain)</text>
+      <text x="0" y="108" class="f-key"></text><text x="25" y="108" class="f-type">String</text><text x="80" y="108" class="f-name">status (Success|Failed)</text>
+      <text x="0" y="126" class="f-key"></text><text x="25" y="126" class="f-type">Date</text><text x="80" y="126" class="f-name">createdAt</text>
+    </g>
+  </g>
+
+
+  <!-- ======================================================== -->
+  <!-- CLUSTER 3: ACADEMIC COURSES, GRADING & STAFFING         -->
+  <!-- ======================================================== -->
+
+  <!-- 8. COURSE ENTITY -->
+  <g transform="translate(1055, 75)">
+    <rect x="0" y="0" width="225" height="26" class="entity-header" />
+    <rect x="0" y="26" width="225" height="200" class="entity-body" />
+    <text x="112" y="18" class="entity-title">COURSE</text>
+    <g transform="translate(10, 44)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="28" y="18" class="f-type">String</text><text x="90" y="18" class="f-name">name</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">code (e.g. McE-52039)</text>
+      <text x="0" y="54" class="f-key">FK</text><text x="28" y="54" class="f-type">ObjectId</text><text x="90" y="54" class="f-name">teacher → User</text>
+      <text x="0" y="72" class="f-key">FK</text><text x="28" y="72" class="f-type">Array&lt;ID&gt;</text><text x="90" y="72" class="f-name">students → Student</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">Array</text><text x="90" y="90" class="f-name">gradingScheme</text>
+      <text x="0" y="108" class="f-key"></text><text x="28" y="108" class="f-type">Array</text><text x="90" y="108" class="f-name">curriculumModules</text>
+      <text x="0" y="126" class="f-key"></text><text x="28" y="126" class="f-type">String</text><text x="90" y="126" class="f-name">department</text>
+      <text x="0" y="144" class="f-key"></text><text x="28" y="144" class="f-type">String</text><text x="90" y="144" class="f-name">yearLevel</text>
+      <text x="0" y="162" class="f-key"></text><text x="28" y="162" class="f-type">Date</text><text x="90" y="162" class="f-name">updatedAt</text>
+    </g>
+  </g>
+
+  <!-- 9. GRADE ENTITY -->
+  <g transform="translate(1315, 75)">
+    <rect x="0" y="0" width="225" height="26" class="entity-header" />
+    <rect x="0" y="26" width="225" height="200" class="entity-body" />
+    <text x="112" y="18" class="entity-title">GRADE</text>
+    <g transform="translate(10, 44)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key">FK</text><text x="28" y="18" class="f-type">ObjectId</text><text x="90" y="18" class="f-name">course → Course</text>
+      <text x="0" y="36" class="f-key">FK</text><text x="28" y="36" class="f-type">ObjectId</text><text x="90" y="36" class="f-name">student → Student</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">assessmentType</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">Number</text><text x="90" y="72" class="f-name">score</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">Number</text><text x="90" y="90" class="f-name">maxScore</text>
+      <text x="0" y="108" class="f-key"></text><text x="28" y="108" class="f-type">String</text><text x="90" y="108" class="f-name">comments</text>
+      <text x="0" y="126" class="f-key"></text><text x="28" y="126" class="f-type">Date</text><text x="90" y="126" class="f-name">createdAt / updatedAt</text>
+    </g>
+  </g>
+
+  <!-- 10. CLASS SECTION -->
+  <g transform="translate(1055, 360)">
+    <rect x="0" y="0" width="225" height="24" class="entity-header" />
+    <rect x="0" y="24" width="225" height="150" class="entity-body" />
+    <text x="112" y="16" class="entity-title">CLASS_SECTION</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="28" y="18" class="f-type">String</text><text x="90" y="18" class="f-name">yearLevel</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">semester</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">major</text>
+      <text x="0" y="72" class="f-key">FK</text><text x="28" y="72" class="f-type">ObjectId</text><text x="90" y="72" class="f-name">familyTeacher → User</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">String</text><text x="90" y="90" class="f-name">majorRoom</text>
+      <text x="0" y="108" class="f-key"></text><text x="28" y="108" class="f-type">Date</text><text x="90" y="108" class="f-name">createdAt</text>
+    </g>
+  </g>
+
+  <!-- 11. COURSE ASSIGNMENT -->
+  <g transform="translate(1315, 360)">
+    <rect x="0" y="0" width="225" height="24" class="entity-header" />
+    <rect x="0" y="24" width="225" height="150" class="entity-body" />
+    <text x="112" y="16" class="entity-title">COURSE_ASSIGNMENT</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key">FK</text><text x="28" y="18" class="f-type">ObjectId</text><text x="90" y="18" class="f-name">teacher → User</text>
+      <text x="0" y="36" class="f-key">FK</text><text x="28" y="36" class="f-type">ObjectId</text><text x="90" y="36" class="f-name">course → Course</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">academicYear</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">String</text><text x="90" y="72" class="f-name">semester</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">Date</text><text x="90" y="90" class="f-name">createdAt</text>
+    </g>
+  </g>
+
+
+  <!-- ======================================================== -->
+  <!-- CLUSTER 4: TIMETABLE, SESSIONS & EXAM                   -->
+  <!-- ======================================================== -->
+
+  <!-- 12. TIMETABLE FILE -->
+  <g transform="translate(1615, 75)">
+    <rect x="0" y="0" width="250" height="24" class="entity-header" />
+    <rect x="0" y="24" width="250" height="150" class="entity-body" />
+    <text x="125" y="16" class="entity-title">TIMETABLE_FILE</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="28" y="18" class="f-type">String</text><text x="90" y="18" class="f-name">originalName</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">Buffer</text><text x="90" y="36" class="f-name">data (Binary Excel)</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">Boolean</text><text x="90" y="54" class="f-name">isActive</text>
+      <text x="0" y="72" class="f-key">FK</text><text x="28" y="72" class="f-type">ObjectId</text><text x="90" y="72" class="f-name">uploadedBy → User</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">Date</text><text x="90" y="90" class="f-name">createdAt</text>
+    </g>
+  </g>
+
+  <!-- 13. RESTORE LOG -->
+  <g transform="translate(1905, 75)">
+    <rect x="0" y="0" width="280" height="24" class="entity-header" />
+    <rect x="0" y="24" width="280" height="150" class="entity-body" />
+    <text x="140" y="16" class="entity-title">RESTORE_LOG</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key">FK</text><text x="28" y="18" class="f-type">ObjectId</text><text x="90" y="18" class="f-name">fileId → TimetableFile</text>
+      <text x="0" y="36" class="f-key">FK</text><text x="28" y="36" class="f-type">ObjectId</text><text x="90" y="36" class="f-name">restoredBy → User</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">Date</text><text x="90" y="54" class="f-name">restoredAt</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">String</text><text x="90" y="72" class="f-name">summary</text>
+    </g>
+  </g>
+
+  <!-- 14. SEMESTER (TIMETABLE) -->
+  <g transform="translate(1615, 295)">
+    <rect x="0" y="0" width="250" height="24" class="entity-header" />
+    <rect x="0" y="24" width="250" height="190" class="entity-body" />
+    <text x="125" y="16" class="entity-title">SEMESTER (TIMETABLE)</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key">FK</text><text x="28" y="18" class="f-type">ObjectId</text><text x="90" y="18" class="f-name">sourceFile → TimetableFile</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">department</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">academicYear</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">Number</text><text x="90" y="72" class="f-name">semesterNumber</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">Array</text><text x="90" y="90" class="f-name">periods</text>
+      <text x="0" y="108" class="f-key"></text><text x="28" y="108" class="f-type">Array</text><text x="90" y="108" class="f-name">days</text>
+      <text x="0" y="126" class="f-key"></text><text x="28" y="126" class="f-type">Array</text><text x="90" y="126" class="f-name">legend</text>
+    </g>
+  </g>
+
+  <!-- 15. SCHEDULED SESSION & EXAM -->
+  <g transform="translate(1905, 295)">
+    <rect x="0" y="0" width="280" height="24" class="entity-header" />
+    <rect x="0" y="24" width="280" height="210" class="entity-body" />
+    <text x="140" y="16" class="entity-title">SCHEDULED_SESSION / EXAM</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="28" y="18" class="f-type">String</text><text x="90" y="18" class="f-name">sessionType (Class|Exam)</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">courseCode / courseName</text>
+      <text x="0" y="54" class="f-key">FK</text><text x="28" y="54" class="f-type">ObjectId</text><text x="90" y="54" class="f-name">classSection → ClassSection</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">Date</text><text x="90" y="72" class="f-name">date / startTime / endTime</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">String</text><text x="90" y="90" class="f-name">place (Room)</text>
+      <text x="0" y="108" class="f-key"></text><text x="28" y="108" class="f-type">String</text><text x="90" y="108" class="f-name">status</text>
+      <text x="0" y="126" class="f-key"></text><text x="28" y="126" class="f-type">String</text><text x="90" y="126" class="f-name">seatingPhoto</text>
+    </g>
+  </g>
+
+  <!-- 16. SESSION OVERRIDE -->
+  <g transform="translate(1615, 550)">
+    <rect x="0" y="0" width="250" height="24" class="entity-header" />
+    <rect x="0" y="24" width="250" height="180" class="entity-body" />
+    <text x="125" y="16" class="entity-title">SESSION_OVERRIDE</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="28" y="18" class="f-type">String</text><text x="90" y="18" class="f-name">courseCode</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">Date</text><text x="90" y="36" class="f-name">originalDate</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">type (Reschedule|Cancel)</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">Date</text><text x="90" y="72" class="f-name">newDate</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">String</text><text x="90" y="90" class="f-name">newRoom</text>
+      <text x="0" y="108" class="f-key"></text><text x="28" y="108" class="f-type">String</text><text x="90" y="108" class="f-name">reason</text>
+      <text x="0" y="126" class="f-key">FK</text><text x="28" y="126" class="f-type">ObjectId</text><text x="90" y="126" class="f-name">createdBy → User</text>
+    </g>
+  </g>
+
+
+  <!-- ======================================================== -->
+  <!-- CLUSTER 5: ATTENDANCE SERVICE & QR SESSIONS             -->
+  <!-- ======================================================== -->
+
+  <!-- 17. ATTENDANCE SESSION -->
+  <g transform="translate(60, 850)">
+    <rect x="0" y="0" width="260" height="24" class="entity-header" />
+    <rect x="0" y="24" width="260" height="210" class="entity-body" />
+    <text x="130" y="16" class="entity-title">ATTENDANCE_SESSION</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="28" y="18" class="f-type">String</text><text x="90" y="18" class="f-name">courseId</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">courseName</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">code (6-digit PIN)</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">String</text><text x="90" y="72" class="f-name">qrToken (JWT)</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">Date</text><text x="90" y="90" class="f-name">generatedAt / expiresAt</text>
+      <text x="0" y="108" class="f-key"></text><text x="28" y="108" class="f-type">String</text><text x="90" y="108" class="f-name">status (Active|Closed)</text>
+      <text x="0" y="126" class="f-key">FK</text><text x="28" y="126" class="f-type">ObjectId</text><text x="90" y="126" class="f-name">createdBy → User</text>
+      <text x="0" y="144" class="f-key"></text><text x="28" y="144" class="f-type">Boolean</text><text x="90" y="144" class="f-name">finalized</text>
+    </g>
+  </g>
+
+  <!-- 18. ATTENDANCE (LOG RECORD) -->
+  <g transform="translate(360, 850)">
+    <rect x="0" y="0" width="290" height="24" class="entity-header" />
+    <rect x="0" y="24" width="290" height="210" class="entity-body" />
+    <text x="145" y="16" class="entity-title">ATTENDANCE (LOG RECORD)</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="28" y="18" class="f-type">String</text><text x="90" y="18" class="f-name">courseId</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">Date</text><text x="90" y="36" class="f-name">date</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">Array</text><text x="90" y="54" class="f-name">records [studentId, status, method]</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">Date</text><text x="90" y="72" class="f-name">createdAt</text>
+    </g>
+  </g>
+
+
+  <!-- ======================================================== -->
+  <!-- CLUSTER 6: COLLABORATION, ASSIGNMENTS & INCIDENTS       -->
+  <!-- ======================================================== -->
+
+  <!-- 19. ASSIGNMENT -->
+  <g transform="translate(740, 850)">
+    <rect x="0" y="0" width="220" height="24" class="entity-header" />
+    <rect x="0" y="24" width="220" height="210" class="entity-body" />
+    <text x="110" y="16" class="entity-title">ASSIGNMENT</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key">FK</text><text x="28" y="18" class="f-type">ObjectId</text><text x="90" y="18" class="f-name">course → Course</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">title</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">description</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">Date</text><text x="90" y="72" class="f-name">dueDate</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">String</text><text x="90" y="90" class="f-name">fileUrl</text>
+      <text x="0" y="108" class="f-key"></text><text x="28" y="108" class="f-type">Array</text><text x="90" y="108" class="f-name">submissions [student, fileUrl]</text>
+    </g>
+  </g>
+
+  <!-- 20. MESSAGE (CHAT) -->
+  <g transform="translate(980, 850)">
+    <rect x="0" y="0" width="200" height="24" class="entity-header" />
+    <rect x="0" y="24" width="200" height="190" class="entity-body" />
+    <text x="100" y="16" class="entity-title">MESSAGE (CHAT)</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key">FK</text><text x="28" y="18" class="f-type">ObjectId</text><text x="90" y="18" class="f-name">sender → User</text>
+      <text x="0" y="36" class="f-key">FK</text><text x="28" y="36" class="f-type">ObjectId</text><text x="90" y="36" class="f-name">recipient → User</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">content</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">Boolean</text><text x="90" y="72" class="f-name">read</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">Date</text><text x="90" y="90" class="f-name">createdAt</text>
+    </g>
+  </g>
+
+  <!-- 21. NOTIFICATION -->
+  <g transform="translate(1200, 850)">
+    <rect x="0" y="0" width="200" height="24" class="entity-header" />
+    <rect x="0" y="24" width="200" height="190" class="entity-body" />
+    <text x="100" y="16" class="entity-title">NOTIFICATION</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key">FK</text><text x="28" y="18" class="f-type">ObjectId</text><text x="90" y="18" class="f-name">user → User</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">type</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">message</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">Boolean</text><text x="90" y="72" class="f-name">read</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">String</text><text x="90" y="90" class="f-name">link</text>
+    </g>
+  </g>
+
+  <!-- 22. BUG REPORT -->
+  <g transform="translate(740, 1090)">
+    <rect x="0" y="0" width="310" height="24" class="entity-header" />
+    <rect x="0" y="24" width="310" height="240" class="entity-body" />
+    <text x="155" y="16" class="entity-title">BUG_REPORT (INCIDENT)</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key">FK</text><text x="28" y="18" class="f-type">ObjectId</text><text x="90" y="18" class="f-name">reporter → User</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">category (UI|Auth|Academic|Bug)</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">priority (Low|Medium|High|Critical)</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">String</text><text x="90" y="72" class="f-name">title</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">String</text><text x="90" y="90" class="f-name">description</text>
+      <text x="0" y="108" class="f-key"></text><text x="28" y="108" class="f-type">String</text><text x="90" y="108" class="f-name">status (Open|In Progress|Resolved)</text>
+      <text x="0" y="126" class="f-key"></text><text x="28" y="126" class="f-type">Date</text><text x="90" y="126" class="f-name">createdAt / resolvedAt</text>
+    </g>
+  </g>
+
+
+  <!-- ======================================================== -->
+  <!-- CLUSTER 7: RESOURCE REPOSITORY & AI INTELLIGENCE        -->
+  <!-- ======================================================== -->
+
+  <!-- 23. CUSTOM FOLDER -->
+  <g transform="translate(1485, 850)">
+    <rect x="0" y="0" width="205" height="24" class="entity-header" />
+    <rect x="0" y="24" width="205" height="210" class="entity-body" />
+    <text x="102" y="16" class="entity-title">CUSTOM_FOLDER</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="28" y="18" class="f-type">String</text><text x="90" y="18" class="f-name">name</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">yearLevel</text>
+      <text x="0" y="54" class="f-key">FK</text><text x="28" y="54" class="f-type">ObjectId</text><text x="90" y="54" class="f-name">parentFolder → CustomFolder</text>
+      <text x="0" y="72" class="f-key">FK</text><text x="28" y="72" class="f-type">ObjectId</text><text x="90" y="72" class="f-name">createdBy → User</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">Date</text><text x="90" y="90" class="f-name">createdAt</text>
+    </g>
+  </g>
+
+  <!-- 24. RESOURCE FILE -->
+  <g transform="translate(1710, 850)">
+    <rect x="0" y="0" width="205" height="24" class="entity-header" />
+    <rect x="0" y="24" width="205" height="210" class="entity-body" />
+    <text x="102" y="16" class="entity-title">RESOURCE_FILE</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="28" y="18" class="f-type">String</text><text x="90" y="18" class="f-name">name</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">fileUrl</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">Number</text><text x="90" y="54" class="f-name">size</text>
+      <text x="0" y="72" class="f-key">FK</text><text x="28" y="72" class="f-type">ObjectId</text><text x="90" y="72" class="f-name">folderId → CustomFolder</text>
+      <text x="0" y="90" class="f-key">FK</text><text x="28" y="90" class="f-type">ObjectId</text><text x="90" y="90" class="f-name">uploadedBy → User</text>
+    </g>
+  </g>
+
+  <!-- 25. FILE LOG (AUDIT) -->
+  <g transform="translate(1935, 850)">
+    <rect x="0" y="0" width="225" height="24" class="entity-header" />
+    <rect x="0" y="24" width="225" height="210" class="entity-body" />
+    <text x="112" y="16" class="entity-title">FILE_LOG (AUDIT)</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key">FK</text><text x="28" y="18" class="f-type">ObjectId</text><text x="90" y="18" class="f-name">userId → User</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">userName / userRole</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">fileName</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">Date</text><text x="90" y="72" class="f-name">downloadedAt</text>
+    </g>
+  </g>
+
+  <!-- 26. AI CONFIG -->
+  <g transform="translate(1485, 1090)">
+    <rect x="0" y="0" width="240" height="24" class="entity-header" />
+    <rect x="0" y="24" width="240" height="190" class="entity-body" />
+    <text x="120" y="16" class="entity-title">AI_CONFIG (ASSISTANT)</text>
+    <g transform="translate(10, 40)">
+      <text x="0" y="0" class="f-key">PK</text><text x="28" y="0" class="f-type">ObjectId</text><text x="90" y="0" class="f-name">_id</text>
+      <text x="0" y="18" class="f-key"></text><text x="28" y="18" class="f-type">String</text><text x="90" y="18" class="f-name">configKey (main)</text>
+      <text x="0" y="36" class="f-key"></text><text x="28" y="36" class="f-type">String</text><text x="90" y="36" class="f-name">systemPrompt</text>
+      <text x="0" y="54" class="f-key"></text><text x="28" y="54" class="f-type">String</text><text x="90" y="54" class="f-name">activePreset (altair)</text>
+      <text x="0" y="72" class="f-key"></text><text x="28" y="72" class="f-type">Number</text><text x="90" y="72" class="f-name">temperature (0.7)</text>
+      <text x="0" y="90" class="f-key"></text><text x="28" y="90" class="f-type">Number</text><text x="90" y="90" class="f-name">maxTokens (500)</text>
+    </g>
+  </g>
+
+
+  <!-- ======================================================== -->
+  <!-- RELATIONSHIP CONNECTORS (PRECISE ROUTING & ZERO OVERLAP) -->
+  <!-- ======================================================== -->
+
+  <!-- 1. User (1) to Student (1) -->
+  <path d="M 280,140 L 550,140" class="rel-line" marker-start="url(#one-bar)" marker-end="url(#one-bar)" />
+  <rect x="360" y="130" width="110" height="20" class="rel-label-bg" />
+  <text x="415" y="140" class="rel-label">extends profile (1:1)</text>
+
+  <!-- 2. Student (1) to AcademicEnrollment (N) -->
+  <path d="M 660,279 L 660,325" class="rel-line" marker-start="url(#one-bar)" marker-end="url(#crows-foot)" />
+  <rect x="612" y="292" width="96" height="20" class="rel-label-bg" />
+  <text x="660" y="302" class="rel-label">has records (1:N)</text>
+
+  <!-- 3. AcademicEnrollment (1) to PromotionJob (N) -->
+  <path d="M 660,519 L 660,565" class="rel-line" marker-start="url(#one-bar)" marker-end="url(#crows-foot)" />
+  <rect x="620" y="532" width="80" height="20" class="rel-label-bg" />
+  <text x="660" y="542" class="rel-label">advances (1:N)</text>
+
+  <!-- 4. User (1) to Course (N) (Teaches) -->
+  <!-- Clean overhead routing at y=40, strictly above all cluster titles -->
+  <path d="M 280,95 L 505,95 L 505,40 L 1035,40 L 1035,95 L 1055,95" class="rel-line" marker-start="url(#one-bar)" marker-end="url(#crows-foot)" />
+  <rect x="735" y="30" width="80" height="20" class="rel-label-bg" />
+  <text x="775" y="40" class="rel-label">teaches (1:N)</text>
+
+  <!-- 5. Course (1) to Grade (N) -->
+  <path d="M 1280,140 L 1315,140" class="rel-line" marker-start="url(#one-bar)" marker-end="url(#crows-foot)" />
+  <rect x="1278" y="120" width="40" height="18" class="rel-label-bg" />
+  <text x="1298" y="129" class="rel-label">grades</text>
+
+  <!-- 6. Course (1) to ClassSection (N) -->
+  <path d="M 1120,301 L 1120,360" class="rel-line" marker-start="url(#one-bar)" marker-end="url(#crows-foot)" />
+  <rect x="1075" y="321" width="90" height="20" class="rel-label-bg" />
+  <text x="1120" y="331" class="rel-label">schedules (1:N)</text>
+
+  <!-- 7. Course (1) to CourseAssignment (N) -->
+  <!-- Clean channel routing through x=1298 gap between table columns -->
+  <path d="M 1280,265 L 1298,265 L 1298,420 L 1315,420" class="rel-line" marker-start="url(#one-bar)" marker-end="url(#crows-foot)" />
+  <rect x="1273" y="333" width="50" height="18" class="rel-label-bg" />
+  <text x="1298" y="342" class="rel-label">assigns</text>
+
+  <!-- 8. TimetableFile (1) to Semester (N) -->
+  <path d="M 1740,249 L 1740,295" class="rel-line" marker-start="url(#one-bar)" marker-end="url(#crows-foot)" />
+  <rect x="1698" y="262" width="84" height="20" class="rel-label-bg" />
+  <text x="1740" y="272" class="rel-label">parses (1:N)</text>
+
+  <!-- 9. TimetableFile (1) to RestoreLog (N) -->
+  <path d="M 1865,140 L 1905,140" class="rel-line" marker-start="url(#one-bar)" marker-end="url(#crows-foot)" />
+  <rect x="1870" y="120" width="30" height="18" class="rel-label-bg" />
+  <text x="1885" y="129" class="rel-label">logs</text>
+
+  <!-- 10. Semester (1) to SessionOverride (N) -->
+  <path d="M 1740,509 L 1740,550" class="rel-line" marker-start="url(#one-bar)" marker-end="url(#crows-foot)" />
+  <rect x="1695" y="520" width="90" height="20" class="rel-label-bg" />
+  <text x="1740" y="530" class="rel-label">overrides (1:N)</text>
+
+  <!-- 11. CustomFolder (1) to ResourceFile (N) -->
+  <path d="M 1690,930 L 1710,930" class="rel-line" marker-start="url(#one-bar)" marker-end="url(#crows-foot)" />
+  <rect x="1685" y="905" width="60" height="18" class="rel-label-bg" />
+  <text x="1715" y="914" class="rel-label">stores (1:N)</text>
+
+</svg>
