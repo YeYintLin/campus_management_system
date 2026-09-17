@@ -141,13 +141,13 @@ const ELibrary = () => {
         return ['admin', 'superadmin'].includes(role) || adminType === 'system_technical';
     }, [user]);
 
-    const canUpload = isTeacher || isTechnicalAdmin;
+    const canUpload = isTeacher || isAdmin;
     const canEditOrDelete = isTechnicalAdmin; // Only Technical Admin can fully edit and delete!
     const canViewLogs = isTeacher || isAdmin; // Teachers and Admins can view audit logs
 
     const isMechatronicsMember = useMemo(() => {
         if (!user) return false;
-        if (isTechnicalAdmin) return true;
+        if (isAdmin || isTechnicalAdmin) return true;
         const dept = (user.department || '').toLowerCase().trim();
         if (dept.includes('mechatronic') || dept === 'mc' || dept === 'mce') return true;
         const email = (user.email || '').toLowerCase().trim();
@@ -159,7 +159,7 @@ const ELibrary = () => {
             if (!isOtherDept) return true;
         }
         return false;
-    }, [user, isTechnicalAdmin, isTeacher]);
+    }, [user, isTechnicalAdmin, isTeacher, isAdmin]);
 
     useEffect(() => {
         if (isMechatronicsMember) {
@@ -341,7 +341,7 @@ const ELibrary = () => {
         try {
             setUploading(true);
             setUploadError('');
-            const res = await apiClient.post('/elibrary/upload', formData, {
+            await apiClient.post('/elibrary/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
@@ -676,7 +676,7 @@ const ELibrary = () => {
                         </div>
                         <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
                             <div>
-                                {isTechnicalAdmin && (
+                                {canEditOrDelete && (
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                                         <button className="btn btn-secondary btn-sm" onClick={() => { const it = activePreviewItem; setActivePreviewItem(null); openEditModal(it); }}>
                                             <Pencil size={14} /> Edit
@@ -844,7 +844,7 @@ const ELibrary = () => {
             )}
 
             {/* Upload Modal (Teachers & Admins Only) */}
-            {isUploadModalOpen && canUploadOrDelete && typeof document !== 'undefined' && createPortal(
+            {isUploadModalOpen && canUpload && typeof document !== 'undefined' && createPortal(
                 <div
                     className="elibrary-modal-overlay animate-fade-in"
                     onClick={() => setIsUploadModalOpen(false)}
@@ -1181,7 +1181,7 @@ const ELibrary = () => {
                                                                 width: '32px',
                                                                 height: '32px',
                                                                 borderRadius: '50%',
-                                                                background: isStudentRole ? 'linear-gradient(135deg, #0284c7, #0369a1)' : isTeacherRole ? 'linear-gradient(135deg, #7c3aed, #6d28d9)' : 'linear-gradient(135deg, #e11d48, #be123c)',
+                                                                background: isStudentRole ? 'linear-gradient(135deg, #0284c7, #0369a1)' : isTeacherRole ? 'linear-gradient(135deg, #7c3aed, #6d28d9)' : isAdminRole ? 'linear-gradient(135deg, #e11d48, #be123c)' : 'linear-gradient(135deg, #475569, #334155)',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 justifyContent: 'center',
@@ -1199,8 +1199,8 @@ const ELibrary = () => {
                                                                         fontSize: '0.72rem',
                                                                         padding: '0.1rem 0.45rem',
                                                                         borderRadius: '4px',
-                                                                        background: isStudentRole ? 'rgba(2,132,199,0.15)' : isTeacherRole ? 'rgba(124,58,237,0.15)' : 'rgba(225,29,72,0.15)',
-                                                                        color: isStudentRole ? '#38bdf8' : isTeacherRole ? '#c084fc' : '#fb7185',
+                                                                        background: isStudentRole ? 'rgba(2,132,199,0.15)' : isTeacherRole ? 'rgba(124,58,237,0.15)' : isAdminRole ? 'rgba(225,29,72,0.15)' : 'rgba(148,163,184,0.15)',
+                                                                        color: isStudentRole ? '#38bdf8' : isTeacherRole ? '#c084fc' : isAdminRole ? '#fb7185' : '#cbd5e1',
                                                                         fontWeight: '600'
                                                                     }}>
                                                                         {l.userRole}{l.userYear ? ` • ${l.userYear}` : ''}
