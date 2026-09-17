@@ -541,6 +541,27 @@ const ELibrary = () => {
                                 <span className={`category-tag badge-${item.category.replace(/[^a-zA-Z]/g, '').toLowerCase()}`}>
                                     {item.category}
                                 </span>
+
+                                {isTechnicalAdmin && (
+                                    <div className="card-admin-badge-actions">
+                                        <button
+                                            type="button"
+                                            className="card-admin-icon-btn edit"
+                                            onClick={(e) => { e.stopPropagation(); openEditModal(item); }}
+                                            title="Edit Resource (Technical Admin Only)"
+                                        >
+                                            <Pencil size={13} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="card-admin-icon-btn delete"
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(item._id, item.title); }}
+                                            title="Delete Resource (Technical Admin Only)"
+                                        >
+                                            <Trash2 size={13} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Book Info */}
@@ -555,11 +576,9 @@ const ELibrary = () => {
                                 </h3>
                                 <p className="book-author">By {item.author || 'Department Faculty'}</p>
 
-                                {item.description && (
-                                    <p className="book-description">
-                                        {item.description}
-                                    </p>
-                                )}
+                                <p className="book-description" style={{ fontStyle: !item.description ? 'italic' : 'normal', opacity: !item.description ? 0.5 : 0.85 }}>
+                                    {item.description || 'No detailed description provided.'}
+                                </p>
 
                                 <div className="book-meta-footer">
                                     <span className="meta-item">
@@ -580,37 +599,21 @@ const ELibrary = () => {
                             {/* Card Action Buttons */}
                             <div className="book-card-actions">
                                 <button
-                                    className="btn btn-secondary btn-sm preview-btn"
+                                    type="button"
+                                    className="btn btn-secondary preview-btn"
                                     onClick={() => setActivePreviewItem(item)}
                                 >
                                     <Eye size={15} />
-                                    Details
+                                    <span>Details</span>
                                 </button>
                                 <button
-                                    className="btn btn-primary btn-sm download-btn"
+                                    type="button"
+                                    className="btn btn-primary download-btn"
                                     onClick={() => handleDownload(item)}
                                 >
                                     <Download size={15} />
-                                    Download
+                                    <span>Download</span>
                                 </button>
-                                {isTechnicalAdmin && (
-                                    <>
-                                        <button
-                                            className="btn btn-secondary-icon"
-                                            onClick={() => openEditModal(item)}
-                                            title="Edit Resource (Technical Admin Only)"
-                                        >
-                                            <Pencil size={15} />
-                                        </button>
-                                        <button
-                                            className="btn btn-danger-icon"
-                                            onClick={() => handleDelete(item._id, item.title)}
-                                            title="Delete Resource (Technical Admin Only)"
-                                        >
-                                            <Trash2 size={15} />
-                                        </button>
-                                    </>
-                                )}
                             </div>
                         </div>
                     ))}
