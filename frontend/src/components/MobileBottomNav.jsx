@@ -25,8 +25,8 @@ const MobileBottomNav = () => {
         if (email.includes('.mc.') || email.includes('.mce.') || email.startsWith('vimc') || email.startsWith('vmc') || email.startsWith('mc')) {
             return true;
         }
-        if (roleNorm === 'teacher') {
-            const isOtherDept = dept.includes('civil') || dept.includes('arch') || dept.includes('ep') || dept.includes('ec') || dept.includes('it') || (dept.includes('mechanical') && !dept.includes('mechatronic'));
+        const isOtherDept = dept.includes('civil') || dept.includes('arch') || dept.includes('ep') || dept.includes('ec') || dept.includes('it') || (dept.includes('mechanical') && !dept.includes('mechatronic'));
+        if (roleNorm === 'teacher' || roleNorm === 'student') {
             if (!isOtherDept) return true;
         }
         if (!dept) return true;
