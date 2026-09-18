@@ -1,10 +1,11 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import {
     LayoutDashboard, CalendarDays, Clock, FileSpreadsheet,
     Menu, X, BookOpen, Users, FileText, FolderSearch, FileEdit,
-    GraduationCap, ShieldCheck, Settings, LogOut, MessageSquare, Bug
+    GraduationCap, ShieldCheck, Settings, LogOut, MessageSquare, Bug,
+    Library, BotMessageSquare
 } from 'lucide-react';
 import './MobileBottomNav.css';
 
@@ -13,6 +14,24 @@ const MobileBottomNav = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    const canViewELibrary = useMemo(() => {
+        if (!user) return false;
+        const roleNorm = (user.role || '').toLowerCase().trim();
+        if (['admin', 'superadmin', 'academicadmin'].includes(roleNorm)) return true;
+        const dept = (user.department || '').toLowerCase().trim();
+        if (dept.includes('mechatronic') || dept === 'mc' || dept === 'mce') return true;
+        const email = (user.email || '').toLowerCase().trim();
+        if (email.includes('.mc.') || email.includes('.mce.') || email.startsWith('vimc') || email.startsWith('vmc') || email.startsWith('mc')) {
+            return true;
+        }
+        if (roleNorm === 'teacher') {
+            const isOtherDept = dept.includes('civil') || dept.includes('arch') || dept.includes('ep') || dept.includes('ec') || dept.includes('it') || (dept.includes('mechanical') && !dept.includes('mechatronic'));
+            if (!isOtherDept) return true;
+        }
+        if (!dept) return true;
+        return false;
+    }, [user]);
 
     if (!user) return null;
 
@@ -118,6 +137,16 @@ const MobileBottomNav = () => {
                             <Link to="/courses" className="sheet-item" onClick={() => setIsMenuOpen(false)}>
                                 <BookOpen size={18} />
                                 <span>Subjects</span>
+                            </Link>
+                            {canViewELibrary && (
+                                <Link to="/elibrary" className="sheet-item" onClick={() => setIsMenuOpen(false)}>
+                                    <Library size={18} />
+                                    <span>E-Library</span>
+                                </Link>
+                            )}
+                            <Link to="/ai-assistant" className="sheet-item" onClick={() => setIsMenuOpen(false)}>
+                                <BotMessageSquare size={18} />
+                                <span>AI Assistant</span>
                             </Link>
                             <Link to="/students" className="sheet-item" onClick={() => setIsMenuOpen(false)}>
                                 <Users size={18} />
