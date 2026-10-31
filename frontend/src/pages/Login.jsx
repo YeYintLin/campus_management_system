@@ -13,11 +13,13 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [infoMsg, setInfoMsg] = useState(location.state?.message || '');
+    const [honeypot, setHoneypot] = useState('');
 
     const { login, loading } = useContext(AuthContext);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (honeypot) return;
         setErrorMsg('');
         setInfoMsg('');
 
@@ -72,6 +74,17 @@ const Login = () => {
                     )}
 
                     <form onSubmit={handleSubmit}>
+                        {/* Anti-Spam Honeypot Field */}
+                        <input
+                            type="text"
+                            name="website_url"
+                            value={honeypot}
+                            onChange={(e) => setHoneypot(e.target.value)}
+                            style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none', height: 0, width: 0 }}
+                            aria-hidden="true"
+                            tabIndex={-1}
+                            autoComplete="off"
+                        />
                         <div className="form-group">
                             <label className="form-label">Email</label>
                             <input

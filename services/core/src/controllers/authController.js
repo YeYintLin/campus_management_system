@@ -1,7 +1,23 @@
 const User = require('../models/User');
 const Student = require('../models/Student');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const { sendVerificationEmail } = require('../utils/emailService');
+
+const timingSafeStringCompare = (a, b) => {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) {
+        crypto.timingSafeEqual(bufA, bufA);
+        return false;
+    }
+    return crypto.timingSafeEqual(bufA, bufB);
+};
+
+// Dummy bcrypt hash for constant-time comparison when user does not exist
+const DUMMY_BCRYPT_HASH = '$2a$10$e8w.hCvhKk0mZ709081e.uhvTz8Vb8Yj3Q65Fk6mZ9oZ8jW4v6Pia';
 
 const getJwtSecret = () => {
     const secret = process.env.JWT_SECRET;
@@ -29,6 +45,11 @@ const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$
 // @access  Public
 const registerUser = async (req, res) => {
     try {
+        // Anti-spam honeypot
+        if (req.body.website_url) {
+            return res.status(400).json({ message: 'Registration could not be completed.' });
+        }
+
         const { name, email, password, role, department, year, rollNo } = req.body;
         const normalizedEmail = normalizeEmail(email);
         const targetRole = (role === 'Teacher') ? 'Teacher' : 'Student';
@@ -114,7 +135,7 @@ const verifyEmail = async (req, res) => {
             });
         }
 
-        if (!user.emailVerificationCode || user.emailVerificationCode !== code.toString().trim()) {
+        if (!user.emailVerificationCode || !timingSafeStringCompare(user.emailVerificationCode, code.toString().trim())) {
             user.emailVerificationAttempts = (user.emailVerificationAttempts || 0) + 1;
             
             if (user.emailVerificationAttempts >= 5) {
@@ -196,6 +217,11 @@ const resendVerificationCode = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
     try {
+        // Anti-spam honeypot
+        if (req.body.website_url) {
+            return res.status(400).json({ message: 'Login failed' });
+        }
+
         const isProduction = (process.env.NODE_ENV || 'development') === 'production';
         const { email, username, password } = req.body;
         const identifierRaw = typeof email === 'string' && email.trim() ? email : username;
@@ -215,18 +241,20 @@ const loginUser = async (req, res) => {
             }
         }
 
+        // Constant-time execution: prevent user enumeration timing attacks
         if (!user) {
+            await bcrypt.compare(password, DUMMY_BCRYPT_HASH);
             return res.status(401).json({
-                code: 'AUTH_USER_NOT_FOUND',
-                message: isProduction ? 'Invalid email or password' : 'User not found',
+                code: 'AUTH_INVALID_CREDENTIALS',
+                message: 'Invalid email/username or password',
             });
         }
 
         const passwordMatches = await user.comparePassword(password);
         if (!passwordMatches) {
             return res.status(401).json({
-                code: 'AUTH_INVALID_PASSWORD',
-                message: isProduction ? 'Invalid email or password' : 'Invalid password',
+                code: 'AUTH_INVALID_CREDENTIALS',
+                message: 'Invalid email/username or password',
             });
         }
 

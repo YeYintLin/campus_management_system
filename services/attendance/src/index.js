@@ -12,6 +12,18 @@ const app = express();
 let dbStatus = 'starting';
 let server;
 
+// Disable Express fingerprinting
+app.disable('x-powered-by');
+
+// Security Headers Middleware
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()');
+    next();
+});
+
 if (!process.env.JWT_SECRET) {
     console.error('FATAL: JWT_SECRET is not set. Set it in services/attendance/.env');
     process.exit(1);

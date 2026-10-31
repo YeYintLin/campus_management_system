@@ -34,9 +34,12 @@ const sendVerificationEmail = async (email, code) => {
         return true;
     }
 
+    const cleanTo = sanitizeHeader(email);
+    const cleanFrom = sanitizeHeader(process.env.SMTP_USER);
+
     const mailOptions = {
-        from: `"TU Hmawbi CMS" <${process.env.SMTP_USER}>`,
-        to: email,
+        from: `"TU Hmawbi CMS" <${cleanFrom}>`,
+        to: cleanTo,
         subject: '🔐 Account Email Verification Code - TU Hmawbi CMS',
         html: `
             <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9; color: #1e293b;">

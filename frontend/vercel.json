@@ -6,5 +6,18 @@
     { "source": "/api/:path*", "destination": "http://165.245.181.251:5001/api/:path*" },
     { "source": "/uploads/:path*", "destination": "http://165.245.181.251:5001/uploads/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(self), microphone=(), geolocation=(), payment=(), usb=()" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://ui-avatars.com https://i.pravatar.cc http://165.245.181.251:5001 https://165.245.181.251:5001; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' http://165.245.181.251:5001 https://165.245.181.251:5001 ws: wss:; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';" },
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    }
   ]
 }

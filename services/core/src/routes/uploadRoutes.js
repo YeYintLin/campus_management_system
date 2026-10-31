@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { protect } = require('../middleware/authMiddleware');
+const { stripImageMetadata } = require('../utils/stripMetadata');
 
 const router = express.Router();
 
@@ -55,6 +56,8 @@ router.post('/', protect, (req, res) => {
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded.' });
         }
+        // Privacy Hardening: Strip EXIF, GPS, and device metadata from images
+        stripImageMetadata(req.file.path);
         return res.send(`/${req.file.path.replace(/\\/g, '/')}`);
     });
 });

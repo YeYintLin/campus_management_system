@@ -8,8 +8,42 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// CORS setup
-app.use(cors());
+// Disable Express fingerprinting
+app.disable('x-powered-by');
+
+// Security Headers Middleware
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()');
+    next();
+});
+
+// Production Hardened CORS setup
+const allowedOrigins = [
+    'https://campus-management-system-one.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:8050',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173'
+];
+if (process.env.CORS_ORIGIN) {
+    process.env.CORS_ORIGIN.split(',').forEach(o => allowedOrigins.push(o.trim()));
+}
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, curl, or same-origin)
+        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+            return callback(null, true);
+        }
+        return callback(new Error('Blocked by CORS policy'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-internal-service-token']
+}));
 
 const CORE_SERVICE_URL = process.env.CORE_SERVICE_URL || 'http://localhost:5002';
 const ATTENDANCE_SERVICE_URL = process.env.ATTENDANCE_SERVICE_URL || 'http://localhost:5003';

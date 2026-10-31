@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     build: {
+      sourcemap: false,
       rollupOptions: {
         output: {
           manualChunks: {

@@ -12,6 +12,18 @@ const app = express();
 let dbStatus = 'starting';
 let server;
 
+// Disable Express fingerprinting
+app.disable('x-powered-by');
+
+// Security Headers Middleware
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()');
+    next();
+});
+
 // Fail fast if JWT secret is missing. This prevents accidentally running with an insecure default.
 if (!process.env.JWT_SECRET) {
     console.error('FATAL: JWT_SECRET is not set. Set it in services/core/.env');
@@ -84,6 +96,17 @@ app.get('/health', (req, res) => {
 
 app.get('/', (req, res) => {
     res.send('CMS API Default Endpoint');
+});
+
+// Centralized Production Error Handler (prevents stack/query leaks)
+app.use((err, req, res, next) => {
+    console.error(`[Unhandled Error] ${req.method} ${req.originalUrl}:`, err.message);
+    const isProd = (process.env.NODE_ENV || 'development') === 'production';
+    const status = err.status || err.statusCode || 500;
+    res.status(status).json({
+        message: isProd && status === 500 ? 'An unexpected server error occurred.' : err.message,
+        code: err.code || 'SERVER_ERROR'
+    });
 });
 
 // Database Connection

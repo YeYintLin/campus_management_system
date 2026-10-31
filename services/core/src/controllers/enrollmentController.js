@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const axios = require('axios');
+const crypto = require('crypto');
 const AcademicEnrollment = require('../models/AcademicEnrollment');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
@@ -9,6 +10,17 @@ const AcademicConfig = require('../models/AcademicConfig');
 const ATTENDANCE_SERVICE_URL = process.env.ATTENDANCE_SERVICE_URL || 'http://localhost:5003';
 const INTERNAL_SERVICE_SECRET = process.env.INTERNAL_SERVICE_SECRET || 'cms-internal-secret-token';
 
+const safeTimingEqual = (a, b) => {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) {
+        crypto.timingSafeEqual(bufA, bufA);
+        return false;
+    }
+    return crypto.timingSafeEqual(bufA, bufB);
+};
+
 // ─────────────────────────────────────────────
 // POST /api/enrollments/recalculate-attendance
 // Internal service endpoint (and admin backup)
@@ -16,7 +28,7 @@ const INTERNAL_SERVICE_SECRET = process.env.INTERNAL_SERVICE_SECRET || 'cms-inte
 const recalculateAttendance = async (req, res) => {
     try {
         const internalToken = req.headers['x-internal-service-token'];
-        const isInternalAuth = internalToken && internalToken === INTERNAL_SERVICE_SECRET;
+        const isInternalAuth = internalToken && safeTimingEqual(internalToken, INTERNAL_SERVICE_SECRET);
         const isAdminAuth = req.user && ['admin', 'superadmin', 'academicadmin'].includes((req.user.role || '').toLowerCase());
 
         if (!isInternalAuth && !isAdminAuth) {
