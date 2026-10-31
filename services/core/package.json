@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
+    "test": "node src/tests/test_elibrary_security.js && node src/tests/test_elibrary_logs.js",
     "seed:users": "node seed.js",
     "seed:teachers": "node seedExcelTeachers.js",
     "seed:students": "node seedVimcStudents.js",

@@ -10,7 +10,8 @@
     "start-all": "concurrently -n gateway,core,attendance,ai,frontend -c magenta,green,yellow,cyan,blue \"npm --prefix gateway run dev\" \"npm --prefix services/core run dev\" \"npm --prefix services/attendance run dev\" \"npm --prefix services/ai run dev\" \"npm --prefix frontend run dev\"",
     "seed:users": "npm --prefix services/core run seed:users",
     "seed:demo": "npm --prefix services/core run seed:demo",
-    "seed:courses": "npm --prefix services/core run seed:courses"
+    "seed:courses": "npm --prefix services/core run seed:courses",
+    "test": "npm --prefix gateway test && npm --prefix services/core test && npm --prefix services/attendance test && npm --prefix services/ai test && npm --prefix frontend run lint && npm --prefix frontend run build"
   },
   "devDependencies": {
     "concurrently": "^9.2.0"
