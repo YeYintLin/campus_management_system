@@ -25,6 +25,8 @@ coverage/
 # Runtime data / uploads (should not be committed)
 backend/uploads/
 backend/uploads/*
+services/core/storage/
+storage/
 backend-start.out
 backend-start.err
 frontend-dev.out
